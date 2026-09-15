@@ -56,9 +56,21 @@ The US engineering order (from the US API reference):
    STATE_MISMATCH / PRICE_SCALE_MISMATCH / LEVEL_MISMATCH / UNKNOWN_SYMBOL /
    UNRESOLVED = burn-in hard failure. Authority hierarchy: gRPC ↔ Exchange REST
    primary, Retail secondary cross-check.
-8. **US burn-in hardening** — NEXT: wire the US phase machine, US raw lineage,
-   US gate, then US_BASELINE_FROZEN → US_BURNIN_RUNNING → US_BURNIN_PASSED →
-   REAL_DATA_START_US.
+8. **US burn-in hardening** ✅ implemented — `UsHealthTracker` (gRPC heartbeats/
+   reconnects/out-of-order/stale, subscription errors, unknown symbols, REST
+   429s, reconciliation stats, retail secondary lags), US-specific zero-tolerance
+   gate (unknown_symbol_events, price_scale_mismatches, tick_size_mismatches,
+   state_mismatches, grpc_out_of_order_updates, unresolved_book_mismatches,
+   stale_state_applications all == 0), US replay gate (A == B), US provenance
+   (impl commit, collector/interface hashes, instrument-snapshot hash, phase,
+   clean worktree), and `us-burnin-report.{json,md}`. Frozen US baseline config:
+   `config/frozen/us-v0.4.0-baseline.yaml` (locks instrument-normalization rules
+   + reconciliation policy). Qualifying path:
+   US_BASELINE_FROZEN → US_BURNIN_RUNNING → live collection → fault injection →
+   reconciliation → A/B replay → US FINAL GATE: PASS → US_BURNIN_PASSED →
+   REAL_DATA_START_US → US_COLLECTION_RUNNING.
+9. **US burn-in run** — NEXT (operational): run the live US burn-in with the
+   frozen baseline, then write REAL_DATA_START_US.
 
 ---
 

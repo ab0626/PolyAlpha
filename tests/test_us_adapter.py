@@ -26,6 +26,14 @@ from polyalpha.us.adapter import (  # noqa: E402
     parse_settlement,
     scaled_to_decimal,
 )
+from polyalpha.us.burnin import (  # noqa: E402
+    UsBurnInProvenance,
+    UsBurnInReport,
+    UsHealth,
+    UsHealthTracker,
+    instrument_snapshot_hash,
+    write_us_burnin_report,
+)
 from polyalpha.us.collector import UsRawCollector  # noqa: E402
 from polyalpha.us.exchange import ExchangeRefDataClient  # noqa: E402
 from polyalpha.us.grpc_stream import UsGrpcMarketStream  # noqa: E402
@@ -929,3 +937,175 @@ class TestReconciliation:
             identifiers,
         )
         assert r.reason == ReconciliationReason.MATCH
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# US BURN-IN HARDENING
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _us_report(health=None, replay_ok=True, dirty=False, faults=True) -> UsBurnInReport:
+    from polyalpha.replay_verification import ReplayCheckResult
+
+    replay = ReplayCheckResult(
+        hash_a="a" * 64, hash_b="a" * 64,
+        deterministic=replay_ok, records_a=1, records_b=1,
+    )
+    provenance = UsBurnInProvenance(
+        implementation_commit="us-impl-abc",
+        collector_sha256="c" * 64,
+        interface_sha256="i" * 64,
+        instrument_snapshot_hash="s" * 64,
+        reconciliation_policy_sha256="p" * 64,
+        phase="US_BURNIN_RUNNING",
+        working_tree_dirty=dirty,
+    )
+    return UsBurnInReport(
+        period_start="2026-09-15", period_end="2026-09-16",
+        baseline="v0.4.0-us-research-baseline-abc",
+        provenance=provenance,
+        health=health or UsHealth(),
+        replay=replay,
+        fault_injection_passed=faults,
+    )
+
+
+class TestUsHealthTracker:
+    def test_stream_events_mapped(self):
+        from polyalpha.us.grpc_stream import StreamEvent
+
+        tracker = UsHealthTracker()
+        tracker.on_stream_event(StreamEvent(kind="heartbeat"))
+        tracker.on_stream_event(StreamEvent(kind="reconnect"))
+        tracker.on_stream_event(StreamEvent(kind="stale", message="out-of-order transact_time"))
+        tracker.on_stream_event(StreamEvent(kind="stale"))
+        tracker.on_stream_event(StreamEvent(kind="error", message="no instrument; priceScale unknown"))
+        tracker.on_rest_429()
+        tracker.on_stale_state_application()
+        h = tracker.health
+        assert h.grpc_heartbeats == 1
+        assert h.grpc_reconnects == 1
+        assert h.grpc_out_of_order_updates == 1
+        assert h.grpc_stale_invalidations == 1
+        assert h.subscription_errors == 1
+        assert h.rest_429s == 1
+        assert h.stale_state_applications == 1
+
+    def test_reconciliation_reason_mapping(self):
+        from polyalpha.us.reconcile import ReconciliationResult, UsSourceKind
+
+        tracker = UsHealthTracker()
+        tracker.on_reconciliation(ReconciliationResult(
+            symbol="s", primary=UsSourceKind.GRPC, cross=UsSourceKind.RETAIL,
+            reason=ReconciliationReason.PRICE_SCALE_MISMATCH,
+            identity_ok=True, semantics_ok=False, structure_ok=False, freshness_ok=False,
+        ))
+        tracker.on_reconciliation(ReconciliationResult(
+            symbol="s", primary=UsSourceKind.GRPC, cross=UsSourceKind.RETAIL,
+            reason=ReconciliationReason.STATE_MISMATCH,
+            identity_ok=True, semantics_ok=False, structure_ok=False, freshness_ok=False,
+        ))
+        tracker.on_reconciliation(ReconciliationResult(
+            symbol="s", primary=UsSourceKind.GRPC, cross=UsSourceKind.RETAIL,
+            reason=ReconciliationReason.LEVEL_MISMATCH,
+            identity_ok=True, semantics_ok=True, structure_ok=False, freshness_ok=False,
+        ))
+        tracker.on_reconciliation(ReconciliationResult(
+            symbol="s", primary=UsSourceKind.GRPC, cross=UsSourceKind.RETAIL,
+            reason=ReconciliationReason.RETAIL_LAG,
+            identity_ok=True, semantics_ok=True, structure_ok=False, freshness_ok=False,
+        ))
+        h = tracker.health
+        assert h.price_scale_mismatches == 1
+        assert h.state_mismatches == 1
+        assert h.unresolved_book_mismatches == 1
+        assert h.retail_secondary_mismatches == 1
+        assert h.rest_reconciliations == 4
+
+
+class TestUsBurnInGate:
+    def test_clean_report_qualifies(self):
+        report = _us_report()
+        passed, failures = report.qualifying()
+        assert passed is True
+        assert failures == []
+        assert report.hard_failure_count() == 0
+
+    def test_each_hard_failure_blocks(self):
+        cases = {
+            "unknown_symbol_events": 1,
+            "price_scale_mismatches": 1,
+            "tick_size_mismatches": 1,
+            "state_mismatches": 1,
+            "grpc_out_of_order_updates": 1,
+            "unresolved_book_mismatches": 1,
+            "stale_state_applications": 1,
+        }
+        for field, value in cases.items():
+            h = UsHealth(**{field: value})
+            report = _us_report(health=h)
+            passed, failures = report.qualifying()
+            assert passed is False, f"{field} should block"
+            assert any(field in f for f in failures)
+
+    def test_replay_difference_blocks(self):
+        report = _us_report(replay_ok=False)
+        passed, failures = report.qualifying()
+        assert passed is False
+        assert "replay_a_b_differ" in failures
+
+    def test_dirty_worktree_blocks(self):
+        report = _us_report(dirty=True)
+        passed, failures = report.qualifying()
+        assert passed is False
+        assert "working_tree_dirty" in failures
+
+    def test_fault_injection_failure_blocks(self):
+        report = _us_report(faults=False)
+        passed, failures = report.qualifying()
+        assert passed is False
+        assert "fault_injection" in failures
+
+    def test_operational_noise_is_not_hard_failure(self):
+        """REST 429s and retail-secondary lags are NOT hard failures."""
+        h = UsHealth(rest_429s=17, retail_secondary_mismatches=9)
+        report = _us_report(health=h)
+        passed, _ = report.qualifying()
+        assert passed is True
+        assert report.hard_failure_count() == 0
+
+
+class TestUsBurnInReportArtifact:
+    def test_write_and_hash(self, tmp_path):
+        report = _us_report()
+        directory, digest = write_us_burnin_report(report, tmp_path / "us_burnin")
+        assert (tmp_path / "us_burnin" / "us-burnin-report.json").exists()
+        assert (tmp_path / "us_burnin" / "us-burnin-report.md").exists()
+        assert len(digest) == 64
+        # Deterministic.
+        d2, digest2 = write_us_burnin_report(report, tmp_path / "us_burnin2")
+        assert digest == digest2
+
+    def test_markdown_surfaces_us_counters(self, tmp_path):
+        report = _us_report()
+        write_us_burnin_report(report, tmp_path / "us_burnin")
+        md = (tmp_path / "us_burnin" / "us-burnin-report.md").read_text(encoding="utf-8")
+        assert "POLYALPHA US — BURN-IN INTEGRITY REPORT" in md
+        assert "Unknown symbol events" in md
+        assert "Price-scale mismatches" in md
+        assert "Stale-state applications" in md
+        assert "US FINAL GATE" in md
+
+    def test_instrument_snapshot_hash(self):
+        reg = UsInstrumentRegistry()
+        reg.register(parse_instrument(_instrument_raw()))
+        h1 = instrument_snapshot_hash(reg)
+        h2 = instrument_snapshot_hash(reg)
+        assert h1 == h2
+        assert len(h1) == 64
+        # Changing tickSize changes the hash.
+        reg2 = UsInstrumentRegistry()
+        raw = _instrument_raw()
+        raw["tickSize"] = "0.01"
+        reg2.register(parse_instrument(raw))
+        assert instrument_snapshot_hash(reg2) != h1

@@ -1,0 +1,53 @@
+# ============================================================
+# PolyAlpha US v0.4.0 RESEARCH BASELINE — FROZEN
+# ============================================================
+# US-specific baseline. Locks the actual US collector/interface
+# configuration being burned in: instrument-normalization rules and
+# reconciliation policy. The US burn-in must prove a FROZEN target,
+# not a moving one. Do not edit after US_BASELINE_FROZEN.
+#
+# Baseline tag convention: v0.4.0-us-research-baseline-<commit>
+# ============================================================
+
+us_baseline_version: "v0.4.0-us-research-baseline"
+
+# ── Instrument normalization rules ─────────────────────────────────────────
+instrument_normalization:
+  # priceScale is REQUIRED from refdata/instruments — never a default.
+  require_price_scale: true
+  # Provisional fallback tick size only; authoritative tickSize from
+  # refdata/instruments drives validation once available.
+  fallback_tick_size: "0.001"
+  # Fallback min order size only.
+  fallback_min_order_size: "1"
+  # gRPC price decoding requires the instrument to be registered first.
+  require_instrument_before_decode: true
+
+# ── Reconciliation policy ──────────────────────────────────────────────────
+reconciliation:
+  lag_threshold_seconds: 5.0
+  qty_tolerance: "0.01"
+  # Authority hierarchy: gRPC and Exchange REST are primary; Retail is a
+  # secondary cross-check, never the authority.
+  primary_sources:
+    - "GRPC"
+    - "EXCHANGE_REST"
+  secondary_sources:
+    - "RETAIL"
+
+# ── US phase lineage ───────────────────────────────────────────────────────
+phase:
+  start: "US_BASELINE_FROZEN"
+  burnin_running: "US_BURNIN_RUNNING"
+  burnin_passed: "US_BURNIN_PASSED"
+  real_data_start: "REAL_DATA_START_US"
+  collection_running: "US_COLLECTION_RUNNING"
+
+# ── Raw lineage ─────────────────────────────────────────────────────────────
+raw_lineage:
+  root: "data/us"
+  retail_raw: "data/us/retail/raw"
+  exchange_raw: "data/us/exchange/raw"
+  manifests: "data/us/manifests"
+  burnin: "data/us/burnin"
+  marker: "data/us/REAL_DATA_START_US.json"
