@@ -876,11 +876,12 @@ class TestDualReplay:
 
 
 def _burnin_report(**overrides):
+    from polyalpha.burnin_gate import QUALIFYING_BASELINE_COMMIT, QUALIFYING_RESEARCH_LOGIC_SHA256
     base = dict(
         period_start="2026-09-15", period_end="2026-09-16",
-        baseline_commit="abc123", implementation_commit="e2b072a",
-        research_logic_sha256="r" * 64, collector_sha256="c" * 64,
-        interface_sha256="i" * 64,
+        baseline_commit=QUALIFYING_BASELINE_COMMIT, implementation_commit="e2b072a",
+        research_logic_sha256=QUALIFYING_RESEARCH_LOGIC_SHA256,
+        collector_sha256="c" * 64, interface_sha256="i" * 64,
         messages=1_000_000, markets=500, tokens_observed=1000,
         lifecycle_events=50, resolved_markets=20, reconnects=7,
         forced_failures=10,
@@ -989,6 +990,36 @@ class TestZeroTolerance:
         passed, failures = gate_verdict(report)
         assert passed is False
         assert "fault:network_disconnect" in failures
+
+    def test_dirty_worktree_never_qualifies(self):
+        """A --allow-dirty run must never be able to authorize REAL_DATA_START."""
+        dirty = _burnin_report(research_eligible=False, working_tree_dirty=True)
+        passed, failures = gate_verdict(dirty)
+        assert passed is False
+        assert "not_research_eligible" in failures
+        assert "working_tree_dirty" in failures
+        # Even with everything else clean, eligibility blocks.
+        assert zero_tolerance_failures(dirty) == []
+
+    def test_baseline_identity_enforced(self):
+        """A qualifying burn-in must be against the exact frozen baseline."""
+        bad_commit = _burnin_report(baseline_commit="deadbeef")
+        passed, failures = gate_verdict(bad_commit)
+        assert passed is False
+        assert "baseline_commit_mismatch" in failures
+
+        bad_hash = _burnin_report(research_logic_sha256="0" * 64)
+        passed2, failures2 = gate_verdict(bad_hash)
+        assert passed2 is False
+        assert "research_logic_hash_mismatch" in failures2
+
+    def test_report_marks_eligibility(self):
+        """The report artifact must expose research_eligible + working_tree_dirty."""
+        clean = _burnin_report()
+        assert clean.research_eligible is True
+        assert clean.working_tree_dirty is False
+        assert clean.as_dict()["research_eligible"] is True
+        assert clean.as_dict()["working_tree_dirty"] is False
 
 
 # ══════════════════════════════════════════════════════════════════════════

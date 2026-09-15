@@ -221,6 +221,9 @@ def main() -> int:
         research_logic_sha256="",
         collector_sha256="",
         interface_sha256="",
+        # A --allow-dirty run is debugging-only and can never qualify.
+        research_eligible=not bool(dirty),
+        working_tree_dirty=bool(dirty),
         messages=result.stats.messages_received,
         markets=result.stats.book_events,
         tokens_observed=len(tokens),

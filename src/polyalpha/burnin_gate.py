@@ -29,6 +29,14 @@ from pathlib import Path
 
 from .phases import PhaseStore  # noqa: F401  (used in type annotations)
 
+# Hard qualifying requirements for a burn-in that may authorize REAL_DATA_START.
+# These are the frozen research baseline identity plus eligibility flags.
+QUALIFYING_BASELINE_COMMIT = "334b911"
+QUALIFYING_BASELINE_TAG = "v0.3.0-research-baseline-334b911"
+QUALIFYING_RESEARCH_LOGIC_SHA256 = (
+    "df71b8f387e146681cea47639f6d61f79f82dff29012913c8124346d4afb598e"
+)
+
 # ── Burn-in gate ─────────────────────────────────────────────────────────────
 
 
@@ -179,8 +187,26 @@ def gate_verdict(report: "BurnInReport") -> tuple[bool, list[str]]:
 
     Returns (passed, failures) where failures combines zero-tolerance
     violations, replay non-determinism, and any recorded scenario FAIL.
+
+    Hard qualifying requirements (a run must satisfy ALL to pass):
+      research_eligible == True   (a --allow-dirty run can never qualify)
+      working_tree_dirty == False
+      baseline_commit == QUALIFYING_BASELINE_COMMIT
+      research_logic_sha256 == QUALIFYING_RESEARCH_LOGIC_SHA256
+      venue_transmissions_attempted == 0
+      all zero-tolerance counters == 0
+      replay_hash_a == replay_hash_b
+      fault + live-ready checklist == PASS
     """
     failures = zero_tolerance_failures(report)
+    if not report.research_eligible:
+        failures.append("not_research_eligible")
+    if report.working_tree_dirty:
+        failures.append("working_tree_dirty")
+    if report.baseline_commit != QUALIFYING_BASELINE_COMMIT:
+        failures.append("baseline_commit_mismatch")
+    if report.research_logic_sha256 != QUALIFYING_RESEARCH_LOGIC_SHA256:
+        failures.append("research_logic_hash_mismatch")
     if not report.replay_deterministic or report.replay_hash_a != report.replay_hash_b:
         failures.append("replay_a_b_differ")
     if not report.metadata_reconstruction_ok:
@@ -359,6 +385,11 @@ class BurnInReport:
     manifest_chain_failures: int
     wire_fidelity_failures: int
 
+    # Research eligibility: a dirty-worktree (--allow-dirty) run must NEVER be
+    # able to qualify for FINAL GATE: PASS.
+    research_eligible: bool = True
+    working_tree_dirty: bool = False
+
     # Replay
     replay_hash_a: str = ""
     replay_hash_b: str = ""
@@ -413,6 +444,8 @@ class BurnInReport:
             "research_logic_sha256": self.research_logic_sha256,
             "collector_sha256": self.collector_sha256,
             "interface_sha256": self.interface_sha256,
+            "research_eligible": self.research_eligible,
+            "working_tree_dirty": self.working_tree_dirty,
             "messages": self.messages,
             "markets": self.markets,
             "tokens_observed": self.tokens_observed,
@@ -575,6 +608,8 @@ def _render_burnin_markdown(report: BurnInReport) -> str:
         f"Research logic SHA256: {report.research_logic_sha256}",
         f"Collector SHA256: {report.collector_sha256}",
         f"Interface SHA256: {report.interface_sha256}",
+        f"Worktree at launch: {'CLEAN' if not report.working_tree_dirty else 'DIRTY (NOT ELIGIBLE)'}",
+        f"Research eligible: {'YES' if report.research_eligible else 'NO'}",
         "",
         "COLLECTION",
         f"Duration: {report.period_start} → {report.period_end}",
