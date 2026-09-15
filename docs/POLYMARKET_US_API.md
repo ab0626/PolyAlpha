@@ -1,7 +1,7 @@
 ﻿# Polymarket US API Reference (Corrected)
 
 **Source:** https://docs.polymarket.us (fetched 2026-09-15, deep pass)
-**Status:** ADAPTER BUILT — USRetailAdapter, identifier registry, state model, raw collector, US phase machine, AND the Direct Exchange refdata layer (`UsInstrument`, `UsInstrumentRegistry`, `parse_exchange_book` with scaled-int prices, `ExchangeRefDataClient`) are implemented and offline-verified. gRPC market data is the documented next phase.
+**Status:** ADAPTER BUILT — USRetailAdapter, identifier registry, state model, raw collector, US phase machine, Direct Exchange refdata layer, AND the gRPC market-data stream consumer (`UsGrpcMarketStream`: subscription lifecycle, snapshot, aggregated/unaggregated, heartbeat, reconnect invalidation, out-of-order freshness, instrument-lookup-before-normalization, priceScale-required decoding, liveness staleness, deterministic replay) are implemented and offline-verified. US reconciliation (gRPC ↔ Exchange REST ↔ retail book/BBO) is the documented next phase.
 **Relevance:** Polymarket US is a CFTC-regulated US exchange with a **fundamentally different API** from Polymarket International (`docs.polymarket.com` / CLOB). The current PolyAlpha collector targets International. US is a **separate venue adapter** and a **separate empirical data lineage** — never a retrofit of International parsing.
 
 > Corrected from first draft: Polymarket US is **three** distinct surfaces, not two, and `gateway.polymarket.us` (public data) is logically separate from `api.polymarket.us` (authenticated trading).

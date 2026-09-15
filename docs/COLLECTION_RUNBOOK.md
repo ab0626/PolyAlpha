@@ -40,9 +40,16 @@ The US engineering order (from the US API reference):
    (JWT boundary documented). Authoritative per-instrument `tickSize`,
    `minimumTradeQty`, and `priceScale` now drive validation; `0.001` is a
    documented fallback only, never permanent truth.
-6. **gRPC real-time feed** — NEXT (snapshot semantics, aggregated/unaggregated
-   books, dynamic subscribe/unsubscribe, heartbeat/reconnect, sequence/
-   freshness, priceScale normalization)
+6. **gRPC market data** ✅ implemented — `UsGrpcMarketStream` (transport-agnostic
+   state machine): subscription lifecycle, snapshot-only, aggregated vs
+   unaggregated book, heartbeat liveness, reconnect invalidation, out-of-order
+   transact_time rejection, instrument lookup before price normalization,
+   priceScale-required decoding (never a default), liveness staleness
+   invalidation, deterministic replay. A thin gRPC client is the remaining live
+   wiring.
+7. **US reconciliation** — NEXT: gRPC ↔ Exchange REST ↔ retail book/BBO, with
+   Direct Exchange as primary semantic source and Retail as secondary
+   cross-check, not authority.
 
 ---
 

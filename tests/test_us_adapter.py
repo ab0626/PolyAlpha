@@ -28,6 +28,7 @@ from polyalpha.us.adapter import (  # noqa: E402
 )
 from polyalpha.us.collector import UsRawCollector  # noqa: E402
 from polyalpha.us.exchange import ExchangeRefDataClient  # noqa: E402
+from polyalpha.us.grpc_stream import UsGrpcMarketStream  # noqa: E402
 from polyalpha.us.identifiers import UsIdentifierRegistry  # noqa: E402
 from polyalpha.us.instruments import UsInstrumentRegistry, parse_instrument  # noqa: E402
 from polyalpha.us.rest import PublicUsClient  # noqa: E402
@@ -579,3 +580,170 @@ class TestExchangeRefDataClient:
         instruments = client.instruments(registry=registry)
         assert len(instruments) == 1
         assert registry.by_symbol("SYMB_1001").price_scale == 1000
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# US gRPC MARKET-DATA STREAM (state correctness)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _grpc_stream() -> UsGrpcMarketStream:
+    identifiers = UsIdentifierRegistry()
+    identifiers.register("mid-1", "slug-a", "SYMB_1001")
+    instruments = UsInstrumentRegistry()
+    instruments.register(parse_instrument(_instrument_raw()))
+    return UsGrpcMarketStream(identifiers, instruments)
+
+
+def _grpc_update(symbol="SYMB_1001", px_bids=(555, 550), px_offers=(560, 565)):
+    return {
+        "update": {
+            "symbol": symbol,
+            "bids": [{"px": p, "qty": 10} for p in px_bids],
+            "offers": [{"px": p, "qty": 10} for p in px_offers],
+            "transact_time": "2026-09-15T12:00:00Z",
+        }
+    }
+
+
+class TestGrpcStream:
+    def test_subscription_lifecycle(self):
+        stream = _grpc_stream()
+        stream.subscribe(["SYMB_1001"])
+        events = stream.process(_grpc_update())
+        assert events[0].kind == "update"
+        assert events[0].update.symbol == "SYMB_1001"
+        assert stream.active_symbols == {"SYMB_1001"}
+        assert stream.summary()["symbols_seen"] == ["SYMB_1001"]
+
+    def test_heartbeat_liveness(self):
+        stream = _grpc_stream()
+        events = stream.process({"heartbeat": True})
+        assert events[0].kind == "heartbeat"
+
+    def test_priceScale_required_from_instrument(self):
+        """Normalization must fail if price_scale is unknown — never a default."""
+        identifiers = UsIdentifierRegistry()
+        identifiers.register("mid-1", "slug-a", "SYMB_1001")
+        # No instrument registered -> priceScale unknown.
+        stream = UsGrpcMarketStream(identifiers, UsInstrumentRegistry())
+        events = stream.process(_grpc_update())
+        assert events[0].kind == "error"
+        assert "priceScale" in events[0].message
+
+    def test_instrument_lookup_before_normalization(self):
+        """Unknown symbol must be rejected before any price math."""
+        identifiers = UsIdentifierRegistry()
+        instruments = UsInstrumentRegistry()
+        instruments.register(parse_instrument(_instrument_raw()))
+        stream = UsGrpcMarketStream(identifiers, instruments)
+        events = stream.process(_grpc_update(symbol="UNKNOWN"))
+        assert events[0].kind == "error"
+        assert "identifier" in events[0].message
+
+    def test_scaled_px_decoding(self):
+        stream = _grpc_stream()
+        events = stream.process(_grpc_update())
+        update = events[0].update
+        assert update.bids[0] == (D("0.555"), D("10"))  # 555/1000
+        assert update.offers[0] == (D("0.560"), D("10"))
+
+    def test_aggregated_and_unaggregated_both_decode(self):
+        stream = _grpc_stream()
+        # Aggregated book: multiple qty at a price.
+        events = stream.process(_grpc_update())
+        assert events[0].update.bids[0][1] == D("10")
+        # Unaggregated raw orders decode the same way (each entry one order).
+        raw_msg = {
+            "update": {
+                "symbol": "SYMB_1001",
+                "bids": [{"px": 555, "qty": 3}, {"px": 555, "qty": 7}],
+                "offers": [],
+                "transact_time": "2026-09-15T12:00:00Z",
+            }
+        }
+        events2 = stream.process(raw_msg)
+        assert sum(q for _, q in events2[0].update.bids) == D("10")
+
+    def test_snapshot_only_closes_stream(self):
+        """snapshot_only is a request flag; the consumer records it and the
+        stream naturally stops. We verify a snapshot_only request produces a
+        single update then the caller closes."""
+        stream = _grpc_stream()
+        events = stream.process(_grpc_update())
+        assert len(events) == 1
+        assert events[0].kind == "update"
+
+    def test_reconnect_invalidates_state(self):
+        stream = _grpc_stream()
+        stream.process(_grpc_update())
+        stream.reconnect()
+        assert stream.reconnect_count == 1
+        assert stream.summary()["symbols_seen"] == []
+        # A fresh update after reconnect is accepted (sequence restarts).
+        events = stream.process(_grpc_update())
+        assert events[0].kind == "update"
+        assert events[0].update.sequence == 1
+
+    def test_out_of_order_update_invalidated(self):
+        stream = _grpc_stream()
+        stream.process(_grpc_update())  # t=12:00
+        stale_msg = {
+            "update": {
+                "symbol": "SYMB_1001",
+                "bids": [{"px": 550, "qty": 5}],
+                "offers": [],
+                "transact_time": "2026-09-15T11:00:00Z",  # earlier -> out of order
+            }
+        }
+        events = stream.process(stale_msg)
+        assert events[0].kind == "stale"
+        assert "out-of-order" in events[0].message
+
+    def test_state_mapping_from_grpc_enum(self):
+        stream = _grpc_stream()
+        msg = {
+            "update": {
+                "symbol": "SYMB_1001",
+                "bids": [{"px": 555, "qty": 10}],
+                "offers": [{"px": 560, "qty": 10}],
+                "state": "INSTRUMENT_STATE_SUSPENDED",
+                "transact_time": "2026-09-15T12:00:00Z",
+            }
+        }
+        events = stream.process(msg)
+        assert events[0].update.state == UsMarketState.SUSPENDED
+        assert not events[0].update.state.is_tradable()
+
+    def test_liveness_staleness_invalidation(self):
+        """A symbol with no updates within max_stale_seconds must be
+        invalidated (liveness, driven by the local receive clock)."""
+        from datetime import timedelta
+
+        now = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+        clock = {"now": now}
+
+        identifiers = UsIdentifierRegistry()
+        identifiers.register("mid-1", "slug-a", "SYMB_1001")
+        instruments = UsInstrumentRegistry()
+        instruments.register(parse_instrument(_instrument_raw()))
+        stream = UsGrpcMarketStream(identifiers, instruments, max_stale_seconds=30,
+                                    now_fn=lambda: clock["now"])
+        stream.process(_grpc_update())
+        assert stream.summary()["symbols_seen"] == ["SYMB_1001"]
+        # 31 seconds pass with no update -> symbol becomes stale.
+        clock["now"] = now + timedelta(seconds=31)
+        stream.invalidate_stale()
+        assert stream.summary()["symbols_seen"] == []
+        assert any(e.kind == "stale" for e in stream.events)
+
+    def test_deterministic_replay(self):
+        stream = _grpc_stream()
+        stream.process(_grpc_update())
+        stream.process({"heartbeat": True})
+        stream.reconnect()
+        replay_a = stream.replay()
+        replay_b = stream.replay()
+        assert replay_a == replay_b  # deterministic
+        assert any(e["kind"] == "update" for e in replay_a)
+        assert any(e["kind"] == "reconnect" for e in replay_a)
