@@ -1910,7 +1910,6 @@ def cmd_collect_burnin(args):
 def cmd_collect_gate(args):
     """Evaluate the burn-in go/no-go gate (offline; takes observed counts)."""
     import json
-    from pathlib import Path
 
     from .burnin_gate import evaluate_burn_in_gate
 

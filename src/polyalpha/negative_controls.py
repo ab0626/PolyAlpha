@@ -1,10 +1,12 @@
 """Negative controls — Section 25 spec."""
 
 from __future__ import annotations
+
 import random
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
+
 from .research_dataset import MarketSnapshot, ResearchDataset
 
 

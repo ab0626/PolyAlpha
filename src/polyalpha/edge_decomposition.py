@@ -1,6 +1,7 @@
 """Edge decomposition — ex-ante and realized tracking per Part 18 spec."""
 
 from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation

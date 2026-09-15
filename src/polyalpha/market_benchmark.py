@@ -6,6 +6,7 @@ delta_brier_microprice = microprice_brier - model_brier  (positive = model beats
 
 import math
 from dataclasses import dataclass
+
 from .research_dataset import ResearchDataset
 
 _ZERO = dict(
