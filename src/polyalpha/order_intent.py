@@ -11,10 +11,12 @@ Also defines the intent state machine used for idempotent execution tracking.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
+from pathlib import Path
 from uuid import uuid4
 
 D = Decimal
@@ -290,20 +292,71 @@ def new_intent(
 
 class IntentLedger:
     """Idempotency ledger: repeated processing of the same intent_id or
-    execution_attempt_id must not create a second logical order."""
+    execution_attempt_id must not create a second logical order.
 
-    def __init__(self) -> None:
+    The ledger is durable: when constructed with a `path`, every registered
+    intent identity is persisted to an append-only JSONL file so that a
+    duplicate after a process restart is still detected. Partial trailing
+    lines from a crash are tolerated (skipped), matching the raw-store policy.
+    """
+
+    def __init__(self, path: str | Path | None = None):
+        self.path = Path(path) if path else None
         self._by_id: dict[str, OrderIntent] = {}
         self._attempts: set[str] = set()
+        if self.path is not None:
+            self._load()
+
+    def _load(self) -> None:
+        if not self.path.exists():
+            return
+        with open(self.path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue  # partial trailing line from a crash
+                intent_id = data.get("intent_id")
+                attempt_id = data.get("execution_attempt_id")
+                if intent_id:
+                    self._by_id.setdefault(intent_id, None)
+                if attempt_id:
+                    self._attempts.add(attempt_id)
+
+    def _append(self, intent: OrderIntent) -> None:
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "a", encoding="utf-8") as f:
+            f.write(
+                json.dumps(
+                    {
+                        "intent_id": intent.intent_id,
+                        "execution_attempt_id": intent.execution_attempt_id,
+                        "state": intent.state.value,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
 
     def register(self, intent: OrderIntent) -> bool:
-        """Return True if this intent is new; False if it's a duplicate."""
+        """Return True if this intent is new; False if it's a duplicate.
+
+        A duplicate is any intent_id already seen OR any execution_attempt_id
+        already seen. After a restart, identities loaded from the ledger are
+        still treated as known, so a retry cannot create a second order.
+        """
         if intent.intent_id in self._by_id:
             return False
         if intent.execution_attempt_id in self._attempts:
             return False
         self._by_id[intent.intent_id] = intent
         self._attempts.add(intent.execution_attempt_id)
+        self._append(intent)
         return True
 
     def get(self, intent_id: str) -> OrderIntent | None:
@@ -314,3 +367,162 @@ class IntentLedger:
 
     def size(self) -> int:
         return len(self._by_id)
+
+
+# ── Approval (state-bound, single-use) ─────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class Approval:
+    """Authorizes exactly one bounded action, never "turn live mode on".
+
+    An approval is valid only for the exact:
+      intent_id, execution_attempt_id, book_hash, research_logic_sha256,
+      config_sha256, max_price, max_notional, and expires_at.
+
+    So an approval for `BUY 100 shares @ <= 0.47` cannot later authorize
+    `BUY 150 shares @ 0.51` — the market moved, and the bound holds.
+    """
+
+    approval_id: str
+    intent_id: str
+    execution_attempt_id: str
+    book_hash: str
+    research_logic_sha256: str
+    config_sha256: str
+    max_price: Decimal
+    max_notional: Decimal
+    expires_at: datetime
+    issued_at: datetime
+    used: bool = False
+
+    def __post_init__(self) -> None:
+        for ts in (self.expires_at, self.issued_at):
+            if ts.tzinfo is None or ts.utcoffset() is None:
+                raise ValueError("approval timestamps must be timezone-aware")
+        for v in (self.max_price, self.max_notional):
+            if not v.is_finite() or v < 0:
+                raise ValueError("approval bounds must be finite and non-negative")
+
+    def validate(self, intent: OrderIntent, now: datetime) -> tuple[bool, str]:
+        """Check whether this approval authorizes the given intent right now."""
+        if self.used:
+            return False, "approval already used"
+        if now > self.expires_at:
+            return False, "approval expired"
+        if self.intent_id != intent.intent_id:
+            return False, "approval bound to a different intent"
+        if self.execution_attempt_id != intent.execution_attempt_id:
+            return False, "approval bound to a different execution attempt"
+        if self.book_hash and intent.signal_book_hash != self.book_hash:
+            return False, "approval book hash mismatch"
+        if self.research_logic_sha256 != intent.research_logic_sha256:
+            return False, "approval research hash mismatch"
+        if self.config_sha256 != intent.config_sha256:
+            return False, "approval config hash mismatch"
+        if intent.requested_notional > self.max_notional:
+            return False, f"notional {intent.requested_notional} exceeds approval {self.max_notional}"
+        if intent.side == "BUY" and intent.limit_price > self.max_price:
+            return False, f"price {intent.limit_price} exceeds approval max {self.max_price}"
+        if intent.side == "SELL" and intent.limit_price < self.max_price:
+            return False, f"price {intent.limit_price} below approval floor {self.max_price}"
+        return True, "ok"
+
+    def with_used(self) -> "Approval":
+        return Approval(
+            approval_id=self.approval_id,
+            intent_id=self.intent_id,
+            execution_attempt_id=self.execution_attempt_id,
+            book_hash=self.book_hash,
+            research_logic_sha256=self.research_logic_sha256,
+            config_sha256=self.config_sha256,
+            max_price=self.max_price,
+            max_notional=self.max_notional,
+            expires_at=self.expires_at,
+            issued_at=self.issued_at,
+            used=True,
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "approval_id": self.approval_id,
+            "intent_id": self.intent_id,
+            "execution_attempt_id": self.execution_attempt_id,
+            "book_hash": self.book_hash,
+            "research_logic_sha256": self.research_logic_sha256,
+            "config_sha256": self.config_sha256,
+            "max_price": str(self.max_price),
+            "max_notional": str(self.max_notional),
+            "expires_at": self.expires_at.isoformat(),
+            "issued_at": self.issued_at.isoformat(),
+            "used": self.used,
+        }
+
+
+class ApprovalLedger:
+    """Tracks issued/used approvals; an approval is single-use.
+
+    Persisted to a JSONL file so double-use survives a restart and so the
+    "approval supplied twice" fault is detectable.
+    """
+
+    def __init__(self, path: str | Path | None = None):
+        self.path = Path(path) if path else None
+        self._by_id: dict[str, Approval] = {}
+        if self.path is not None:
+            self._load()
+
+    def _load(self) -> None:
+        if not self.path.exists():
+            return
+        with open(self.path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                try:
+                    self._by_id[data["approval_id"]] = Approval(
+                        approval_id=data["approval_id"],
+                        intent_id=data["intent_id"],
+                        execution_attempt_id=data["execution_attempt_id"],
+                        book_hash=data["book_hash"],
+                        research_logic_sha256=data["research_logic_sha256"],
+                        config_sha256=data["config_sha256"],
+                        max_price=D(data["max_price"]),
+                        max_notional=D(data["max_notional"]),
+                        expires_at=datetime.fromisoformat(data["expires_at"]),
+                        issued_at=datetime.fromisoformat(data["issued_at"]),
+                        used=bool(data.get("used", False)),
+                    )
+                except (KeyError, ValueError):
+                    continue
+
+    def _append(self, approval: Approval) -> None:
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(approval.to_dict(), sort_keys=True) + "\n")
+
+    def issue(self, approval: Approval) -> bool:
+        """Register an approval. Returns False if the id is already known."""
+        if approval.approval_id in self._by_id:
+            return False
+        self._by_id[approval.approval_id] = approval
+        self._append(approval)
+        return True
+
+    def get(self, approval_id: str) -> Approval | None:
+        return self._by_id.get(approval_id)
+
+    def mark_used(self, approval_id: str) -> Approval | None:
+        approval = self._by_id.get(approval_id)
+        if approval is None or approval.used:
+            return approval
+        used = approval.with_used()
+        self._by_id[approval_id] = used
+        self._append(used)
+        return used

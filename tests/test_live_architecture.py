@@ -11,7 +11,7 @@ exist in this phase.
 """
 
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal as D
 
 import pytest
@@ -28,10 +28,13 @@ from polyalpha.execution_gateway import (  # noqa: E402
     LiveReadyExecutionGateway,
     PaperExecutionGateway,
     ShadowExecutionGateway,
+    risk_ownership_ok,
 )
 from polyalpha.execution_modes import ExecutionMode, banner, is_executing  # noqa: E402
 from polyalpha.kill_switch import TradingKillSwitch  # noqa: E402
 from polyalpha.order_intent import (  # noqa: E402
+    Approval,
+    ApprovalLedger,
     IntentLedger,
     IntentState,
     OrderIntent,
@@ -113,6 +116,24 @@ def _world(**overrides) -> dict:
     }
     base.update(overrides)
     return base
+
+
+def _approval(intent: OrderIntent, **overrides) -> Approval:
+    """An approval that exactly bounds the given intent."""
+    base = dict(
+        approval_id="ap1",
+        intent_id=intent.intent_id,
+        execution_attempt_id=intent.execution_attempt_id,
+        book_hash=intent.signal_book_hash,
+        research_logic_sha256=intent.research_logic_sha256,
+        config_sha256=intent.config_sha256,
+        max_price=intent.limit_price,
+        max_notional=intent.requested_notional,
+        expires_at=NOW + timedelta(days=1),
+        issued_at=NOW,
+    )
+    base.update(overrides)
+    return Approval(**base)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -268,13 +289,19 @@ class TestGateways:
 
     def test_live_ready_no_adapter_after_approval(self, tmp_path):
         ks = TradingKillSwitch(tmp_path / "kill.json")
-        gw = LiveReadyExecutionGateway(LivePreTradeGate(), ks)
+        approvals = ApprovalLedger(tmp_path / "approvals.jsonl")
+        gw = LiveReadyExecutionGateway(LivePreTradeGate(), ks, approvals=approvals)
+        intent = _intent()
+        approval = _approval(intent)
+        approvals.issue(approval)
         result = gw.submit(
-            _intent(), _world()["book"], _world(), operator_approval="approved-by-operator"
+            intent, _world()["book"], _world(), approval=approval
         )
         # Even with approval, no adapter exists -> still not transmitted.
         assert result.submitted is False
         assert result.state == IntentState.APPROVAL_PENDING
+        # Approval is single-use and now consumed.
+        assert approvals.get("ap1").used is True
 
     def test_live_ready_idempotent(self, tmp_path):
         ks = TradingKillSwitch(tmp_path / "kill.json")
@@ -529,3 +556,265 @@ class TestExecutionModes:
     def test_banner_is_unambiguous(self):
         assert "MODE:PAPER" in banner(ExecutionMode.PAPER)
         assert "MODE:LIVE_READY" in banner(ExecutionMode.LIVE_READY)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# FAULT INJECTION — LIVE-READY STATE MACHINE
+#
+# The invariant everywhere:
+#   uncertainty => stop or reconcile
+# never:        uncertainty => retry and hope
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestLiveReadyFaultInjection:
+    """Try to break the live-ready state machinery exactly as a burn-in would.
+
+    These are non-transmitting fault injections against the gated scaffold.
+    """
+
+    def _gw(self, tmp_path, **kw):
+        ks = TradingKillSwitch(tmp_path / "kill.json")
+        ledger = IntentLedger(tmp_path / "ledger.jsonl")
+        approvals = ApprovalLedger(tmp_path / "approvals.jsonl")
+        return (
+            LiveReadyExecutionGateway(
+                LivePreTradeGate(), ks, ledger=ledger, approvals=approvals, **kw
+            ),
+            ks,
+            ledger,
+            approvals,
+        )
+
+    # ── Idempotency / restart ───────────────────────────────────────────
+
+    def test_duplicate_intent_detected(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        gw.submit(intent, _world()["book"], _world())
+        result = gw.submit(intent, _world()["book"], _world())
+        assert result.state == IntentState.RECONCILIATION_REQUIRED
+        assert "idempotency" in result.notes
+
+    def test_same_intent_after_restart_detected(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        gw.submit(intent, _world()["book"], _world())
+        # New gateway over the SAME ledger file = process restart.
+        gw2, _, _, _ = self._gw(tmp_path)
+        result = gw2.submit(intent, _world()["book"], _world())
+        assert result.state == IntentState.RECONCILIATION_REQUIRED
+
+    def test_duplicate_execution_attempt_detected(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        gw.submit(intent, _world()["book"], _world())
+        # Same attempt id replayed (e.g. transport layer retried blindly).
+        result = gw.submit(intent, _world()["book"], _world())
+        assert result.state == IntentState.RECONCILIATION_REQUIRED
+
+    def test_ledger_corruption_fails_closed(self, tmp_path):
+        """A corrupted ledger line must not silently allow a duplicate."""
+        path = tmp_path / "ledger.jsonl"
+        path.write_text('{"intent_id": "x", "execution_attempt_id": "y"}\n{"partial', encoding="utf-8")
+        ledger = IntentLedger(path)
+        assert ledger.has_attempt("y") is True  # complete line loaded
+        assert ledger.size() == 1
+
+    def test_ledger_write_crash_partial_line(self, tmp_path):
+        """A partial trailing line from a crash is tolerated."""
+        path = tmp_path / "ledger.jsonl"
+        ledger = IntentLedger(path)
+        intent = _intent()
+        ledger.register(intent)
+        # Simulate a crash leaving a partial line.
+        with open(path, "a", encoding="utf-8") as f:
+            f.write('{"intent_id": "partial')
+        reloaded = IntentLedger(path)
+        assert reloaded.has_attempt(intent.execution_attempt_id) is True
+
+    # ── Kill switch timing ──────────────────────────────────────────────
+
+    def test_kill_switch_active_during_validation(self, tmp_path):
+        gw, ks, _, _ = self._gw(tmp_path)
+        ks.activate("MANUAL_OPERATOR")
+        result = gw.submit(_intent(), _world()["book"], _world())
+        assert result.state == IntentState.REJECTED
+        assert "kill switch" in result.notes
+
+    def test_kill_switch_after_validation_before_approval(self, tmp_path):
+        gw, ks, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        # Validation passes first (no approval yet -> APPROVAL_PENDING).
+        first = gw.submit(intent, _world()["book"], _world())
+        assert first.state == IntentState.APPROVAL_PENDING
+        # Kill switch engages before approval is supplied.
+        ks.activate("ABNORMAL_RECONCILIATION")
+        approval = _approval(intent)
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+
+    # ── Approval boundary ───────────────────────────────────────────────
+
+    def test_approval_expired(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent, expires_at=NOW - timedelta(seconds=1))
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "expired" in result.notes
+
+    def test_approval_wrong_intent(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        other = _intent(decision_id="other")
+        approval = _approval(other)
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "different intent" in result.notes
+
+    def test_approval_wrong_book_hash(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent, book_hash="different-hash")
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "book hash" in result.notes
+
+    def test_approval_wrong_research_hash(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent, research_logic_sha256="w" * 64)
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "research hash" in result.notes
+
+    def test_approval_wrong_config_hash(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent, config_sha256="w" * 64)
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "config hash" in result.notes
+
+    def test_approval_cannot_authorize_larger_size(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent(requested_shares=D("100"), requested_notional=D("50"))
+        # Approval authorizes only 50 shares / 25 notional.
+        approval = _approval(intent, max_notional=D("25"))
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "notional" in result.notes
+
+    def test_approval_cannot_authorize_worse_price(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent(limit_price=D("0.51"))
+        # Approval authorizes only up to 0.47.
+        approval = _approval(intent, max_price=D("0.47"))
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "price" in result.notes
+
+    def test_approval_supplied_twice_is_single_use(self, tmp_path):
+        gw, _, _, approvals = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent)
+        approvals.issue(approval)
+        gw.submit(intent, _world()["book"], _world(), approval=approval)
+        # The approval is consumed; it cannot authorize a second action.
+        assert approvals.get("ap1").used is True
+        # Second use is blocked — by the idempotency guard (same intent) and
+        # by the single-use approval. Either way, nothing submits.
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.submitted is False
+        assert result.state in (
+            IntentState.RECONCILIATION_REQUIRED,
+            IntentState.REJECTED,
+        )
+
+    def test_approval_single_use_blocks_replay_after_restart(self, tmp_path):
+        """A consumed approval stays consumed across a restart."""
+        gw, _, _, approvals = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent)
+        approvals.issue(approval)
+        gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert approvals.get("ap1").used is True
+        # Restart: reload the approval ledger; the used flag persists.
+        reloaded = ApprovalLedger(tmp_path / "approvals.jsonl")
+        assert reloaded.get("ap1").used is True
+
+    def test_book_stale_after_approval(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        approval = _approval(intent)
+        # The gate sees a stale book at execution time.
+        world = _world(book_age_seconds=120)
+        result = gw.submit(intent, world["book"], world, approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "book" in result.notes
+
+    def test_price_moves_after_approval(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        gate = LivePreTradeGate(price_tolerance=D("0.02"))
+        ks = TradingKillSwitch(tmp_path / "kill2.json")
+        ledger = IntentLedger(tmp_path / "ledger2.jsonl")
+        approvals = ApprovalLedger(tmp_path / "approvals2.jsonl")
+        gw = LiveReadyExecutionGateway(gate, ks, ledger=ledger, approvals=approvals)
+        intent = _intent(signal_book_hash="h_signal", limit_price=D("0.50"))
+        approval = _approval(intent)
+        # Execution book moved ask from 0.50 to 0.55.
+        book = {"bids": [{"price": "0.54", "size": "100"}], "asks": [{"price": "0.55", "size": "100"}], "hash": "h_exec"}
+        result = gw.submit(intent, book, _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "gate" in result.notes
+
+    # ── Ambiguity ───────────────────────────────────────────────────────
+
+    def test_reconciliation_unknown_state(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        gw.submit(intent, _world()["book"], _world())
+        # Reconcile with unknown submission outcome.
+        from polyalpha.order_reconciliation import (
+            OrderStateReconciler,
+            SubmissionOutcome,
+            VenueView,
+        )
+        rec = OrderStateReconciler().reconcile(
+            intent.intent_id, intent.execution_attempt_id, VenueView(), SubmissionOutcome.UNKNOWN
+        )
+        assert rec.next_state == IntentState.RECONCILIATION_REQUIRED
+        assert rec.submission_outcome == SubmissionOutcome.UNKNOWN
+
+    # ── Risk ownership ──────────────────────────────────────────────────
+
+    def test_risk_ownership_guard(self):
+        ok, _ = risk_ownership_ok(_intent())
+        assert ok is True
+        # A zero-size intent is malformed for execution and must be rejected.
+        ok_zero, msg_zero = risk_ownership_ok(_intent(requested_shares=D("0")))
+        assert ok_zero is False
+        assert "shares" in msg_zero
+
+    # ── Restart while pending ───────────────────────────────────────────
+
+    def test_restart_while_approval_pending(self, tmp_path):
+        """An intent left APPROVAL_PENDING is still known after restart."""
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        gw.submit(intent, _world()["book"], _world())
+        # Restart: new gateway, same ledger.
+        gw2, _, _, _ = self._gw(tmp_path)
+        result = gw2.submit(intent, _world()["book"], _world())
+        assert result.state == IntentState.RECONCILIATION_REQUIRED
+
+    def test_restart_while_reconciliation_required(self, tmp_path):
+        """RECONCILIATION_REQUIRED state must survive restart via the ledger."""
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        gw.submit(intent, _world()["book"], _world())
+        gw.submit(intent, _world()["book"], _world())  # duplicate -> RECONCILIATION_REQUIRED
+        # Restart.
+        ledger = IntentLedger(tmp_path / "ledger.jsonl")
+        assert ledger.get(intent.intent_id) is not None or ledger.has_attempt(intent.execution_attempt_id)

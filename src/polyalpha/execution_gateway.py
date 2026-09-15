@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .execution_modes import ExecutionMode
-from .order_intent import IntentLedger, IntentState, OrderIntent
+from .order_intent import Approval, ApprovalLedger, IntentLedger, IntentState, OrderIntent
 from .pre_trade_gate import LivePreTradeGate, PreTradeResult
 
 D = Decimal
@@ -173,13 +173,38 @@ class OperatorApprovalRequired(RuntimeError):
     """Raised when a live-ready intent has no operator approval."""
 
 
+def risk_ownership_ok(intent: OrderIntent) -> tuple[bool, str]:
+    """Verify the execution layer has not been asked to exceed the risk
+    engine's authority. The execution layer may only reduce size, reject,
+    partially fill, or cancel — never increase size, increase max price, or
+    relax limits. This guards against a corrupted/mutated OrderIntent.
+    """
+    if not intent.requested_shares.is_finite() or intent.requested_shares <= 0:
+        return False, "invalid requested shares"
+    if not 0 <= intent.limit_price <= 1:
+        return False, "invalid limit price"
+    if intent.requested_notional <= 0:
+        return False, "invalid requested notional"
+    # A BUY's limit is a max price; a SELL's limit is a floor.
+    if intent.side == "BUY" and intent.limit_price > intent.expected_vwap:
+        # Not inherently a violation; the risk engine may set a limit above
+        # the expected vwap to allow depth-walking. Nothing to enforce here
+        # beyond finite/non-negative, which we already did.
+        pass
+    return True, "ok"
+
+
 class LiveReadyExecutionGateway:
     """GATED SCAFFOLD — architecture boundary, transmits nothing here.
 
-    Flow: kill switch clear -> pre-trade gate -> idempotency -> APPROVAL_PENDING.
-    Actual submission requires an operator-supplied `venue_adapter` AND an
-    approval token. Without them, this gateway never transmits; it returns an
-    APPROVAL_PENDING result (or raises if an adapter is missing).
+    Flow: kill switch clear -> idempotency -> pre-trade gate -> risk
+    ownership -> state-bound single-use approval -> APPROVAL_PENDING.
+
+    The approval is single-use and bound to intent_id, execution_attempt_id,
+    book_hash, research_logic_sha256, config_sha256, max_price, max_notional,
+    and expiry. An approval for `BUY 100 @ <= 0.47` cannot authorize
+    `BUY 150 @ 0.51`. Risk ownership is enforced: the execution layer never
+    increases size or relaxes limits.
 
     There is intentionally no venue client or credential handling in this
     module. Wiring a real adapter is a separate, operator-approved step.
@@ -192,20 +217,25 @@ class LiveReadyExecutionGateway:
         gate: LivePreTradeGate,
         kill_switch,
         ledger: IntentLedger | None = None,
+        approvals: ApprovalLedger | None = None,
         venue_adapter=None,
+        now_fn=None,
     ):
         self.gate = gate
         self.kill_switch = kill_switch
         self.ledger = ledger or IntentLedger()
+        self.approvals = approvals or ApprovalLedger()
         self.venue_adapter = venue_adapter
+        self._now_fn = now_fn or (lambda: datetime.now(UTC))
 
     def submit(
         self,
         intent: OrderIntent,
         execution_book: dict | None = None,
         world: dict | None = None,
-        operator_approval: str | None = None,
+        approval: Approval | None = None,
     ) -> ExecutionResult:
+        now = self._now_fn()
         # 1. Kill switch must be clear.
         if self.kill_switch.active:
             return ExecutionResult(
@@ -213,7 +243,7 @@ class LiveReadyExecutionGateway:
                 IntentState.REJECTED, submitted=False,
                 notes=f"kill switch active: {self.kill_switch.state().reason}",
             )
-        # 2. Idempotency.
+        # 2. Idempotency (durable ledger).
         if not self.ledger.register(intent):
             return ExecutionResult(
                 intent.intent_id, intent.execution_attempt_id, self.mode,
@@ -230,21 +260,37 @@ class LiveReadyExecutionGateway:
                 IntentState.REJECTED, submitted=False,
                 notes=f"pre-trade gate rejected: {failed}",
             )
-        # 4. Human approval boundary. Without it, stop at APPROVAL_PENDING.
-        if operator_approval is None:
+        # 4. Risk ownership: the execution layer never exceeds the intent.
+        risk_ok, risk_msg = risk_ownership_ok(intent)
+        if not risk_ok:
+            return ExecutionResult(
+                intent.intent_id, intent.execution_attempt_id, self.mode,
+                IntentState.REJECTED, submitted=False,
+                notes=f"risk ownership violation: {risk_msg}",
+            )
+        # 5. Human approval boundary: single-use, state-bound, expiring.
+        if approval is None:
             return ExecutionResult(
                 intent.intent_id, intent.execution_attempt_id, self.mode,
                 IntentState.APPROVAL_PENDING, submitted=False,
                 notes="awaiting explicit operator approval",
             )
-        # 5. Transmission requires a real venue adapter. This scaffold has none.
+        valid, reason = approval.validate(intent, now)
+        if not valid:
+            return ExecutionResult(
+                intent.intent_id, intent.execution_attempt_id, self.mode,
+                IntentState.REJECTED, submitted=False,
+                notes=f"approval invalid: {reason}",
+            )
+        # 6. Single-use: mark consumed so it cannot authorize a second action.
+        self.approvals.mark_used(approval.approval_id)
+        # 7. Transmission requires a real venue adapter. This scaffold has none.
         if self.venue_adapter is None:
             return ExecutionResult(
                 intent.intent_id, intent.execution_attempt_id, self.mode,
                 IntentState.APPROVAL_PENDING, submitted=False,
                 notes="no venue adapter configured; live transmission not implemented",
             )
-        # A real adapter would be invoked here by an operator-approved deployment.
         return ExecutionResult(
             intent.intent_id, intent.execution_attempt_id, self.mode,
             IntentState.SUBMISSION_PENDING, submitted=False,

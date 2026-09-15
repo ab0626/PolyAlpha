@@ -157,6 +157,22 @@ conditions before the gate can pass:
 | Metadata point-in-time reconstruction      | pass                       |
 | Market resolution captured and replayable  | pass                       |
 | Baseline/model hash changed                | no                         |
+| Phase-machine violations                   | 0                          |
+| Intent-ledger duplicates                   | 0                          |
+| Kill-switch bypasses                       | 0                          |
+| Approval-boundary bypasses                 | 0                          |
+
+The live-ready state machine is also exercised during burn-in even though it
+does not transmit. Fault-inject the state machinery (duplicate intents after
+restart, kill-switch timing, expiring/wrong-bound approvals, stale book after
+approval, reconciliation-unknown states, ledger corruption) — the invariant
+everywhere is:
+
+    uncertainty => stop or reconcile     (never: retry and hope)
+
+The burn-in report (`burnin/burnin-report.md`) records the live-ready
+scoreboard: phase-machine violations, intent-ledger duplicates, kill-switch
+bypasses, approval-boundary bypasses — all must be 0.
 
 ---
 

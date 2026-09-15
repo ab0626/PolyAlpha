@@ -266,6 +266,11 @@ class BurnInReport:
     resolution_lifecycle_ok: bool
     crash_recovery_ok: bool
     gate_passed: bool
+    # Live-ready state-machine scoreboard (must all be zero during burn-in)
+    phase_machine_violations: int = 0
+    intent_ledger_duplicates: int = 0
+    kill_switch_bypasses: int = 0
+    approval_boundary_bypasses: int = 0
 
     def as_dict(self) -> dict:
         return {
@@ -287,6 +292,10 @@ class BurnInReport:
             "resolution_lifecycle_ok": self.resolution_lifecycle_ok,
             "crash_recovery_ok": self.crash_recovery_ok,
             "gate_passed": self.gate_passed,
+            "phase_machine_violations": self.phase_machine_violations,
+            "intent_ledger_duplicates": self.intent_ledger_duplicates,
+            "kill_switch_bypasses": self.kill_switch_bypasses,
+            "approval_boundary_bypasses": self.approval_boundary_bypasses,
         }
 
     def combined_hash(self) -> str:
@@ -326,12 +335,19 @@ def _render_burnin_markdown(report: BurnInReport) -> str:
         f"Forced failures: {report.forced_failures}",
         "",
         f"Replay deterministic: {check(report.replay_deterministic)}",
-        f"Raw corruption: {report.raw_corruption}",
-        f"Partial records: {report.partial_records} quarantined",
-        f"Hash mismatches: {report.hash_mismatches}",
-        f"Invalid delta applications: {report.invalid_delta_applications}",
-        f"Unresolved book mismatches: {report.unresolved_book_mismatches}",
         f"Manifest chain: {check(report.manifest_chain_ok)}",
+        f"Raw corruption: {report.raw_corruption}",
+        f"Unresolved book mismatches: {report.unresolved_book_mismatches}",
+        f"Invalid stale-delta applications: {report.invalid_delta_applications}",
+        f"Hash mismatches: {report.hash_mismatches}",
+        f"Partial records: {report.partial_records} quarantined",
+        "",
+        "LIVE-READY STATE MACHINE",
+        f"Phase-machine violations: {report.phase_machine_violations}",
+        f"Intent-ledger duplicates: {report.intent_ledger_duplicates}",
+        f"Kill-switch bypasses: {report.kill_switch_bypasses}",
+        f"Approval-boundary bypasses: {report.approval_boundary_bypasses}",
+        "",
         f"Metadata reconstruction: {check(report.metadata_reconstruction_ok)}",
         f"Resolution lifecycle: {check(report.resolution_lifecycle_ok)}",
         f"Crash recovery: {check(report.crash_recovery_ok)}",
