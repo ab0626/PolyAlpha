@@ -47,9 +47,18 @@ The US engineering order (from the US API reference):
    priceScale-required decoding (never a default), liveness staleness
    invalidation, deterministic replay. A thin gRPC client is the remaining live
    wiring.
-7. **US reconciliation** — NEXT: gRPC ↔ Exchange REST ↔ retail book/BBO, with
-   Direct Exchange as primary semantic source and Retail as secondary
-   cross-check, not authority.
+7. **US reconciliation** ✅ implemented — `UsReconciliationReport` compares
+   canonical normalized Books (never raw transport forms) across gRPC /
+   Exchange REST / Retail, answering four separate questions: identity
+   (same instrument), semantics (priceScale/tickSize/state), structure
+   (normalized levels/qty), freshness (timestamp/transport skew). Reason codes:
+   MATCH / MATCH_WITHIN_TOLERANCE / {REST,GRPC,RETAIL}_LAG = operational noise;
+   STATE_MISMATCH / PRICE_SCALE_MISMATCH / LEVEL_MISMATCH / UNKNOWN_SYMBOL /
+   UNRESOLVED = burn-in hard failure. Authority hierarchy: gRPC ↔ Exchange REST
+   primary, Retail secondary cross-check.
+8. **US burn-in hardening** — NEXT: wire the US phase machine, US raw lineage,
+   US gate, then US_BASELINE_FROZEN → US_BURNIN_RUNNING → US_BURNIN_PASSED →
+   REAL_DATA_START_US.
 
 ---
 

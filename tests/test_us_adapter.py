@@ -31,6 +31,13 @@ from polyalpha.us.exchange import ExchangeRefDataClient  # noqa: E402
 from polyalpha.us.grpc_stream import UsGrpcMarketStream  # noqa: E402
 from polyalpha.us.identifiers import UsIdentifierRegistry  # noqa: E402
 from polyalpha.us.instruments import UsInstrumentRegistry, parse_instrument  # noqa: E402
+from polyalpha.us.reconcile import (  # noqa: E402
+    ReconciliationReason,
+    SourceBook,
+    UsReconciliationReport,
+    UsSourceKind,
+    reconcile,
+)
 from polyalpha.us.rest import PublicUsClient  # noqa: E402
 from polyalpha.us.states import UsMarketState  # noqa: E402
 
@@ -747,3 +754,178 @@ class TestGrpcStream:
         assert replay_a == replay_b  # deterministic
         assert any(e["kind"] == "update" for e in replay_a)
         assert any(e["kind"] == "reconnect" for e in replay_a)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# US RECONCILIATION (canonical books, four questions)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _recon_identifiers() -> UsIdentifierRegistry:
+    reg = UsIdentifierRegistry()
+    reg.register("mid-1", "slug-a", "SYMB_1001")
+    return reg
+
+
+def _canonical_book(bid_px, ask_px, bid_qty="10", ask_qty="10"):
+    from datetime import timezone  # noqa: F401
+
+    from polyalpha.domain import Book, Level
+
+    ts = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+    return Book(
+        token_id="mid-1:LONG",
+        condition_id="us:mid-1",
+        source_at=ts,
+        received_at=ts,
+        bids=(Level(D(str(bid_px)), D(bid_qty)),),
+        asks=(Level(D(str(ask_px)), D(ask_qty)),),
+        tick_size=D("0.001"),
+        min_order_size=D("1"),
+        source_hash="h",
+    )
+
+
+def _src(kind, book, state=None, scale=1000, ts=None) -> SourceBook:
+    return SourceBook(
+        source_kind=kind,
+        symbol="SYMB_1001",
+        book=book,
+        price_scale=scale,
+        tick_size=D("0.001"),
+        state=state,
+        transact_time=ts or datetime(2026, 9, 15, 12, 0, tzinfo=UTC),
+    )
+
+
+class TestReconciliation:
+    def test_match(self):
+        b = _canonical_book(0.555, 0.560)
+        r = reconcile(_src(UsSourceKind.GRPC, b), _src(UsSourceKind.RETAIL, b),
+                      _recon_identifiers())
+        assert r.reason == ReconciliationReason.MATCH
+        assert not r.is_hard_failure
+
+    def test_match_within_tolerance(self):
+        b1 = _canonical_book(0.555, 0.560)
+        b2 = _canonical_book(0.555, 0.560, bid_qty="10.005")
+        r = reconcile(_src(UsSourceKind.GRPC, b1), _src(UsSourceKind.RETAIL, b2),
+                      _recon_identifiers(), qty_tolerance=D("0.01"))
+        assert r.reason == ReconciliationReason.MATCH_WITHIN_TOLERANCE
+        assert not r.is_hard_failure
+
+    def test_unknown_symbol(self):
+        b = _canonical_book(0.555, 0.560)
+        reg = _recon_identifiers()
+        unknown = SourceBook(UsSourceKind.RETAIL, "NO_SUCH", b,
+                             price_scale=1000, tick_size=D("0.001"))
+        r = reconcile(_src(UsSourceKind.GRPC, b), unknown, reg)
+        assert r.reason == ReconciliationReason.UNKNOWN_SYMBOL
+        assert r.is_hard_failure
+
+    def test_price_scale_mismatch(self):
+        b = _canonical_book(0.555, 0.560)
+        r = reconcile(
+            _src(UsSourceKind.GRPC, b, scale=1000),
+            _src(UsSourceKind.EXCHANGE_REST, b, scale=10000),
+            _recon_identifiers(),
+        )
+        assert r.reason == ReconciliationReason.PRICE_SCALE_MISMATCH
+        assert r.is_hard_failure
+
+    def test_state_mismatch(self):
+        b = _canonical_book(0.555, 0.560)
+        r = reconcile(
+            _src(UsSourceKind.GRPC, b, state=UsMarketState.OPEN),
+            _src(UsSourceKind.RETAIL, b, state=UsMarketState.SUSPENDED),
+            _recon_identifiers(),
+        )
+        assert r.reason == ReconciliationReason.STATE_MISMATCH
+        assert r.is_hard_failure
+
+    def test_level_mismatch_is_hard_failure(self):
+        b1 = _canonical_book(0.555, 0.560)
+        b2 = _canonical_book(0.555, 0.580)  # ask moved 2c
+        r = reconcile(_src(UsSourceKind.GRPC, b1), _src(UsSourceKind.RETAIL, b2),
+                      _recon_identifiers())
+        assert r.reason == ReconciliationReason.LEVEL_MISMATCH
+        assert r.is_hard_failure
+
+    def test_lag_is_operational_noise(self):
+        """A structural diff explained by timestamp skew is LAG (noise)."""
+        b1 = _canonical_book(0.555, 0.560)
+        b2 = _canonical_book(0.555, 0.580)
+        ts_primary = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+        ts_cross = datetime(2026, 9, 15, 11, 50, tzinfo=UTC)  # retail is 10m older
+        r = reconcile(
+            _src(UsSourceKind.GRPC, b1, ts=ts_primary),
+            _src(UsSourceKind.RETAIL, b2, ts=ts_cross),
+            _recon_identifiers(), lag_threshold_seconds=5.0,
+        )
+        assert r.reason == ReconciliationReason.RETAIL_LAG
+        assert not r.is_hard_failure
+        assert r.freshness_ok is False
+
+    def test_grpc_lag(self):
+        b1 = _canonical_book(0.555, 0.560)
+        b2 = _canonical_book(0.555, 0.580)
+        ts_primary = datetime(2026, 9, 15, 11, 50, tzinfo=UTC)  # grpc older
+        ts_cross = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+        r = reconcile(
+            _src(UsSourceKind.GRPC, b1, ts=ts_primary),
+            _src(UsSourceKind.EXCHANGE_REST, b2, ts=ts_cross),
+            _recon_identifiers(), lag_threshold_seconds=5.0,
+        )
+        assert r.reason == ReconciliationReason.GRPC_LAG
+        assert not r.is_hard_failure
+
+    def test_report_aggregation(self):
+        report = UsReconciliationReport()
+        b = _canonical_book(0.555, 0.560)
+        report.add(reconcile(_src(UsSourceKind.GRPC, b), _src(UsSourceKind.RETAIL, b),
+                             _recon_identifiers()))
+        report.add(reconcile(_src(UsSourceKind.GRPC, b), _src(UsSourceKind.RETAIL, _canonical_book(0.555, 0.580)),
+                             _recon_identifiers()))
+        s = report.summary()
+        assert s["total"] == 2
+        assert s["hard_failures"] == 1
+        assert s["operational_noise"] == 1
+        assert s["by_reason"]["MATCH"] == 1
+
+    def test_canonical_books_only_never_raw(self):
+        """Reconciliation consumes canonical Decimal Books, not raw transport
+        representations — verified by constructing via the adapters."""
+        from polyalpha.us.adapter import parse_exchange_book
+
+        identifiers = UsIdentifierRegistry()
+        identifiers.register("mid-1", "slug-a", "SYMB_1001")
+        instruments = UsInstrumentRegistry()
+        instruments.register(parse_instrument(_instrument_raw()))
+
+        # gRPC path: int64 scaled px -> GrpcUpdate -> canonical Book.
+        stream = UsGrpcMarketStream(identifiers, instruments)
+        events = stream.process(_grpc_update())
+        grpc_book = events[0].update.to_book(
+            identifiers.by_symbol("SYMB_1001"),
+            tick_size=D("0.001"), min_order_size=D("1"),
+        )
+        # Exchange REST path: scaled int -> parse_exchange_book -> canonical Book.
+        rest_raw = {
+            "marketData": {
+                "bids": [{"px": 555, "qty": "10"}, {"px": 550, "qty": "10"}],
+                "offers": [{"px": 560, "qty": "10"}, {"px": 565, "qty": "10"}],
+                "transactTime": "2026-09-15T12:00:00Z",
+            }
+        }
+        rest_book = parse_exchange_book(rest_raw, NOW, identifiers.by_symbol("SYMB_1001"),
+                                        price_scale=1000, tick_size=D("0.001"))
+        r = reconcile(
+            SourceBook(UsSourceKind.GRPC, "SYMB_1001", grpc_book,
+                       price_scale=1000, tick_size=D("0.001"),
+                       transact_time=datetime(2026, 9, 15, 12, 0, tzinfo=UTC)),
+            SourceBook(UsSourceKind.EXCHANGE_REST, "SYMB_1001", rest_book,
+                       price_scale=1000, tick_size=D("0.001"),
+                       transact_time=datetime(2026, 9, 15, 12, 0, tzinfo=UTC)),
+            identifiers,
+        )
+        assert r.reason == ReconciliationReason.MATCH
