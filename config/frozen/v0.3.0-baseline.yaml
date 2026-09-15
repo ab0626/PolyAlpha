@@ -1,0 +1,54 @@
+# ============================================================
+# PolyAlpha v0.3.0 RESEARCH BASELINE — FROZEN
+# ============================================================
+# This file is immutable for the 60-90 day real-data collection
+# window. Changes to anything affecting decisions require a new
+# baseline. See EMPIRICAL_ALPHA_REPORT.md §1-6 for rationale.
+#
+# hash: computed by scripts/freeze_baseline.py — do not edit by hand
+# ============================================================
+
+research_version: "v0.3.0-research-baseline"
+
+market_filter:
+  min_liquidity: "5000"
+  min_volume: "25000"
+  max_spread: "0.05"
+
+signal:
+  min_net_edge: "0.025"
+  uncertainty_multiplier: "1.0"
+
+risk:
+  position_fraction: "0.005"
+  max_market_fraction: "0.02"
+  max_event_fraction: "0.05"
+  max_cluster_fraction: "0.05"
+  max_category_fraction: "0.10"
+  max_total_exposure_fraction: "0.20"
+  max_drawdown: "0.08"
+
+execution:
+  max_book_levels: 10
+  latency_assumption_ms: 1000
+  slippage_buffer: "0.002"
+
+models:
+  baseline_version: "v0.3.0"
+
+experiment:
+  random_seed: 4262026
+
+# ============================================================
+# Integrity hashes — provenance for the frozen baseline.
+#   git_commit             : the tagged research-baseline commit
+#   model_source_sha256    : hash of src/polyalpha/**/*.py
+#   feature_schema_sha256  : hash of features + domain + dataset schema
+#   config_sha256          : hash of THIS file (computed below)
+# ============================================================
+integrity:
+  git_commit: "eb2c5f4b9bcf5c27ad9db3bec64c2822a9f3a53a"
+  git_tag: "v0.3.0-research-baseline"
+  model_source_sha256: "efc1f98bc9803a06a83f247fc252b5b073288ac3823c1faa655b560d1990bdf4"
+  feature_schema_sha256: "1857e04f5fc99afbb9b927e41e101a9c7b0f5fc29815c3271c665ccfd3e9048f"
+  config_sha256: "75d5fa475de79a005a584d76f984c4afd1ca0e4da457e6e4728f7bc42fcab8f1"
