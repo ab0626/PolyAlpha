@@ -35,8 +35,14 @@ The US engineering order (from the US API reference):
 2. **Canonical ID mapping** ✅ implemented (internal_market_id ↔ slug ↔ symbol)
 3. **US state model** ✅ implemented (full lifecycle + predicates)
 4. **US raw collector** ✅ implemented (venue-specific lineage)
-5. **USExchangeAdapter** (refdata/instruments) — NEXT
-6. **gRPC real-time feed** — after the normalization layer is stable
+5. **USExchangeAdapter (refdata)** ✅ implemented — `UsInstrument`, `UsInstrumentRegistry`,
+   `parse_exchange_book` (scaled-int px/priceScale), `ExchangeRefDataClient`
+   (JWT boundary documented). Authoritative per-instrument `tickSize`,
+   `minimumTradeQty`, and `priceScale` now drive validation; `0.001` is a
+   documented fallback only, never permanent truth.
+6. **gRPC real-time feed** — NEXT (snapshot semantics, aggregated/unaggregated
+   books, dynamic subscribe/unsubscribe, heartbeat/reconnect, sequence/
+   freshness, priceScale normalization)
 
 ---
 

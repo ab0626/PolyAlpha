@@ -122,7 +122,7 @@ def parse_book(
         if transact_time
         else received
     )
-    ts = tick_size if tick_size is not None else D("0.001")  # US retail uses 3-dp ticks
+    ts = tick_size if tick_size is not None else D("0.001")  # provisional fallback only
     mos = min_order_size if min_order_size is not None else D("1")
     source_hash = str(data.get("state", "")) if not raw.get("hash") else raw.get("hash")
 
@@ -222,3 +222,58 @@ def parse_bbo(raw: dict, identifier: UsIdentifier) -> dict:
         "shares_traded": data.get("sharesTraded"),
         "open_interest": data.get("openInterest"),
     }
+
+
+def parse_exchange_book(
+    raw: dict,
+    received_at: datetime,
+    identifier: UsIdentifier,
+    price_scale: int,
+    tick_size: Decimal | None = None,
+    min_order_size: Decimal | None = None,
+) -> Book:
+    """Build a canonical Book from a Direct Exchange order book.
+
+    Exchange representation differs again: prices are scaled integers
+    (px / priceScale), not retail Amount objects. `price_scale` MUST come from
+    the authoritative refdata instrument, never a default.
+    """
+    from .instruments import scaled_to_decimal
+
+    received = utc(received_at)
+    data = raw.get("marketData", raw)
+
+    def levels(key: str, reverse: bool) -> tuple[Level, ...]:
+        result = []
+        for entry in data.get(key, []):
+            px = scaled_to_decimal(int(entry["px"]), price_scale)
+            qty = retail_qty(entry.get("qty"))
+            if qty <= 0:
+                continue
+            result.append(Level(px, qty))
+        return tuple(sorted(result, key=lambda x: x.price, reverse=reverse))
+
+    bids = levels("bids", True)
+    offers = levels("offers", False)
+
+    transact_time = data.get("transactTime")
+    source_at = (
+        utc(datetime.fromisoformat(transact_time.replace("Z", "+00:00")))
+        if transact_time
+        else received
+    )
+    ts = tick_size if tick_size is not None else D("0.001")  # provisional fallback only
+    mos = min_order_size if min_order_size is not None else D("1")
+    source_hash = str(data.get("state", "")) if not raw.get("hash") else raw.get("hash")
+
+    return Book(
+        token_id=identifier.long_side_id,
+        condition_id=identifier.condition_id,
+        source_at=source_at,
+        received_at=received,
+        bids=bids,
+        asks=offers,
+        tick_size=ts,
+        min_order_size=mos,
+        source_hash=source_hash,
+    )

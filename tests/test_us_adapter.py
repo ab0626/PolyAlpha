@@ -20,13 +20,16 @@ from polyalpha.us.adapter import (  # noqa: E402
     parse_bbo,
     parse_book,
     parse_events,
+    parse_exchange_book,
     parse_market,
     parse_price_history,
     parse_settlement,
     scaled_to_decimal,
 )
 from polyalpha.us.collector import UsRawCollector  # noqa: E402
+from polyalpha.us.exchange import ExchangeRefDataClient  # noqa: E402
 from polyalpha.us.identifiers import UsIdentifierRegistry  # noqa: E402
+from polyalpha.us.instruments import UsInstrumentRegistry, parse_instrument  # noqa: E402
 from polyalpha.us.rest import PublicUsClient  # noqa: E402
 from polyalpha.us.states import UsMarketState  # noqa: E402
 
@@ -446,3 +449,133 @@ class TestUsPhases:
         store.transition("BURNIN_RUNNING")
         assert store.read().phase == "BURNIN_RUNNING"
         assert UsPhaseStore(us_path, "us-b").read().phase == "US_BASELINE_FROZEN"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# US EXCHANGE INSTRUMENTS (authoritative refdata semantics)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _instrument_raw() -> dict:
+    return {
+        "symbol": "SYMB_1001",
+        "tickSize": "0.001",
+        "minimumTradeQty": "1",
+        "priceScale": 1000,
+        "state": "OPEN",
+        "question": "Chiefs win Super Bowl LX?",
+        "payoutValue": "1",
+        "outcome_type": "binary",
+        "event_id": "7001",
+        "event_series": "nfl",
+        "event_category": "sports",
+        "event_subcategory": "football",
+        "event_start_time": "2027-02-14T00:00:00Z",
+        "startDate": "2026-09-01T00:00:00Z",
+        "expirationDate": "2027-02-15T00:00:00Z",
+        "long_participant_id": "team-1",
+        "long_participant_name": "Chiefs",
+        "short_participant_id": "team-2",
+        "short_participant_name": "Eagles",
+        "instrument_rules": "official result",
+    }
+
+
+class TestUsInstruments:
+    def test_parse_instrument(self):
+        inst = parse_instrument(_instrument_raw())
+        assert inst.symbol == "SYMB_1001"
+        assert inst.tick_size == D("0.001")
+        assert inst.minimum_trade_qty == D("1")
+        assert inst.price_scale == 1000
+        assert inst.state == UsMarketState.OPEN
+        assert inst.long_participant_name == "Chiefs"
+        assert inst.event_category == "sports"
+        assert inst.payout_value == D("1")
+
+    def test_scaled_to_probability(self):
+        inst = parse_instrument(_instrument_raw())
+        assert inst.scaled_to_probability(555) == D("0.555")
+        assert inst.scaled_to_probability(650) == D("0.650")
+
+    def test_parse_instrument_requires_core_fields(self):
+        raw = _instrument_raw()
+        del raw["priceScale"]
+        with pytest.raises(ValueError, match="priceScale"):
+            parse_instrument(raw)
+        with pytest.raises(ValueError, match="symbol"):
+            parse_instrument({"tickSize": "0.001", "minimumTradeQty": "1", "priceScale": 1000})
+
+    def test_registry_lookup(self):
+        reg = UsInstrumentRegistry()
+        reg.register(parse_instrument(_instrument_raw()))
+        assert reg.by_symbol("SYMB_1001").tick_size == D("0.001")
+        assert reg.tick_size_for("SYMB_1001") == D("0.001")
+        assert reg.price_scale_for("SYMB_1001") == 1000
+        assert reg.min_qty_for("SYMB_1001") == D("1")
+        assert reg.tick_size_for("UNKNOWN") is None
+
+    def test_registry_duplicate_rejected(self):
+        reg = UsInstrumentRegistry()
+        reg.register(parse_instrument(_instrument_raw()))
+        with pytest.raises(ValueError, match="duplicate"):
+            reg.register(parse_instrument(_instrument_raw()))
+
+    def test_authoritative_tick_drives_validation(self):
+        """0.555 must be rejected with a 0.01 tick, accepted with the
+        authoritative 0.001 tick from refdata."""
+        reg = _registry()
+        identifier = reg.by_slug("chiefs-super-bowl-lx")
+        raw = _book_raw()
+        # With the provisional 0.01 tick, a 0.555 price fails validation.
+        with pytest.raises(ValueError, match="tick grid"):
+            parse_book(raw, NOW, identifier, tick_size=D("0.01"))
+        # With the authoritative 0.001 tick, it parses.
+        book = parse_book(raw, NOW, identifier, tick_size=D("0.001"))
+        assert book.best_bid == D("0.550")
+
+
+class TestUsExchangeBook:
+    def test_scaled_int_book(self):
+        reg = _registry()
+        identifier = reg.by_slug("chiefs-super-bowl-lx")
+        raw = {
+            "marketData": {
+                "marketSlug": "chiefs-super-bowl-lx",
+                "bids": [{"px": 555, "qty": "2.5"}, {"px": 550, "qty": "1.5"}],
+                "offers": [{"px": 560, "qty": "0.8"}, {"px": 565, "qty": "1.2"}],
+                "transactTime": "2026-09-15T12:00:00Z",
+            }
+        }
+        # price_scale MUST come from refdata, never a default.
+        book = parse_exchange_book(raw, NOW, identifier, price_scale=1000)
+        assert book.best_bid == D("0.555")
+        assert book.best_ask == D("0.560")
+        assert book.spread == D("0.005")
+
+
+class TestExchangeRefDataClient:
+    def test_instruments_parse_and_register(self, monkeypatch):
+        import json as _json
+
+        from polyalpha.us import exchange as _ex
+
+        def fake_urlopen(request, *a, **k):
+            class _Resp:
+                def read(self):
+                    return _json.dumps([_instrument_raw()]).encode()
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *x):
+                    return False
+
+            return _Resp()
+
+        monkeypatch.setattr(_ex, "urlopen", fake_urlopen)
+        registry = UsInstrumentRegistry()
+        client = ExchangeRefDataClient(access_token="dummy")
+        instruments = client.instruments(registry=registry)
+        assert len(instruments) == 1
+        assert registry.by_symbol("SYMB_1001").price_scale == 1000
