@@ -54,6 +54,31 @@ TERMINAL_STATES = {
     IntentState.CANCELLED,
     IntentState.FAILED,
 }
+# States that move an intent toward submission/execution.
+FORWARD_STATES = {
+    IntentState.VALIDATING,
+    IntentState.APPROVAL_PENDING,
+    IntentState.APPROVED,
+    IntentState.SUBMISSION_PENDING,
+    IntentState.ACKNOWLEDGED,
+    IntentState.PARTIALLY_FILLED,
+    IntentState.FILLED,
+}
+
+
+def assert_transition_allowed(current: IntentState, target: IntentState) -> None:
+    """Guard the permanent rule: once RECONCILIATION_REQUIRED, an intent must
+    NOT move back toward submission through normal workflow. It requires a
+    definitive reconciliation outcome first; if state cannot be established it
+    remains blocked.
+
+    Raises ValueError on an illegal transition.
+    """
+    if current == IntentState.RECONCILIATION_REQUIRED and target in FORWARD_STATES:
+        raise ValueError(
+            "RECONCILIATION_REQUIRED cannot progress toward submission without "
+            "a definitive reconciliation outcome"
+        )
 
 
 @dataclass(frozen=True)

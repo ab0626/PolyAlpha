@@ -1950,11 +1950,15 @@ def cmd_collect_start_marker(args):
         args.marker_path,
         baseline_tag=args.baseline_tag,
         baseline_commit=args.baseline_commit,
-        config_sha256=args.config_sha256,
-        model_source_sha256=args.model_source_sha256,
+        implementation_commit=args.implementation_commit,
+        research_logic_sha256=args.research_logic_sha256,
+        collector_sha256=args.collector_sha256,
+        interface_sha256=args.interface_sha256,
+        baseline_config_sha256=args.baseline_config_sha256,
         feature_schema_sha256=args.feature_schema_sha256,
-        collector_commit=args.collector_commit,
         burnin_report_sha256=args.burnin_report_sha256,
+        execution_mode=args.execution_mode,
+        alpha_status=args.alpha_status,
         phase_store=phase_store,
     )
     print(json.dumps(marker.as_dict(), indent=2))
@@ -2002,28 +2006,75 @@ def cmd_collect_burnin_report(args):
 
     from .burnin_gate import BurnInReport, write_burn_in_report
 
+    def _flag(name: str) -> bool:
+        value = getattr(args, name)
+        return str(value).lower() in ("1", "true", "yes")
+
     report = BurnInReport(
         period_start=args.period_start,
         period_end=args.period_end,
         baseline_commit=args.baseline_commit,
+        implementation_commit=args.implementation_commit,
+        research_logic_sha256=args.research_logic_sha256,
+        collector_sha256=args.collector_sha256,
+        interface_sha256=args.interface_sha256,
         messages=int(args.messages),
         markets=int(args.markets),
+        tokens_observed=int(args.tokens_observed),
+        lifecycle_events=int(args.lifecycle_events),
+        resolved_markets=int(args.resolved_markets),
         reconnects=int(args.reconnects),
         forced_failures=int(args.forced_failures),
-        replay_deterministic=args.replay_deterministic.lower() in ("1", "true", "yes"),
-        raw_corruption=int(args.raw_corruption),
-        partial_records=int(args.partial_records),
         hash_mismatches=int(args.hash_mismatches),
-        invalid_delta_applications=int(args.invalid_delta_applications),
-        unresolved_book_mismatches=int(args.unresolved_book_mismatches),
-        manifest_chain_ok=args.manifest_chain_ok.lower() in ("1", "true", "yes"),
-        metadata_reconstruction_ok=args.metadata_reconstruction_ok.lower() in ("1", "true", "yes"),
-        resolution_lifecycle_ok=args.resolution_lifecycle_ok.lower() in ("1", "true", "yes"),
-        crash_recovery_ok=args.crash_recovery_ok.lower() in ("1", "true", "yes"),
-        gate_passed=args.gate_passed.lower() in ("1", "true", "yes"),
+        unexplained_partial_lines=int(args.unexplained_partial_lines),
+        manifest_chain_failures=int(args.manifest_chain_failures),
+        wire_fidelity_failures=int(args.wire_fidelity_failures),
+        replay_hash_a=args.replay_hash_a,
+        replay_hash_b=args.replay_hash_b,
+        replay_deterministic=_flag("replay_deterministic"),
+        rest_reconciliations=int(args.rest_reconciliations),
+        rest_matching=int(args.rest_matching),
+        rest_corrected_mismatches=int(args.rest_corrected_mismatches),
+        rest_unresolved_mismatches=int(args.rest_unresolved_mismatches),
+        stale_delta_applications=int(args.stale_delta_applications),
+        receive_lag_p50=_num(args.receive_lag_p50),
+        receive_lag_p95=_num(args.receive_lag_p95),
+        receive_lag_p99=_num(args.receive_lag_p99),
+        processing_lag_p50=_num(args.processing_lag_p50),
+        processing_lag_p95=_num(args.processing_lag_p95),
+        processing_lag_p99=_num(args.processing_lag_p99),
+        clock_anomalies=int(args.clock_anomalies),
+        metadata_reconstruction_ok=_flag("metadata_reconstruction_ok"),
+        resolution_lifecycle_ok=_flag("resolution_lifecycle_ok"),
+        crash_recovery_ok=_flag("crash_recovery_ok"),
+        gate_passed=_flag("gate_passed"),
+        phase_machine_violations=int(args.phase_machine_violations),
+        intent_ledger_duplicates=int(args.intent_ledger_duplicates),
+        kill_switch_bypasses=int(args.kill_switch_bypasses),
+        approval_boundary_bypasses=int(args.approval_boundary_bypasses),
+        venue_transmissions_attempted=int(args.venue_transmissions_attempted),
+        fault_injection=_parse_scenarios(args.fault_injection),
+        live_ready=_parse_scenarios(args.live_ready),
     )
     directory, digest = write_burn_in_report(report, args.output_dir)
     print(json.dumps({"report_dir": str(directory), "burnin_report_sha256": digest}, indent=2))
+
+
+def _num(value: str) -> float | None:
+    return float(value) if value not in ("", "None", "null") else None
+
+
+def _parse_scenarios(value: str) -> dict[str, bool]:
+    """Parse 'scenario:true,other:false' into a dict."""
+    result: dict[str, bool] = {}
+    if not value:
+        return result
+    for item in value.split(","):
+        if ":" not in item:
+            continue
+        name, flag = item.rsplit(":", 1)
+        result[name.strip()] = str(flag).strip().lower() in ("1", "true", "yes")
+    return result
 
 
 def main():
@@ -2429,11 +2480,15 @@ def main():
     cs_parser.add_argument("--marker-path", required=True)
     cs_parser.add_argument("--baseline-tag", required=True)
     cs_parser.add_argument("--baseline-commit", required=True)
-    cs_parser.add_argument("--config-sha256", required=True)
-    cs_parser.add_argument("--model-source-sha256", required=True)
+    cs_parser.add_argument("--implementation-commit", required=True)
+    cs_parser.add_argument("--research-logic-sha256", required=True)
+    cs_parser.add_argument("--collector-sha256", required=True)
+    cs_parser.add_argument("--interface-sha256", required=True)
+    cs_parser.add_argument("--baseline-config-sha256", required=True)
     cs_parser.add_argument("--feature-schema-sha256", required=True)
-    cs_parser.add_argument("--collector-commit", required=True)
     cs_parser.add_argument("--burnin-report-sha256", required=True)
+    cs_parser.add_argument("--execution-mode", default="SHADOW_OR_COLLECTION_ONLY")
+    cs_parser.add_argument("--alpha-status", default="UNKNOWN")
     cs_parser.add_argument("--phase-file", default="data/phase.json", help="Phase state file")
 
     cph_parser = subparsers.add_parser("collect-phase", help="Show or transition collection phase")
@@ -2456,21 +2511,47 @@ def main():
     cbr_parser.add_argument("--period-start", required=True)
     cbr_parser.add_argument("--period-end", required=True)
     cbr_parser.add_argument("--baseline-commit", required=True)
+    cbr_parser.add_argument("--implementation-commit", required=True)
+    cbr_parser.add_argument("--research-logic-sha256", required=True)
+    cbr_parser.add_argument("--collector-sha256", required=True)
+    cbr_parser.add_argument("--interface-sha256", required=True)
     cbr_parser.add_argument("--messages", default=0)
     cbr_parser.add_argument("--markets", default=0)
+    cbr_parser.add_argument("--tokens-observed", default=0)
+    cbr_parser.add_argument("--lifecycle-events", default=0)
+    cbr_parser.add_argument("--resolved-markets", default=0)
     cbr_parser.add_argument("--reconnects", default=0)
     cbr_parser.add_argument("--forced-failures", default=0)
-    cbr_parser.add_argument("--replay-deterministic", default="true")
-    cbr_parser.add_argument("--raw-corruption", default=0)
-    cbr_parser.add_argument("--partial-records", default=0)
     cbr_parser.add_argument("--hash-mismatches", default=0)
-    cbr_parser.add_argument("--invalid-delta-applications", default=0)
-    cbr_parser.add_argument("--unresolved-book-mismatches", default=0)
-    cbr_parser.add_argument("--manifest-chain-ok", default="true")
+    cbr_parser.add_argument("--unexplained-partial-lines", default=0)
+    cbr_parser.add_argument("--manifest-chain-failures", default=0)
+    cbr_parser.add_argument("--wire-fidelity-failures", default=0)
+    cbr_parser.add_argument("--replay-hash-a", default="")
+    cbr_parser.add_argument("--replay-hash-b", default="")
+    cbr_parser.add_argument("--replay-deterministic", default="true")
+    cbr_parser.add_argument("--rest-reconciliations", default=0)
+    cbr_parser.add_argument("--rest-matching", default=0)
+    cbr_parser.add_argument("--rest-corrected-mismatches", default=0)
+    cbr_parser.add_argument("--rest-unresolved-mismatches", default=0)
+    cbr_parser.add_argument("--stale-delta-applications", default=0)
+    cbr_parser.add_argument("--receive-lag-p50", default="")
+    cbr_parser.add_argument("--receive-lag-p95", default="")
+    cbr_parser.add_argument("--receive-lag-p99", default="")
+    cbr_parser.add_argument("--processing-lag-p50", default="")
+    cbr_parser.add_argument("--processing-lag-p95", default="")
+    cbr_parser.add_argument("--processing-lag-p99", default="")
+    cbr_parser.add_argument("--clock-anomalies", default=0)
     cbr_parser.add_argument("--metadata-reconstruction-ok", default="true")
     cbr_parser.add_argument("--resolution-lifecycle-ok", default="true")
     cbr_parser.add_argument("--crash-recovery-ok", default="true")
     cbr_parser.add_argument("--gate-passed", default="true")
+    cbr_parser.add_argument("--phase-machine-violations", default=0)
+    cbr_parser.add_argument("--intent-ledger-duplicates", default=0)
+    cbr_parser.add_argument("--kill-switch-bypasses", default=0)
+    cbr_parser.add_argument("--approval-boundary-bypasses", default=0)
+    cbr_parser.add_argument("--venue-transmissions-attempted", default=0)
+    cbr_parser.add_argument("--fault-injection", default="")
+    cbr_parser.add_argument("--live-ready", default="")
 
     args = parser.parse_args()
 

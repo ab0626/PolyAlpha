@@ -147,6 +147,25 @@ Never blindly retry. Transition to **RECONCILIATION_REQUIRED** and reconcile
 intended vs acknowledged/open/fills/cancellations/positions/balances. The
 system must distinguish *definitely rejected* from *submission outcome unknown*.
 
+### Permanent rule: RECONCILIATION_REQUIRED is sticky
+
+Once an intent reaches `RECONCILIATION_REQUIRED`, normal workflow must NOT
+move it back toward submission simply because time passed. It requires:
+
+```
+venue/account state reconciliation
+        ↓
+definitive state established
+        ↓
+new transition
+```
+
+If state cannot be established, the intent **remains blocked**. This is
+enforced by `assert_transition_allowed`: transitioning out of
+`RECONCILIATION_REQUIRED` toward any forward/submission state raises, and only
+definitive outcomes (REJECTED, CANCELLED, FILLED, ...) are legal. This is the
+right behavior even when it is operationally annoying.
+
 ---
 
 ## 7. Cancel-on-stale (`cancel_policy.py`)

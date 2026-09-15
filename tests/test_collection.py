@@ -56,6 +56,22 @@ def _book_frame(ts=1782753357257, hash_="h1"):
     }
 
 
+def _marker_kwargs(commit="abc123"):
+    return dict(
+        baseline_tag="v0.3.0-research-baseline-334b911",
+        baseline_commit=commit,
+        implementation_commit="e2b072a",
+        research_logic_sha256="r" * 64,
+        collector_sha256="c" * 64,
+        interface_sha256="i" * 64,
+        baseline_config_sha256="bcfg" + "0" * 60,
+        feature_schema_sha256="f" * 64,
+        burnin_report_sha256="b" * 64,
+        execution_mode="SHADOW_OR_COLLECTION_ONLY",
+        alpha_status="UNKNOWN",
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # RAW EVENT STORE
 # ══════════════════════════════════════════════════════════════════════════
@@ -554,36 +570,25 @@ class TestBurnInGate:
 class TestRealDataStartMarker:
     def test_write_and_verify(self, tmp_path):
         path = tmp_path / "REAL_DATA_START.json"
-        marker = write_real_data_start_marker(
-            path,
-            baseline_tag="v0.3.0-research-baseline",
-            baseline_commit="abc123",
-            config_sha256="c" * 64,
-            model_source_sha256="m" * 64,
-            feature_schema_sha256="f" * 64,
-            collector_commit="col123",
-            burnin_report_sha256="b" * 64,
-        )
+        marker = write_real_data_start_marker(path, **_marker_kwargs())
         assert marker.phase == "REAL_DATA_START"
+        assert marker.baseline_commit == "abc123"
+        assert marker.implementation_commit == "e2b072a"
+        assert marker.execution_mode == "SHADOW_OR_COLLECTION_ONLY"
+        assert marker.alpha_status == "UNKNOWN"
         ok, msg = verify_real_data_start_marker(path)
         assert ok is True, msg
 
     def test_refuses_overwrite(self, tmp_path):
         path = tmp_path / "REAL_DATA_START.json"
-        write_real_data_start_marker(
-            path, "tag", "c1", "c" * 64, "m" * 64, "f" * 64, "col", "b" * 64
-        )
+        write_real_data_start_marker(path, **_marker_kwargs())
         import pytest as _pytest
         with _pytest.raises(FileExistsError):
-            write_real_data_start_marker(
-                path, "tag", "c1", "c" * 64, "m" * 64, "f" * 64, "col", "b" * 64
-            )
+            write_real_data_start_marker(path, **_marker_kwargs())
 
     def test_tamper_detected(self, tmp_path):
         path = tmp_path / "REAL_DATA_START.json"
-        write_real_data_start_marker(
-            path, "tag", "c1", "c" * 64, "m" * 64, "f" * 64, "col", "b" * 64
-        )
+        write_real_data_start_marker(path, **_marker_kwargs())
         content = path.read_text(encoding="utf-8")
         path.write_text(
             content.replace('"phase": "REAL_DATA_START"', '"phase": "FAKE"'),
@@ -791,8 +796,7 @@ class TestPhaseStore:
         marker_path = tmp_path / "REAL_DATA_START.json"
         with pytest.raises(ValueError):
             write_real_data_start_marker(
-                marker_path, "tag", "abc", "c" * 64, "m" * 64, "f" * 64,
-                "col", "b" * 64, phase_store=store,
+                marker_path, phase_store=store, **_marker_kwargs(commit="abc"),
             )
         assert not marker_path.exists()
 
@@ -800,8 +804,7 @@ class TestPhaseStore:
         store.transition("BURNIN_RUNNING")
         store.transition("BURNIN_PASSED")
         write_real_data_start_marker(
-            marker_path, "tag", "abc", "c" * 64, "m" * 64, "f" * 64,
-            "col", "b" * 64, phase_store=store,
+            marker_path, phase_store=store, **_marker_kwargs(commit="abc"),
         )
         assert marker_path.exists()
 
@@ -852,18 +855,46 @@ class TestDualReplay:
 # ══════════════════════════════════════════════════════════════════════════
 
 
+def _burnin_report(**overrides):
+    base = dict(
+        period_start="2026-09-15", period_end="2026-09-16",
+        baseline_commit="abc123", implementation_commit="e2b072a",
+        research_logic_sha256="r" * 64, collector_sha256="c" * 64,
+        interface_sha256="i" * 64,
+        messages=1_000_000, markets=500, tokens_observed=1000,
+        lifecycle_events=50, resolved_markets=20, reconnects=7,
+        forced_failures=10,
+        hash_mismatches=0, unexplained_partial_lines=0,
+        manifest_chain_failures=0, wire_fidelity_failures=0,
+        replay_hash_a="a" * 64, replay_hash_b="a" * 64,
+        replay_deterministic=True,
+        rest_reconciliations=1000, rest_matching=999,
+        rest_corrected_mismatches=1, rest_unresolved_mismatches=0,
+        stale_delta_applications=0,
+        receive_lag_p50=82.0, receive_lag_p95=241.0, receive_lag_p99=618.0,
+        processing_lag_p50=1.0, processing_lag_p95=5.0, processing_lag_p99=20.0,
+        clock_anomalies=0,
+        metadata_reconstruction_ok=True, resolution_lifecycle_ok=True,
+        crash_recovery_ok=True, gate_passed=True,
+        phase_machine_violations=0, intent_ledger_duplicates=0,
+        kill_switch_bypasses=0, approval_boundary_bypasses=0,
+        venue_transmissions_attempted=0,
+        fault_injection={
+            "network_disconnect": True, "hard_kill": True,
+            "partial_jsonl": True, "rest_429": True,
+        },
+        live_ready={
+            "intent_restart_recovery": True, "approval_restart_recovery": True,
+            "toctou_revalidation": True, "risk_ownership": True,
+        },
+    )
+    base.update(overrides)
+    return BurnInReport(**base)
+
+
 class TestBurnInReport:
     def test_write_and_hash(self, tmp_path):
-        report = BurnInReport(
-            period_start="2026-09-15", period_end="2026-09-16",
-            baseline_commit="abc123", messages=1_000_000, markets=500,
-            reconnects=7, forced_failures=10, replay_deterministic=True,
-            raw_corruption=0, partial_records=2, hash_mismatches=0,
-            invalid_delta_applications=0, unresolved_book_mismatches=0,
-            manifest_chain_ok=True, metadata_reconstruction_ok=True,
-            resolution_lifecycle_ok=True, crash_recovery_ok=True,
-            gate_passed=True,
-        )
+        report = _burnin_report()
         directory, digest = write_burn_in_report(report, tmp_path / "burnin")
         assert (tmp_path / "burnin" / "burnin-report.json").exists()
         assert (tmp_path / "burnin" / "burnin-report.md").exists()
@@ -873,18 +904,12 @@ class TestBurnInReport:
         assert digest == digest2
 
     def test_report_markdown_content(self, tmp_path):
-        report = BurnInReport(
-            period_start="2026-09-15", period_end="2026-09-16",
-            baseline_commit="abc", messages=1_000_000, markets=500,
-            reconnects=7, forced_failures=10, replay_deterministic=True,
-            raw_corruption=0, partial_records=2, hash_mismatches=0,
-            invalid_delta_applications=0, unresolved_book_mismatches=0,
-            manifest_chain_ok=True, metadata_reconstruction_ok=True,
-            resolution_lifecycle_ok=True, crash_recovery_ok=True,
-            gate_passed=True,
-        )
+        report = _burnin_report()
         _, digest = write_burn_in_report(report, tmp_path / "burnin")
         md = (tmp_path / "burnin" / "burnin-report.md").read_text(encoding="utf-8")
-        assert "PolyAlpha Collection Burn-In" in md
+        assert "BURN-IN INTEGRITY REPORT" in md
+        assert "FINAL GATE" in md
         assert "Gate: PASS" in md
         assert "1,000,000" in md
+        assert "Venue transmissions attempted: 0" in md
+        assert "intent_restart_recovery: PASS" in md

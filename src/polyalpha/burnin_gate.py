@@ -142,27 +142,35 @@ def evaluate_burn_in_gate(
 @dataclass(frozen=True)
 class RealDataStartMarker:
     phase: str
-    timestamp_utc: str
     baseline_tag: str
     baseline_commit: str
-    config_sha256: str
-    model_source_sha256: str
+    implementation_commit: str
+    research_logic_sha256: str
+    collector_sha256: str
+    interface_sha256: str
+    baseline_config_sha256: str
     feature_schema_sha256: str
-    collector_commit: str
     burnin_report_sha256: str
+    started_at: str
+    execution_mode: str
+    alpha_status: str
     marker_sha256: str = ""
 
     def as_dict(self) -> dict:
         d = {
             "phase": self.phase,
-            "timestamp_utc": self.timestamp_utc,
             "baseline_tag": self.baseline_tag,
             "baseline_commit": self.baseline_commit,
-            "config_sha256": self.config_sha256,
-            "model_source_sha256": self.model_source_sha256,
+            "implementation_commit": self.implementation_commit,
+            "research_logic_sha256": self.research_logic_sha256,
+            "collector_sha256": self.collector_sha256,
+            "interface_sha256": self.interface_sha256,
+            "baseline_config_sha256": self.baseline_config_sha256,
             "feature_schema_sha256": self.feature_schema_sha256,
-            "collector_commit": self.collector_commit,
             "burnin_report_sha256": self.burnin_report_sha256,
+            "started_at": self.started_at,
+            "execution_mode": self.execution_mode,
+            "alpha_status": self.alpha_status,
         }
         if self.marker_sha256:
             d["marker_sha256"] = self.marker_sha256
@@ -179,14 +187,24 @@ def write_real_data_start_marker(
     marker_path: str | Path,
     baseline_tag: str,
     baseline_commit: str,
-    config_sha256: str,
-    model_source_sha256: str,
+    implementation_commit: str,
+    research_logic_sha256: str,
+    collector_sha256: str,
+    interface_sha256: str,
+    baseline_config_sha256: str,
     feature_schema_sha256: str,
-    collector_commit: str,
     burnin_report_sha256: str,
+    started_at: str | None = None,
+    execution_mode: str = "SHADOW_OR_COLLECTION_ONLY",
+    alpha_status: str = "UNKNOWN",
     phase_store: "PhaseStore | None" = None,
 ) -> RealDataStartMarker:
     """Write the immutable REAL_DATA_START marker. Refuses to overwrite.
+
+    Permanently binds the experiment to the exact state at commencement:
+    the frozen research baseline (baseline_commit, research_logic_sha256) and
+    the hardened operational code running at the start (implementation_commit,
+    collector_sha256, interface_sha256).
 
     When a phase_store is provided, it must be in BURNIN_PASSED phase;
     otherwise the marker write is rejected.
@@ -198,26 +216,34 @@ def write_real_data_start_marker(
         raise FileExistsError(f"REAL_DATA_START marker already exists: {path}")
     marker = RealDataStartMarker(
         phase="REAL_DATA_START",
-        timestamp_utc=datetime.now(UTC).isoformat(),
         baseline_tag=baseline_tag,
         baseline_commit=baseline_commit,
-        config_sha256=config_sha256,
-        model_source_sha256=model_source_sha256,
+        implementation_commit=implementation_commit,
+        research_logic_sha256=research_logic_sha256,
+        collector_sha256=collector_sha256,
+        interface_sha256=interface_sha256,
+        baseline_config_sha256=baseline_config_sha256,
         feature_schema_sha256=feature_schema_sha256,
-        collector_commit=collector_commit,
         burnin_report_sha256=burnin_report_sha256,
+        started_at=started_at or datetime.now(UTC).isoformat(),
+        execution_mode=execution_mode,
+        alpha_status=alpha_status,
     )
     digest = marker.combined_hash()
     marker = RealDataStartMarker(
         phase=marker.phase,
-        timestamp_utc=marker.timestamp_utc,
         baseline_tag=marker.baseline_tag,
         baseline_commit=marker.baseline_commit,
-        config_sha256=marker.config_sha256,
-        model_source_sha256=marker.model_source_sha256,
+        implementation_commit=marker.implementation_commit,
+        research_logic_sha256=marker.research_logic_sha256,
+        collector_sha256=marker.collector_sha256,
+        interface_sha256=marker.interface_sha256,
+        baseline_config_sha256=marker.baseline_config_sha256,
         feature_schema_sha256=marker.feature_schema_sha256,
-        collector_commit=collector_commit,
-        burnin_report_sha256=burnin_report_sha256,
+        burnin_report_sha256=marker.burnin_report_sha256,
+        started_at=marker.started_at,
+        execution_mode=marker.execution_mode,
+        alpha_status=marker.alpha_status,
         marker_sha256=digest,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -251,43 +277,106 @@ class BurnInReport:
     period_start: str
     period_end: str
     baseline_commit: str
+    implementation_commit: str
+    research_logic_sha256: str
+    collector_sha256: str
+    interface_sha256: str
+
+    # Collection
     messages: int
     markets: int
+    tokens_observed: int
+    lifecycle_events: int
+    resolved_markets: int
     reconnects: int
     forced_failures: int
-    replay_deterministic: bool
-    raw_corruption: int
-    partial_records: int
+
+    # Raw integrity
     hash_mismatches: int
-    invalid_delta_applications: int
-    unresolved_book_mismatches: int
-    manifest_chain_ok: bool
-    metadata_reconstruction_ok: bool
-    resolution_lifecycle_ok: bool
-    crash_recovery_ok: bool
-    gate_passed: bool
-    # Live-ready state-machine scoreboard (must all be zero during burn-in)
+    unexplained_partial_lines: int
+    manifest_chain_failures: int
+    wire_fidelity_failures: int
+
+    # Replay
+    replay_hash_a: str = ""
+    replay_hash_b: str = ""
+    replay_deterministic: bool = False
+
+    # Book fidelity
+    rest_reconciliations: int = 0
+    rest_matching: int = 0
+    rest_corrected_mismatches: int = 0
+    rest_unresolved_mismatches: int = 0
+    stale_delta_applications: int = 0
+
+    # Clocks (ms)
+    receive_lag_p50: float | None = None
+    receive_lag_p95: float | None = None
+    receive_lag_p99: float | None = None
+    processing_lag_p50: float | None = None
+    processing_lag_p95: float | None = None
+    processing_lag_p99: float | None = None
+    clock_anomalies: int = 0
+
+    # Legacy fields kept for compatibility
+    raw_corruption: int = 0
+    partial_records: int = 0
+    invalid_delta_applications: int = 0
+    unresolved_book_mismatches: int = 0
+    manifest_chain_ok: bool = True
+    metadata_reconstruction_ok: bool = True
+    resolution_lifecycle_ok: bool = True
+    crash_recovery_ok: bool = True
+    gate_passed: bool = False
+
+    # Live-ready scoreboard
     phase_machine_violations: int = 0
     intent_ledger_duplicates: int = 0
     kill_switch_bypasses: int = 0
     approval_boundary_bypasses: int = 0
+    venue_transmissions_attempted: int = 0
+
+    # Fault-injection results (scenario -> PASS/FAIL)
+    fault_injection: dict[str, bool] = field(default_factory=dict)
+
+    # Live-ready scenario results (scenario -> PASS/FAIL)
+    live_ready: dict[str, bool] = field(default_factory=dict)
 
     def as_dict(self) -> dict:
-        return {
+        d = {
             "period_start": self.period_start,
             "period_end": self.period_end,
             "baseline_commit": self.baseline_commit,
+            "implementation_commit": self.implementation_commit,
+            "research_logic_sha256": self.research_logic_sha256,
+            "collector_sha256": self.collector_sha256,
+            "interface_sha256": self.interface_sha256,
             "messages": self.messages,
             "markets": self.markets,
+            "tokens_observed": self.tokens_observed,
+            "lifecycle_events": self.lifecycle_events,
+            "resolved_markets": self.resolved_markets,
             "reconnects": self.reconnects,
             "forced_failures": self.forced_failures,
-            "replay_deterministic": self.replay_deterministic,
-            "raw_corruption": self.raw_corruption,
-            "partial_records": self.partial_records,
             "hash_mismatches": self.hash_mismatches,
-            "invalid_delta_applications": self.invalid_delta_applications,
-            "unresolved_book_mismatches": self.unresolved_book_mismatches,
-            "manifest_chain_ok": self.manifest_chain_ok,
+            "unexplained_partial_lines": self.unexplained_partial_lines,
+            "manifest_chain_failures": self.manifest_chain_failures,
+            "wire_fidelity_failures": self.wire_fidelity_failures,
+            "replay_hash_a": self.replay_hash_a,
+            "replay_hash_b": self.replay_hash_b,
+            "replay_deterministic": self.replay_deterministic,
+            "rest_reconciliations": self.rest_reconciliations,
+            "rest_matching": self.rest_matching,
+            "rest_corrected_mismatches": self.rest_corrected_mismatches,
+            "rest_unresolved_mismatches": self.rest_unresolved_mismatches,
+            "stale_delta_applications": self.stale_delta_applications,
+            "receive_lag_p50": self.receive_lag_p50,
+            "receive_lag_p95": self.receive_lag_p95,
+            "receive_lag_p99": self.receive_lag_p99,
+            "processing_lag_p50": self.processing_lag_p50,
+            "processing_lag_p95": self.processing_lag_p95,
+            "processing_lag_p99": self.processing_lag_p99,
+            "clock_anomalies": self.clock_anomalies,
             "metadata_reconstruction_ok": self.metadata_reconstruction_ok,
             "resolution_lifecycle_ok": self.resolution_lifecycle_ok,
             "crash_recovery_ok": self.crash_recovery_ok,
@@ -296,7 +385,11 @@ class BurnInReport:
             "intent_ledger_duplicates": self.intent_ledger_duplicates,
             "kill_switch_bypasses": self.kill_switch_bypasses,
             "approval_boundary_bypasses": self.approval_boundary_bypasses,
+            "venue_transmissions_attempted": self.venue_transmissions_attempted,
+            "fault_injection": self.fault_injection,
+            "live_ready": self.live_ready,
         }
+        return d
 
     def combined_hash(self) -> str:
         canonical = json.dumps(self.as_dict(), sort_keys=True, separators=(",", ":"))
@@ -323,36 +416,84 @@ def _render_burnin_markdown(report: BurnInReport) -> str:
     def check(ok: bool) -> str:
         return "PASS" if ok else "FAIL"
 
+    def pct(part: int, total: int) -> str:
+        return f"{part/total*100:.2f}%" if total else "n/a"
+
+    fi = report.fault_injection or {}
+    lr = report.live_ready or {}
+    fi_ok = all(fi.values()) if fi else True
+    lr_ok = all(lr.values()) if lr else True
+
     lines = [
-        "PolyAlpha Collection Burn-In",
+        "POLYALPHA v0.3.0",
+        "BURN-IN INTEGRITY REPORT",
         "",
-        f"Period: {report.period_start} → {report.period_end}",
-        f"Baseline: {report.baseline_commit}",
+        "BASELINE",
+        "Immutable tag: v0.3.0-research-baseline-334b911",
+        f"Baseline commit: {report.baseline_commit}",
+        f"Implementation commit: {report.implementation_commit}",
+        f"Research logic SHA256: {report.research_logic_sha256}",
+        f"Collector SHA256: {report.collector_sha256}",
+        f"Interface SHA256: {report.interface_sha256}",
         "",
-        f"Messages: {report.messages:,}",
-        f"Markets: {report.markets}",
+        "COLLECTION",
+        f"Duration: {report.period_start} → {report.period_end}",
+        f"Raw messages: {report.messages:,}",
+        f"Markets observed: {report.markets}",
+        f"Tokens observed: {report.tokens_observed}",
+        f"Lifecycle events: {report.lifecycle_events}",
+        f"Resolved markets: {report.resolved_markets}",
         f"Reconnects: {report.reconnects}",
         f"Forced failures: {report.forced_failures}",
         "",
-        f"Replay deterministic: {check(report.replay_deterministic)}",
-        f"Manifest chain: {check(report.manifest_chain_ok)}",
-        f"Raw corruption: {report.raw_corruption}",
-        f"Unresolved book mismatches: {report.unresolved_book_mismatches}",
-        f"Invalid stale-delta applications: {report.invalid_delta_applications}",
+        "RAW INTEGRITY",
         f"Hash mismatches: {report.hash_mismatches}",
-        f"Partial records: {report.partial_records} quarantined",
+        f"Unexplained partial lines: {report.unexplained_partial_lines}",
+        f"Manifest-chain failures: {report.manifest_chain_failures}",
+        f"Wire fidelity failures: {report.wire_fidelity_failures}",
         "",
-        "LIVE-READY STATE MACHINE",
+        "REPLAY",
+        f"Replay A hash: {report.replay_hash_a}",
+        f"Replay B hash: {report.replay_hash_b}",
+        f"Deterministic: {check(report.replay_deterministic)}",
+        "",
+        "BOOK FIDELITY",
+        f"REST reconciliations: {report.rest_reconciliations}",
+        f"Matching: {report.rest_matching} ({pct(report.rest_matching, report.rest_reconciliations)})",
+        f"Corrected mismatches: {report.rest_corrected_mismatches}",
+        f"Unresolved mismatches: {report.rest_unresolved_mismatches}",
+        f"Stale-delta applications: {report.stale_delta_applications}",
+        "",
+        "CLOCKS",
+        f"Exchange→receive P50: {report.receive_lag_p50} ms",
+        f"Exchange→receive P95: {report.receive_lag_p95} ms",
+        f"Exchange→receive P99: {report.receive_lag_p99} ms",
+        f"Processing P50: {report.processing_lag_p50} ms",
+        f"Processing P95: {report.processing_lag_p95} ms",
+        f"Processing P99: {report.processing_lag_p99} ms",
+        f"Clock anomalies: {report.clock_anomalies} unexplained",
+        "",
+        "FAULT INJECTION",
+    ]
+    if fi:
+        lines += [f"{name}: {check(ok)}" for name, ok in sorted(fi.items())]
+    else:
+        lines.append("(no scenarios recorded)")
+    lines += [
+        "",
+        "LIVE-READY SAFETY",
         f"Phase-machine violations: {report.phase_machine_violations}",
         f"Intent-ledger duplicates: {report.intent_ledger_duplicates}",
         f"Kill-switch bypasses: {report.kill_switch_bypasses}",
         f"Approval-boundary bypasses: {report.approval_boundary_bypasses}",
+        f"Venue transmissions attempted: {report.venue_transmissions_attempted}",
+    ]
+    if lr:
+        lines += [f"{name}: {check(ok)}" for name, ok in sorted(lr.items())]
+    lines += [
         "",
-        f"Metadata reconstruction: {check(report.metadata_reconstruction_ok)}",
-        f"Resolution lifecycle: {check(report.resolution_lifecycle_ok)}",
-        f"Crash recovery: {check(report.crash_recovery_ok)}",
-        "",
-        f"Gate: {check(report.gate_passed)}",
+        "FINAL GATE",
+        f"Gate: {check(report.gate_passed and fi_ok and lr_ok)}",
         "",
     ]
     return "\n".join(lines)

@@ -38,6 +38,7 @@ from polyalpha.order_intent import (  # noqa: E402
     IntentLedger,
     IntentState,
     OrderIntent,
+    assert_transition_allowed,
     new_intent,
 )
 from polyalpha.order_reconciliation import (  # noqa: E402
@@ -818,3 +819,14 @@ class TestLiveReadyFaultInjection:
         # Restart.
         ledger = IntentLedger(tmp_path / "ledger.jsonl")
         assert ledger.get(intent.intent_id) is not None or ledger.has_attempt(intent.execution_attempt_id)
+
+    def test_reconciliation_required_cannot_progress_to_submission(self):
+        """The permanent rule: RECONCILIATION_REQUIRED must not move back
+        toward submission through normal workflow."""
+        with pytest.raises(ValueError, match="RECONCILIATION_REQUIRED"):
+            assert_transition_allowed(IntentState.RECONCILIATION_REQUIRED, IntentState.SUBMISSION_PENDING)
+        with pytest.raises(ValueError, match="RECONCILIATION_REQUIRED"):
+            assert_transition_allowed(IntentState.RECONCILIATION_REQUIRED, IntentState.ACKNOWLEDGED)
+        # Definitive outcomes are allowed.
+        assert_transition_allowed(IntentState.RECONCILIATION_REQUIRED, IntentState.REJECTED)
+        assert_transition_allowed(IntentState.RECONCILIATION_REQUIRED, IntentState.CANCELLED)

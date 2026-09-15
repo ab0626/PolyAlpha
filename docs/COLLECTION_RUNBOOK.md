@@ -51,6 +51,24 @@ interface fixes are excluded from `research_logic_sha256` by design.
 
 ---
 
+## 0.4 Code-change classification (after REAL_DATA_START)
+
+Once REAL_DATA_START is written, every code change is classified:
+
+| Class | What it is | Allowed? | Requirements |
+|-------|-----------|----------|--------------|
+| **A — collector correctness fix** | WS parser bug, manifest bug, REST reconciliation bug, raw-file recovery bug | Yes | issue documented; regression test added; `collector_sha256` changes; `research_logic_sha256` unchanged; historical raw preserved; derived data replayed if necessary |
+| **B — execution-safety fix** | idempotency bug, approval-state bug, kill-switch bug, reconciliation bug | Yes | research logic unchanged |
+| **C — strategy/research logic** | model weights, edge threshold, new feature, uncertainty formula, position sizing, calibration, category exclusion | **NO** | becomes future-version work (`v0.3.1` candidate), never a silent modification to v0.3 |
+
+The permanent rule: **research decides whether an opportunity exists; risk
+decides whether exposure is allowed; execution decides only whether the
+intended action can still be performed safely.** Keep that boundary intact
+and PolyAlpha can evolve research → shadow → paper → operator-approved live
+readiness without components becoming entangled.
+
+---
+
 ## 0.5 Phase state machine
 
 Collection phases are explicit and recorded in `data/phase.json`. Transitions
