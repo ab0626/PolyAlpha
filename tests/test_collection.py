@@ -1,4 +1,4 @@
-"""Tests for the v0.3.0 data-collection layer.
+﻿"""Tests for the v0.3.0 data-collection layer.
 
 Covers the immutable raw event store, the market WS collector, REST
 reconciliation, metadata versioning, health reporting, daily manifests, and
@@ -17,6 +17,11 @@ import pytest
 
 sys.path.insert(0, "src")
 
+from polyalpha.burnin_gate import (  # noqa: E402
+    evaluate_burn_in_gate,
+    verify_real_data_start_marker,
+    write_real_data_start_marker,
+)
 from polyalpha.collector_health import (  # noqa: E402
     HealthReport,
     build_health_report,
@@ -424,6 +429,271 @@ class TestDailyManifest:
         ok, msg = writer.verify(date.today(), RawStore(tmp_path / "raw"))
         assert ok is False
         assert "mutated" in msg
+
+    def test_manifest_hash_chain(self, tmp_path):
+        """Day t's manifest must chain to day t-1 via previous_manifest_sha256."""
+        from polyalpha.rawstore import RawStore as RS
+
+        raw_root = tmp_path / "raw"
+        man_root = tmp_path / "manifests"
+        writer = ManifestWriter(man_root)
+        for i, day in enumerate([date(2026, 1, 1), date(2026, 1, 2)]):
+            # Force a raw file into the day directory.
+            directory = raw_root / str(day.year) / f"{day.month:02d}" / f"{day.day:02d}"
+            directory.mkdir(parents=True, exist_ok=True)
+            store = RS(str(raw_root), "v1")
+            store.append(SOURCE_MARKET_WS, "c", {"i": i}, wire='{"i":' + str(i) + "}")
+            store.close()
+            manifest = build_daily_manifest(
+                RS(str(raw_root)), day,
+                collector_commit="c", config_hash="cfg",
+                markets_observed=0, resolved_markets=0,
+                dropped_connections=0, reconciliations=0, book_mismatches=0,
+            )
+            writer.write(manifest)
+        m1 = writer.read(date(2026, 1, 1))
+        m2 = writer.read(date(2026, 1, 2))
+        assert m1.previous_manifest_sha256 is None
+        assert m2.previous_manifest_sha256 == m1.combined_hash()
+        # Tampering with day 1's manifest file breaks the chain on day 2.
+        day1_path = man_root / "2026-01-01.json"
+        original = day1_path.read_text(encoding="utf-8")
+        day1_path.write_text(original.replace('"date": "2026-01-01"', '"date": "2026-01-09"'), encoding="utf-8")
+        m2_read = writer.read(date(2026, 1, 2))
+        assert m2_read.combined_hash() == m2.combined_hash()  # day2 itself unchanged
+        # But recomputing day1's hash now differs from what day2 recorded.
+        m1_now = writer.read(date(2026, 1, 1))
+        assert m1_now.combined_hash() != m2_read.previous_manifest_sha256
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# BURN-IN GATE + REAL_DATA_START MARKER
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestBurnInGate:
+    def test_all_pass(self):
+        gate = evaluate_burn_in_gate(
+            raw_corruption_count=0,
+            replay_deterministic=True,
+            delta_on_stale_count=0,
+            unrecoverable_reconnect_count=0,
+            timestamp_invariant_failures=0,
+            reconciliation_total=100,
+            reconciliation_mismatches=1,
+            heartbeat_recovery=True,
+            restart_recovery=True,
+            partial_file_recovery=True,
+            metadata_point_in_time=True,
+            resolution_captured=True,
+            model_hash_unchanged=True,
+        )
+        assert gate.all_pass is True
+
+    def test_reconciliation_bounded_pass_at_one_percent(self):
+        gate = evaluate_burn_in_gate(
+            raw_corruption_count=0,
+            replay_deterministic=True,
+            delta_on_stale_count=0,
+            unrecoverable_reconnect_count=0,
+            timestamp_invariant_failures=0,
+            reconciliation_total=1000,
+            reconciliation_mismatches=10,  # exactly 1% — bounded threshold
+            heartbeat_recovery=True,
+            restart_recovery=True,
+            partial_file_recovery=True,
+            metadata_point_in_time=True,
+            resolution_captured=True,
+            model_hash_unchanged=True,
+        )
+        assert gate.all_pass is True
+
+    def test_any_failure_blocks(self):
+        gate = evaluate_burn_in_gate(
+            raw_corruption_count=1,
+            replay_deterministic=True,
+            delta_on_stale_count=0,
+            unrecoverable_reconnect_count=0,
+            timestamp_invariant_failures=0,
+            reconciliation_total=0,
+            reconciliation_mismatches=0,
+            heartbeat_recovery=True,
+            restart_recovery=True,
+            partial_file_recovery=True,
+            metadata_point_in_time=True,
+            resolution_captured=True,
+            model_hash_unchanged=True,
+        )
+        assert gate.all_pass is False
+        assert gate.summary()["failed_count"] == 1
+
+    def test_reconciliation_bounded(self):
+        gate = evaluate_burn_in_gate(
+            raw_corruption_count=0,
+            replay_deterministic=True,
+            delta_on_stale_count=0,
+            unrecoverable_reconnect_count=0,
+            timestamp_invariant_failures=0,
+            reconciliation_total=1000,
+            reconciliation_mismatches=50,  # 5% > 1% threshold
+            heartbeat_recovery=True,
+            restart_recovery=True,
+            partial_file_recovery=True,
+            metadata_point_in_time=True,
+            resolution_captured=True,
+            model_hash_unchanged=True,
+        )
+        assert gate.all_pass is False
+
+
+class TestRealDataStartMarker:
+    def test_write_and_verify(self, tmp_path):
+        path = tmp_path / "REAL_DATA_START.json"
+        marker = write_real_data_start_marker(
+            path,
+            baseline_tag="v0.3.0-research-baseline",
+            baseline_commit="abc123",
+            config_sha256="c" * 64,
+            model_source_sha256="m" * 64,
+            feature_schema_sha256="f" * 64,
+            collector_commit="col123",
+            burnin_report_sha256="b" * 64,
+        )
+        assert marker.phase == "REAL_DATA_START"
+        ok, msg = verify_real_data_start_marker(path)
+        assert ok is True, msg
+
+    def test_refuses_overwrite(self, tmp_path):
+        path = tmp_path / "REAL_DATA_START.json"
+        write_real_data_start_marker(
+            path, "tag", "c1", "c" * 64, "m" * 64, "f" * 64, "col", "b" * 64
+        )
+        import pytest as _pytest
+        with _pytest.raises(FileExistsError):
+            write_real_data_start_marker(
+                path, "tag", "c1", "c" * 64, "m" * 64, "f" * 64, "col", "b" * 64
+            )
+
+    def test_tamper_detected(self, tmp_path):
+        path = tmp_path / "REAL_DATA_START.json"
+        write_real_data_start_marker(
+            path, "tag", "c1", "c" * 64, "m" * 64, "f" * 64, "col", "b" * 64
+        )
+        content = path.read_text(encoding="utf-8")
+        path.write_text(
+            content.replace('"phase": "REAL_DATA_START"', '"phase": "FAKE"'),
+            encoding="utf-8",
+        )
+        ok, _ = verify_real_data_start_marker(path)
+        assert ok is False
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# RAW STORE CRASH RECOVERY (fault injection)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestRawStoreCrashRecovery:
+    @staticmethod
+    def _record_line(wire_text, payload, seq=0):
+        """Build the exact serialized line RawStore.append would write."""
+        import hashlib as _hashlib
+
+
+        envelope = {
+            "wire": wire_text,
+            "source": SOURCE_MARKET_WS,
+            "collector_version": "v1",
+            "connection_id": "c",
+            "message_sequence_local": seq,
+            "exchange_timestamp_ms": None,
+            "received_at_ns": 1,
+            "received_monotonic_ns": 1,
+            "processed_at_ns": 1,
+            "processed_monotonic_ns": 1,
+            "wire_was_bytes": False,
+            "payload": payload,
+        }
+        canonical = json.dumps(envelope, sort_keys=True, separators=(",", ":"))
+        digest = _hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        line = {"canonical_json": canonical, "sha256": digest}
+        return json.dumps(line, sort_keys=True, separators=(",", ":")) + "\n"
+
+    def _seed_day(self, tmp_path):
+        day = tmp_path / "2026" / "09" / "15"
+        day.mkdir(parents=True)
+        raw = RawStore(tmp_path, "v1")
+        wire = json.dumps({"valid": 1})
+        raw.append(SOURCE_MARKET_WS, "c", {"valid": 1}, wire=wire)
+        raw.close()  # finalized .gz
+        return day
+
+    def test_partial_trailing_line_quarantined(self, tmp_path):
+        day = self._seed_day(tmp_path)
+        f2 = day / "pm-0001.jsonl"
+        with open(f2, "w", encoding="utf-8") as fh:
+            fh.write(self._record_line(json.dumps({"b": 2}), {"b": 2}))
+            fh.write('{"canonical_json":"partial')  # truncated (crash mid-write)
+        rs = RawStore(tmp_path, "v1")
+        scan = rs.scan()
+        assert scan["partial_lines"] == 1
+        # Valid record b is still replayed; the partial one is not.
+        payloads = {frozenset(r.payload.items()) for r in rs.replay()}
+        assert frozenset({("valid", 1)}) in payloads
+        assert frozenset({("b", 2)}) in payloads
+
+    def test_orphaned_jsonl_recovered(self, tmp_path):
+        day = self._seed_day(tmp_path)
+        f3 = day / "pm-0002.jsonl"  # crash before finalize
+        with open(f3, "w", encoding="utf-8") as fh:
+            fh.write(self._record_line(json.dumps({"c": 3}), {"c": 3}))
+        rs = RawStore(tmp_path, "v1")
+        payloads = {frozenset(r.payload.items()) for r in rs.replay()}
+        assert frozenset({("c", 3)}) in payloads
+        assert rs.scan()["valid"] == 2
+
+    def test_tmp_promoted_to_gz(self, tmp_path):
+        day = self._seed_day(tmp_path)
+        import gzip as _gz
+        f4 = day / "pm-0003.jsonl.gz.tmp"  # crash between gzip-write and rename
+        with _gz.open(f4, "wt", encoding="utf-8") as fh:
+            fh.write(self._record_line(json.dumps({"d": 4}), {"d": 4}))
+        rs = RawStore(tmp_path, "v1")
+        payloads = {frozenset(r.payload.items()) for r in rs.replay()}
+        assert frozenset({("d", 4)}) in payloads
+        # tmp must have been promoted to .gz and removed
+        assert not list((tmp_path).rglob("*.tmp"))
+        assert list((tmp_path).rglob("pm-0003.jsonl.gz"))
+
+    def test_wire_bytes_preserved(self, tmp_path):
+        with RawStore(tmp_path / "w", "v1") as store:
+            wire = b'{"binary": true}'
+            store.append(SOURCE_MARKET_WS, "c", {"binary": True}, wire=wire)
+        rec = list(RawStore(tmp_path / "w").replay())[0]
+        assert rec.wire_was_bytes is True
+        assert rec.payload == {"binary": True}
+
+    def test_exact_wire_text_preserved(self, tmp_path):
+        with RawStore(tmp_path / "w", "v1") as store:
+            wire = '{"z":1,"a":2}'  # non-canonical order must be preserved verbatim
+            store.append(SOURCE_MARKET_WS, "c", json.loads(wire), wire=wire)
+        rec = list(RawStore(tmp_path / "w").replay())[0]
+        assert rec.wire == '{"z":1,"a":2}'
+
+    def test_three_clocks_present(self, tmp_path):
+        with RawStore(tmp_path / "w", "v1") as store:
+            store.append(
+                SOURCE_MARKET_WS, "c", {"n": 1}, wire='{"n":1}',
+                received_at_ns=1_700_000_000_000_000_000,
+                received_monotonic_ns=5_000_000_000,
+                exchange_timestamp_ms=1_700_000_000_000,
+            )
+        rec = list(RawStore(tmp_path / "w").replay())[0]
+        assert rec.exchange_timestamp_ms == 1_700_000_000_000
+        assert rec.received_at_ns == 1_700_000_000_000_000_000
+        assert rec.received_monotonic_ns == 5_000_000_000
+        assert rec.processed_at_ns > 0
+        assert rec.processed_monotonic_ns > 0
 
 
 # ══════════════════════════════════════════════════════════════════════════

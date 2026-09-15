@@ -1,26 +1,54 @@
 # PolyAlpha v0.3.0 — Real-Data Collection Runbook
 
 **Status:** PREPARED — no real data collected yet
-**Frozen baseline:** `v0.3.0-research-baseline` (git `16d239b`)
+**Frozen baseline:** `v0.3.0-research-baseline`
 
 This runbook operationalizes the empirical-validation phase. It is the
 operating procedure, not a design document. Follow it in order.
 
 ---
 
-## 0. What is frozen, and what is not
+## 0. Version hierarchy — what can change and what cannot
 
-| Frozen (do NOT touch)                    | Not frozen (fix freely)                        |
-|-------------------------------------------|-----------------------------------------------|
-| Model logic (`src/polyalpha/models/**`)  | Collector (`rawstore`, `market_collector`)    |
-| Feature schema (`features/**`, `domain`) | Reconciler, metadata, health, manifests      |
-| Signal/risk/execution thresholds         | Storage/parser bugs                           |
-| `config/frozen/v0.3.0-baseline.yaml`     | Anything that does not change a decision      |
+| Layer                  | May change? | Rule                                                              |
+|------------------------|-------------|-------------------------------------------------------------------|
+| `collector_version`    | Yes         | May change for correctness fixes; recorded per raw record         |
+| `research_baseline_version` | No     | Must not change during the collection window                      |
+| `raw_data`             | Never       | Wire-exact bytes, write-once, hash-chained manifests              |
+| `normalized_data`      | Yes         | May be regenerated from raw with a fixed parser                   |
+| `research_dataset`     | Yes         | Versioned + fingerprinted                                         |
+| `model/config`         | Frozen      | `config/frozen/v0.3.0-baseline.yaml` + `model_source_sha256`      |
 
-Freeze discipline: fix a collector bug, then re-freeze the **model** hash (the
-collection modules are excluded from `model_source_sha256`), record the fix in
-the manifest's `collector_commit`, and regenerate any affected normalized
-snapshots from the raw layer. The raw layer is never edited.
+Freeze discipline: fix a collector bug → record it in the manifest's
+`collector_commit` → regenerate any affected normalized snapshots from the raw
+layer. The raw layer is never edited. `scripts/freeze_baseline.py verify`
+asserts the model/schema/config hashes are unchanged; collection-module fixes
+are excluded from `model_source_sha256` by design.
+
+### Data fidelity invariants (hard requirements)
+
+1. **Wire-exact raw storage.** `rawstore.py` preserves the exact upstream text
+   (or base64 of bytes) in the `wire` field and hashes the wire bytes, never a
+   re-serialized JSON object. JSON key ordering, number formatting, and parser
+   changes can never make "raw" data less raw.
+2. **Three clocks, not two.** Each record keeps the exchange timestamp
+   (`exchange_timestamp_ms`), local wall receive (`received_at_ns`), and local
+   monotonic receive/processed (`received_monotonic_ns`, `processed_monotonic_ns`).
+   Monotonic clocks give reliable internal queueing/processing durations even
+   if NTP steps wall time backward.
+3. **Crash-safe finalization.** On close/day-roll the `.jsonl` is gzip'd to a
+   `.tmp`, fsynced, atomically renamed to `.jsonl.gz`, then the source is
+   removed. Replay promotes a lone `.jsonl.gz.tmp`, reads an orphaned `.jsonl`,
+   and treats an existing `.jsonl.gz` as authoritative — no double-counting.
+4. **Partial-record quarantine.** A truncated trailing line (crash mid-write) is
+   detected and skipped by replay and reported by `rawstore.scan()`; every
+   successfully acknowledged record survives.
+5. **Canonical reconciliation.** REST vs WS books are compared only after
+   canonicalization (bids desc / asks asc, Decimal-normalized, zero-size levels
+   dropped) — never on raw float serialization.
+6. **Hash-chained manifests.** Each day's manifest records
+   `previous_manifest_sha256`, so mutation/deletion/reordering of historical
+   manifests is detectable, not just mutation of each day's raw files.
 
 ---
 
@@ -47,22 +75,72 @@ Then verify determinism — replay the burn-in raw files and confirm:
     python -m polyalpha.cli collect-health --raw-dir data/raw --format terminal
 
 The `collect-burnin` command already emits `burn_in_deterministic` and
-`raw_sha256_root`; the sha256 root must be identical across replays.
+`raw_sha256_root`; the sha256 root must be identical across replays. Also run
+`rawstore.scan()` — it must report `partial_lines` only for intentionally
+injected faults and `hash_mismatches == 0`.
 
-**Gate:** only after the burn-in replays deterministically and all fault
-injections are recovered may `REAL_DATA_START` be declared.
+**GO/NO-GO gate** — evaluate explicitly before declaring REAL_DATA_START:
+
+    python -m polyalpha.cli collect-gate \
+      --raw-corruption 0 --replay-deterministic true --delta-on-stale 0 \
+      --unrecoverable-reconnects 0 --timestamp-failures 0 \
+      --reconciliations N --reconciliation-mismatches M \
+      --heartbeat-recovery true --restart-recovery true \
+      --partial-file-recovery true --metadata-pit true \
+      --resolution-captured true --model-hash-unchanged true
+
+The command exits 1 (and prints a FAIL) if any condition fails. Required
+conditions before the gate can pass:
+
+| Burn-in condition                          | Gate                       |
+|--------------------------------------------|----------------------------|
+| Unexplained raw-record corruption          | 0                          |
+| Replay produces different normalized state | 0                          |
+| Delta applied to invalid/stale book        | 0                          |
+| Unrecoverable reconnect state              | 0                          |
+| Future/local timestamp invariant failures  | 0 unexplained              |
+| REST reconciliation mismatches             | explained + bounded (≤1%)  |
+| Heartbeat recovery after forced disconnect | pass                       |
+| Collector restart recovery                 | pass                       |
+| Partial raw-file recovery                  | pass                       |
+| Metadata point-in-time reconstruction      | pass                       |
+| Market resolution captured and replayable  | pass                       |
+| Baseline/model hash changed                | no                         |
 
 ---
 
 ## 2. Declare the official start boundary
 
 Everything before this timestamp is `collection_burn_in`; everything at/after
-is `research_eligible`. Write it down:
+is `research_eligible`. Write an immutable marker — do NOT just note it:
 
-    REAL_DATA_START = 2026-XX-XXT00:00:00Z
+    python -m polyalpha.cli collect-start-marker \
+      --marker-path data/REAL_DATA_START.json \
+      --baseline-tag v0.3.0-research-baseline \
+      --baseline-commit <git_commit> \
+      --config-sha256 <config_sha256> \
+      --model-source-sha256 <model_source_sha256> \
+      --feature-schema-sha256 <feature_schema_sha256> \
+      --collector-commit <collector_commit> \
+      --burnin-report-sha256 <burnin_report_sha256>
 
-Record it in the daily manifest of the first official day. Do not mix the two
-periods in any downstream analysis without an explicit flag.
+The marker is self-hashed and refuses to overwrite; `verify_real_data_start_marker`
+detects any post-hoc modification. The marker records:
+
+    {
+      "phase": "REAL_DATA_START",
+      "timestamp_utc": "...",
+      "baseline_tag": "v0.3.0-research-baseline",
+      "baseline_commit": "...",
+      "config_sha256": "...",
+      "model_source_sha256": "...",
+      "feature_schema_sha256": "...",
+      "collector_commit": "...",
+      "burnin_report_sha256": "...",
+      "marker_sha256": "..."
+    }
+
+Do not mix the two periods in any downstream analysis without an explicit flag.
 
 ---
 
@@ -82,6 +160,12 @@ order-book market (the `universes.collection` config is deliberately broad);
 apply `research`/`signal`/`executable` filters only downstream. Otherwise you
 can never answer "what happened to the markets my filter rejected?".
 
+**Reconciliation strategy.** Stay dramatically below the published CLOB limits
+(1500 `/book`, 500 `/books` per 10s). Use a rotating sample reconciled
+frequently, reconcile suspicious/reconnected books immediately, and do broader
+sweeps less often. Batch `/books` where practical. There is no statistical
+benefit to living near the ceiling.
+
 ---
 
 ## 4. Daily operations
@@ -93,8 +177,10 @@ Each UTC day, run:
       --markets-observed N --resolved-markets M \
       --dropped-connections K --reconciliations R --book-mismatches B
 
-The manifest is append-only (refuses to overwrite an existing day). Verify the
-previous day's integrity:
+The manifest is append-only (refuses to overwrite an existing day) and
+automatically hash-chains to the previous day via `previous_manifest_sha256`,
+so mutation/deletion/reordering of historical manifests is detectable. Verify
+the previous day's integrity:
 
     python scripts/freeze_baseline.py verify          # model/feature/config unchanged
 

@@ -1907,6 +1907,53 @@ def cmd_collect_burnin(args):
     print(json.dumps(output, indent=2, default=str))
 
 
+def cmd_collect_gate(args):
+    """Evaluate the burn-in go/no-go gate (offline; takes observed counts)."""
+    import json
+    from pathlib import Path
+
+    from .burnin_gate import evaluate_burn_in_gate
+
+    gate = evaluate_burn_in_gate(
+        raw_corruption_count=int(args.raw_corruption),
+        replay_deterministic=args.replay_deterministic.lower() in ("1", "true", "yes"),
+        delta_on_stale_count=int(args.delta_on_stale),
+        unrecoverable_reconnect_count=int(args.unrecoverable_reconnects),
+        timestamp_invariant_failures=int(args.timestamp_failures),
+        reconciliation_total=int(args.reconciliations),
+        reconciliation_mismatches=int(args.reconciliation_mismatches),
+        heartbeat_recovery=args.heartbeat_recovery.lower() in ("1", "true", "yes"),
+        restart_recovery=args.restart_recovery.lower() in ("1", "true", "yes"),
+        partial_file_recovery=args.partial_file_recovery.lower() in ("1", "true", "yes"),
+        metadata_point_in_time=args.metadata_pit.lower() in ("1", "true", "yes"),
+        resolution_captured=args.resolution_captured.lower() in ("1", "true", "yes"),
+        model_hash_unchanged=args.model_hash_unchanged.lower() in ("1", "true", "yes"),
+    )
+    summary = gate.summary()
+    print(json.dumps(summary, indent=2))
+    if not gate.all_pass:
+        raise SystemExit(1)
+
+
+def cmd_collect_start_marker(args):
+    """Write the immutable REAL_DATA_START marker (refuses to overwrite)."""
+    import json
+
+    from .burnin_gate import write_real_data_start_marker
+
+    marker = write_real_data_start_marker(
+        args.marker_path,
+        baseline_tag=args.baseline_tag,
+        baseline_commit=args.baseline_commit,
+        config_sha256=args.config_sha256,
+        model_source_sha256=args.model_source_sha256,
+        feature_schema_sha256=args.feature_schema_sha256,
+        collector_commit=args.collector_commit,
+        burnin_report_sha256=args.burnin_report_sha256,
+    )
+    print(json.dumps(marker.as_dict(), indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Polyalpha research platform")
     subparsers = parser.add_subparsers(dest="command")
@@ -2291,6 +2338,31 @@ def main():
     cb_parser.add_argument("--attempts", type=int, default=3)
     cb_parser.add_argument("--collector-version", default="v0.3.0")
 
+    cg_parser = subparsers.add_parser("collect-gate", help="Evaluate burn-in go/no-go gate")
+    cg_parser.add_argument("--raw-corruption", default=0)
+    cg_parser.add_argument("--replay-deterministic", default="true")
+    cg_parser.add_argument("--delta-on-stale", default=0)
+    cg_parser.add_argument("--unrecoverable-reconnects", default=0)
+    cg_parser.add_argument("--timestamp-failures", default=0)
+    cg_parser.add_argument("--reconciliations", default=0)
+    cg_parser.add_argument("--reconciliation-mismatches", default=0)
+    cg_parser.add_argument("--heartbeat-recovery", default="true")
+    cg_parser.add_argument("--restart-recovery", default="true")
+    cg_parser.add_argument("--partial-file-recovery", default="true")
+    cg_parser.add_argument("--metadata-pit", default="true")
+    cg_parser.add_argument("--resolution-captured", default="true")
+    cg_parser.add_argument("--model-hash-unchanged", default="true")
+
+    cs_parser = subparsers.add_parser("collect-start-marker", help="Write immutable REAL_DATA_START marker")
+    cs_parser.add_argument("--marker-path", required=True)
+    cs_parser.add_argument("--baseline-tag", required=True)
+    cs_parser.add_argument("--baseline-commit", required=True)
+    cs_parser.add_argument("--config-sha256", required=True)
+    cs_parser.add_argument("--model-source-sha256", required=True)
+    cs_parser.add_argument("--feature-schema-sha256", required=True)
+    cs_parser.add_argument("--collector-commit", required=True)
+    cs_parser.add_argument("--burnin-report-sha256", required=True)
+
     args = parser.parse_args()
 
     if args.command == "collect":
@@ -2413,6 +2485,10 @@ def main():
         cmd_collect_manifest(args)
     elif args.command == "collect-burnin":
         cmd_collect_burnin(args)
+    elif args.command == "collect-gate":
+        cmd_collect_gate(args)
+    elif args.command == "collect-start-marker":
+        cmd_collect_start_marker(args)
     else:
         # Default: legacy collect behavior
         parser = argparse.ArgumentParser(description="Public data only; no order submission")

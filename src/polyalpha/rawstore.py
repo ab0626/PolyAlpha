@@ -1,36 +1,54 @@
 """Immutable raw event store — the append-only source of truth for collection.
 
 Part of the v0.3.0 data-collection architecture. Every raw message received
-from an upstream feed (WebSocket market stream, REST responses) is written
-once, to a gzip-compressed JSONL file keyed by UTC day, wrapped in an
-envelope that records *when and from where* it arrived. Files are never
-modified after being closed; a parser bug is repaired by replaying this raw
-layer with the fixed parser, never by rewriting it.
+from an upstream feed is written once to a JSONL file keyed by UTC day. The
+**exact wire payload** (original text/bytes) is preserved verbatim and the
+per-record hash is computed over the wire bytes, NOT over a re-serialized
+JSON object. Key ordering, number representation, and parser changes can
+never make "raw" data less raw.
+
+Files are never modified after being finalized. A parser bug is repaired by
+replaying this raw layer with the fixed parser, never by rewriting it.
 
 Layout:
-    data/raw/<YYYY>/<MM>/<DD>/<stream>-<index>.jsonl        (open/current file)
-    data/raw/<YYYY>/<MM>/<DD>/<stream>-<index>.jsonl.gz     (finalized file)
+    data/raw/<YYYY>/<MM>/<DD>/<stream>-<index>.jsonl        (open/current)
+    data/raw/<YYYY>/<MM>/<DD>/<stream>-<index>.jsonl.gz     (finalized)
+    data/raw/<YYYY>/<MM>/<DD>/<stream>-<index>.jsonl.gz.tmp (mid-finalize)
 
-The hot path writes plain JSONL so the file remains readable (and crash-safe)
-while it is open; when a file is finalized (day rollover or explicit close) it
-is gzip-compressed in place and removed. Replay reads finalized .gz files and
-any still-open .jsonl files, oldest first.
+Crash-safe finalization: the hot path writes plain JSONL (readable while
+open, flushed per record); on close/day-roll the file is gzip-compressed to a
+`.tmp` path, fsynced, atomically renamed to `.jsonl.gz`, and only then is the
+`.jsonl` source removed. Replay is authoritative on the `.jsonl.gz` when it
+exists, promoting a lone `.jsonl.gz.tmp` (crash between write and rename), and
+reads an orphaned `.jsonl` only when no finalized form exists.
+
+Every record carries three clocks:
+    exchange_timestamp_ms : the feed's own timestamp (external event clock)
+    received_at_ns        : local wall clock at receive  (time.time_ns)
+    received_monotonic_ns : local monotonic clock at receive (time.monotonic_ns)
+    processed_at_ns       : local wall clock at persist
+    processed_monotonic_ns: local monotonic clock at persist
+
+Monotonic clocks give reliable internal queueing/processing durations even if
+NTP steps the wall clock backward.
 
 Envelope per record:
-    received_at_ns        : local clock, nanoseconds since epoch (time.time_ns)
+    wire                  : the exact upstream payload (text or base64 of bytes)
     source                : "polymarket_market_ws" | "polymarket_rest_book" | ...
     collector_version     : git commit or version string of the collector
     connection_id         : unique id for the upstream connection/session
     message_sequence_local: per-connection monotonic sequence number
-    processed_at_ns       : local clock when this record was persisted
-    payload               : the raw upstream payload, unmodified
+    payload               : parsed payload (convenience; wire is authoritative)
+    sha256                : hash over wire + envelope (excluding sha256 itself)
 """
 
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import json
+import os
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -44,18 +62,48 @@ SOURCE_REST_MARKETS = "polymarket_rest_markets"
 
 @dataclass(frozen=True)
 class RawRecord:
-    received_at_ns: int
+    wire: str
     source: str
     collector_version: str
     connection_id: str
     message_sequence_local: int
+    exchange_timestamp_ms: int | None
+    received_at_ns: int
+    received_monotonic_ns: int
     processed_at_ns: int
+    processed_monotonic_ns: int
+    wire_was_bytes: bool
     payload: dict
     sha256: str
 
 
+def _wire_to_str(wire: str | bytes) -> str:
+    if isinstance(wire, bytes):
+        # Preserve exact bytes via base64 so the hash covers the true wire.
+        return base64.b64encode(wire).decode("ascii")
+    return wire
+
+
+def _envelope_dict(record: RawRecord) -> dict:
+    """Canonical serialization of everything EXCEPT sha256 (self-hash excluded)."""
+    return {
+        "wire": record.wire,
+        "source": record.source,
+        "collector_version": record.collector_version,
+        "connection_id": record.connection_id,
+        "message_sequence_local": record.message_sequence_local,
+        "exchange_timestamp_ms": record.exchange_timestamp_ms,
+        "received_at_ns": record.received_at_ns,
+        "received_monotonic_ns": record.received_monotonic_ns,
+        "processed_at_ns": record.processed_at_ns,
+        "processed_monotonic_ns": record.processed_monotonic_ns,
+        "wire_was_bytes": record.wire_was_bytes,
+        "payload": record.payload,
+    }
+
+
 class RawStore:
-    """Write-once raw event store partitioned by UTC day and gzip-compressed."""
+    """Write-once raw event store partitioned by UTC day."""
 
     def __init__(self, root: str | Path, collector_version: str = "unknown"):
         self.root = Path(root)
@@ -86,26 +134,44 @@ class RawStore:
         self._day = day
         self._last_path = candidate
 
-    def close(self) -> None:
-        """Flush, close, and gzip-compress the current file. Finalized files are immutable."""
-        if self._writer is not None:
-            self._writer.close()
-            self._writer = None
-            path = self._last_path
-            if path is not None and path.exists():
-                self._compress(path)
-        self._day = None
-        self._last_path = None
+    def _fsync_dir(self, path: Path) -> None:
+        try:
+            fd = os.open(path, os.O_RDONLY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        except OSError:
+            pass  # directory fsync is best-effort; not all platforms support it
 
-    def _compress(self, path: Path) -> None:
-        gz_path = path.with_suffix(".jsonl.gz")
-        with open(path, "rb") as src, gzip.open(gz_path, "wb") as dst:
+    def _finalize(self, path: Path) -> None:
+        """Crash-safe gzip finalization: tmp -> fsync -> atomic rename -> unlink source."""
+        gz_tmp = path.with_suffix(".jsonl.gz.tmp")
+        gz_final = path.with_suffix(".jsonl.gz")
+        with open(path, "rb") as src, gzip.open(gz_tmp, "wb") as dst:
             while True:
                 block = src.read(1024 * 1024)
                 if not block:
                     break
                 dst.write(block)
+            dst.flush()
+            # fsync the raw file descriptor before rename so the gzip bytes
+            # are durable (gzip wraps the fd; fileno() is valid while open).
+            os.fsync(dst.fileobj.fileno())
+        os.replace(gz_tmp, gz_final)
         path.unlink()
+        self._fsync_dir(path.parent)
+
+    def close(self) -> None:
+        """Flush, close, and crash-safe finalize the current file."""
+        if self._writer is not None:
+            self._writer.close()
+            self._writer = None
+            path = self._last_path
+            if path is not None and path.exists():
+                self._finalize(path)
+        self._day = None
+        self._last_path = None
 
     def __enter__(self) -> "RawStore":
         return self
@@ -124,147 +190,214 @@ class RawStore:
         source: str,
         connection_id: str,
         payload: dict,
+        wire: str | bytes | None = None,
         received_at_ns: int | None = None,
+        received_monotonic_ns: int | None = None,
         message_sequence_local: int | None = None,
+        exchange_timestamp_ms: int | None = None,
     ) -> RawRecord:
         now = date.today()
-        # Roll the file on UTC-day change.
         if self._day != now:
             self.close()
         if self._writer is None:
             self._open_writer(now, source)
 
         received = received_at_ns if received_at_ns is not None else time.time_ns()
+        received_mono = (
+            received_monotonic_ns
+            if received_monotonic_ns is not None
+            else time.monotonic_ns()
+        )
         sequence = (
             message_sequence_local
             if message_sequence_local is not None
             else self._count
         )
+        processed = time.time_ns()
+        processed_mono = time.monotonic_ns()
+
+        # If no explicit wire was passed, we cannot reconstruct the true wire;
+        # fall back to a canonical serialization of the payload, but mark it.
+        wire_was_bytes = isinstance(wire, bytes)
+        wire_str = _wire_to_str(wire) if wire is not None else json.dumps(
+            payload, sort_keys=True, separators=(",", ":")
+        )
+
         record = RawRecord(
-            received_at_ns=received,
+            wire=wire_str,
             source=source,
             collector_version=self.collector_version,
             connection_id=connection_id,
             message_sequence_local=sequence,
-            processed_at_ns=time.time_ns(),
+            exchange_timestamp_ms=exchange_timestamp_ms,
+            received_at_ns=received,
+            received_monotonic_ns=received_mono,
+            processed_at_ns=processed,
+            processed_monotonic_ns=processed_mono,
+            wire_was_bytes=wire_was_bytes,
             payload=payload,
             sha256="",
         )
         canonical = json.dumps(
-            {
-                "received_at_ns": record.received_at_ns,
-                "source": record.source,
-                "collector_version": record.collector_version,
-                "connection_id": record.connection_id,
-                "message_sequence_local": record.message_sequence_local,
-                "processed_at_ns": record.processed_at_ns,
-                "payload": record.payload,
-            },
+            _envelope_dict(record),
             sort_keys=True,
             separators=(",", ":"),
+            ensure_ascii=True,
         )
         digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         record = RawRecord(
-            received_at_ns=record.received_at_ns,
-            source=record.source,
-            collector_version=record.collector_version,
-            connection_id=record.connection_id,
-            message_sequence_local=record.message_sequence_local,
-            processed_at_ns=record.processed_at_ns,
-            payload=record.payload,
+            wire=wire_str,
+            source=source,
+            collector_version=self.collector_version,
+            connection_id=connection_id,
+            message_sequence_local=sequence,
+            exchange_timestamp_ms=exchange_timestamp_ms,
+            received_at_ns=received,
+            received_monotonic_ns=received_mono,
+            processed_at_ns=processed,
+            processed_monotonic_ns=processed_mono,
+            wire_was_bytes=wire_was_bytes,
+            payload=payload,
             sha256=digest,
         )
-        # Persist the digest alongside the canonical fields so a replay can
-        # independently verify each record was not mutated.
-        with_digest = json.loads(canonical)
-        with_digest["sha256"] = digest
-        self._writer.write(
-            json.dumps(with_digest, sort_keys=True, separators=(",", ":")) + "\n"
-        )
-        # Flush so a crash cannot silently lose the most recent records and so
-        # replay-while-running observes appended data.
+        line = dict(canonical_json=canonical, sha256=digest)
+        self._writer.write(json.dumps(line, sort_keys=True, separators=(",", ":")) + "\n")
         self._writer.flush()
         self._count += 1
         return record
 
     # ── Read / replay ───────────────────────────────────────────────────────
 
-    def replay(self, day: date | None = None) -> Iterator[RawRecord]:
-        """Yield every raw record, optionally for one UTC day, in order.
+    def _day_files(self, directory: Path) -> list[Path]:
+        """Return authoritative files for a day, recovering crash-state.
 
-        Deterministic: files are iterated in lexical order and records within
-        each file in write order, so replay of an unchanged directory tree is
-        byte-identical.
+        For each stem, `.jsonl.gz` wins over `.jsonl.gz.tmp` (promoted) and
+        over an orphaned `.jsonl` (which was superseded by finalization).
         """
+        by_stem: dict[str, dict[str, Path]] = {}
+        for path in sorted(directory.iterdir()) if directory.exists() else []:
+            if not path.is_file():
+                continue
+            if path.suffix == ".gz":
+                stem = path.name[:-len(".jsonl.gz")]
+                by_stem.setdefault(stem, {})["gz"] = path
+            elif path.name.endswith(".jsonl.gz.tmp"):
+                stem = path.name[:-len(".jsonl.gz.tmp")]
+                by_stem.setdefault(stem, {})["tmp"] = path
+            elif path.name.endswith(".jsonl"):
+                stem = path.name[:-len(".jsonl")]
+                by_stem.setdefault(stem, {})["jsonl"] = path
+        result: list[Path] = []
+        for stem in sorted(by_stem):
+            forms = by_stem[stem]
+            if "gz" in forms:
+                result.append(forms["gz"])
+            elif "tmp" in forms:
+                # Crash between gzip-write and rename: promote the tmp to final.
+                tmp_path = forms["tmp"]
+                final = Path(str(tmp_path)[: -len(".jsonl.gz.tmp")] + ".jsonl.gz")
+                os.replace(tmp_path, final)
+                result.append(final)
+            elif "jsonl" in forms:
+                result.append(forms["jsonl"])
+        return result
+
+    def replay(self, day: date | None = None) -> Iterator[RawRecord]:
+        """Yield every valid raw record, in order. Partial trailing lines are
+        detected and skipped; use `scan()` to enumerate corruption."""
         if day is not None:
-            directory = self.day_dir(day)
-            files = sorted(list(directory.glob("*.jsonl.gz")) + list(directory.glob("*.jsonl")))
+            files = self._day_files(self.day_dir(day))
         else:
-            files = sorted(
-                p
-                for p in self.root.rglob("*.jsonl*")
-                if p.is_file() and p.suffix in (".gz", ".jsonl")
-            )
+            files = []
+            for directory in sorted(p for p in self.root.rglob("*") if p.is_dir()):
+                files.extend(self._day_files(directory))
+            files = sorted(set(files))
         for f in files:
             if f.suffix == ".gz":
-                with gzip.open(f, "rt", encoding="utf-8") as handle:
-                    for line in handle:
-                        if not line.strip():
-                            continue
-                        data = json.loads(line)
-                        yield RawRecord(
-                            received_at_ns=data["received_at_ns"],
-                            source=data["source"],
-                            collector_version=data["collector_version"],
-                            connection_id=data["connection_id"],
-                            message_sequence_local=data["message_sequence_local"],
-                            processed_at_ns=data["processed_at_ns"],
-                            payload=data["payload"],
-                            sha256=data.get("sha256", ""),
-                        )
+                handle = gzip.open(f, "rt", encoding="utf-8")
             else:
-                with open(f, "r", encoding="utf-8") as handle:
-                    for line in handle:
-                        if not line.strip():
-                            continue
+                handle = open(f, "r", encoding="utf-8")
+            with handle:
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    try:
                         data = json.loads(line)
+                    except json.JSONDecodeError:
+                        # Partial trailing write from a crash; quarantine.
+                        continue
+                    try:
+                        canonical = data["canonical_json"]
+                        base = json.loads(canonical)
+                        payload = base["payload"]
                         yield RawRecord(
-                            received_at_ns=data["received_at_ns"],
-                            source=data["source"],
-                            collector_version=data["collector_version"],
-                            connection_id=data["connection_id"],
-                            message_sequence_local=data["message_sequence_local"],
-                            processed_at_ns=data["processed_at_ns"],
-                            payload=data["payload"],
+                            wire=base["wire"],
+                            source=base["source"],
+                            collector_version=base["collector_version"],
+                            connection_id=base["connection_id"],
+                            message_sequence_local=base["message_sequence_local"],
+                            exchange_timestamp_ms=base.get("exchange_timestamp_ms"),
+                            received_at_ns=base["received_at_ns"],
+                            received_monotonic_ns=base["received_monotonic_ns"],
+                            processed_at_ns=base["processed_at_ns"],
+                            processed_monotonic_ns=base["processed_monotonic_ns"],
+                            wire_was_bytes=base.get("wire_was_bytes", False),
+                            payload=payload,
                             sha256=data.get("sha256", ""),
                         )
+                    except (KeyError, ValueError):
+                        continue
 
     def count(self, day: date | None = None) -> int:
         return sum(1 for _ in self.replay(day))
 
     def sha256_root(self, day: date | None = None) -> str:
-        """Deterministic hash over every record's canonical bytes.
+        """Deterministic hash over every record's canonical envelope bytes.
 
-        Used to detect silent mutation of the raw layer (see daily manifests).
+        Because the canonical envelope embeds the exact wire bytes, the root
+        hash detects ANY mutation of wire content, ordering, or formatting.
         """
         h = hashlib.sha256()
         for record in self.replay(day):
             h.update(
                 json.dumps(
-                    {
-                        "received_at_ns": record.received_at_ns,
-                        "source": record.source,
-                        "collector_version": record.collector_version,
-                        "connection_id": record.connection_id,
-                        "message_sequence_local": record.message_sequence_local,
-                        "processed_at_ns": record.processed_at_ns,
-                        "payload": record.payload,
-                    },
+                    _envelope_dict(record),
                     sort_keys=True,
                     separators=(",", ":"),
+                    ensure_ascii=True,
                 ).encode("utf-8")
             )
         return h.hexdigest()
+
+    def scan(self, day: date | None = None) -> dict:
+        """Report valid records, quarantined partial lines, and hash mismatches."""
+        result = {"valid": 0, "partial_lines": 0, "hash_mismatches": 0}
+        if day is not None:
+            files = self._day_files(self.day_dir(day))
+        else:
+            files = []
+            for directory in sorted(p for p in self.root.rglob("*") if p.is_dir()):
+                files.extend(self._day_files(directory))
+            files = sorted(set(files))
+        for f in files:
+            handle = gzip.open(f, "rt", encoding="utf-8") if f.suffix == ".gz" else open(f, "r", encoding="utf-8")
+            with handle:
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError:
+                        result["partial_lines"] += 1
+                        continue
+                    canonical = data.get("canonical_json", "")
+                    stored = data.get("sha256", "")
+                    computed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+                    if computed != stored:
+                        result["hash_mismatches"] += 1
+                    else:
+                        result["valid"] += 1
+        return result
 
 
 def record_day(record: RawRecord) -> date:
@@ -283,7 +416,7 @@ def list_days(root: str | Path) -> list[date]:
             for day_dir in sorted(
                 p for p in month_dir.iterdir() if p.is_dir() and p.name.isdigit()
             ):
-                if list(day_dir.glob("*.jsonl*")):
+                if RawStore(base)._day_files(day_dir):
                     days.append(
                         date(int(year_dir.name), int(month_dir.name), int(day_dir.name))
                     )

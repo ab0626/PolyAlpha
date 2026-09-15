@@ -132,26 +132,58 @@ class MarketCollector:
 
     # ── Raw capture ─────────────────────────────────────────────────────────
 
-    def _capture(self, payload: dict, received_at_ns: int) -> None:
-        """Write one raw message to the immutable store with full envelope."""
+    def _capture(
+        self,
+        payload: dict,
+        wire: str,
+        received_at_ns: int,
+        received_monotonic_ns: int,
+        exchange_timestamp_ms: int | None = None,
+    ) -> None:
+        """Write one raw message to the immutable store with full envelope.
+
+        The exact wire text is preserved verbatim (never re-serialized) and
+        both wall and monotonic receive clocks are recorded.
+        """
         self._sequence += 1
         self.raw.append(
             source=SOURCE_MARKET_WS,
             connection_id=self._connection_id or "none",
             payload=payload,
+            wire=wire,
             received_at_ns=received_at_ns,
+            received_monotonic_ns=received_monotonic_ns,
             message_sequence_local=self._sequence,
+            exchange_timestamp_ms=exchange_timestamp_ms,
         )
         self.stats.messages_received += 1
         self.stats.last_message_at = received_at_ns / 1e9
+        if exchange_timestamp_ms is not None:
+            lag = received_at_ns - exchange_timestamp_ms * 1_000_000
+            if lag > 0 and len(self.stats.receive_lag_ns) < 100_000:
+                self.stats.receive_lag_ns.append(int(lag))
 
     # ── Event dispatch ──────────────────────────────────────────────────────
+
+    def _exchange_ts(self, event: dict) -> int | None:
+        ts = event.get("timestamp")
+        if isinstance(ts, str) and ts.isdigit():
+            return int(ts)
+        if isinstance(ts, int):
+            return ts
+        return None
 
     def process(self, raw_message: str) -> list[dict]:
         """Handle one raw WS text message. Returns derived book snapshots."""
         received_at_ns = time.time_ns()
-        self._capture(json.loads(raw_message), received_at_ns)
-        return self._process_events(json.loads(raw_message), received_at_ns)
+        received_monotonic_ns = time.monotonic_ns()
+        payload = json.loads(raw_message)
+        events = payload if isinstance(payload, list) else [payload]
+        exchange_ts = self._exchange_ts(events[0]) if events else None
+        self._capture(
+            payload, raw_message, received_at_ns, received_monotonic_ns, exchange_ts
+        )
+        return self._process_events(payload, received_at_ns)
 
     def _process_events(self, payload: dict, received_at_ns: int) -> list[dict]:
         events = payload if isinstance(payload, list) else [payload]

@@ -31,6 +31,7 @@ class DailyManifest:
     dropped_connections: int
     reconciliations: int
     book_mismatches: int
+    previous_manifest_sha256: str | None
     file_hashes: dict[str, str]
 
     def as_dict(self) -> dict:
@@ -46,6 +47,7 @@ class DailyManifest:
             "dropped_connections": self.dropped_connections,
             "reconciliations": self.reconciliations,
             "book_mismatches": self.book_mismatches,
+            "previous_manifest_sha256": self.previous_manifest_sha256,
             "file_hashes": self.file_hashes,
         }
 
@@ -75,8 +77,14 @@ def build_daily_manifest(
     dropped_connections: int,
     reconciliations: int,
     book_mismatches: int,
+    previous_manifest_sha256: str | None = None,
 ) -> DailyManifest:
-    """Build the manifest for one UTC day by reading the raw store."""
+    """Build the manifest for one UTC day by reading the raw store.
+
+    The `previous_manifest_sha256` links this day to the prior day's manifest,
+    forming a hash chain so mutation/deletion/reordering of historical
+    manifests becomes detectable, not just mutation of each day's raw files.
+    """
     directory = raw.day_dir(day)
     files = sorted(
         [p for p in directory.glob("*.jsonl*") if p.is_file()]
@@ -95,16 +103,36 @@ def build_daily_manifest(
         dropped_connections=dropped_connections,
         reconciliations=reconciliations,
         book_mismatches=book_mismatches,
+        previous_manifest_sha256=previous_manifest_sha256,
         file_hashes=file_hashes,
     )
 
 
 class ManifestWriter:
-    """Append-only writer for daily manifests under a manifests directory."""
+    """Append-only writer for daily manifests under a manifests directory.
+
+    Each day's manifest records previous_manifest_sha256 (the combined hash of
+    the prior day), forming a tamper-evident hash chain.
+    """
 
     def __init__(self, root: str | Path):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
+
+    def previous_day_hash(self, day: date) -> str | None:
+        """Combined hash of the most recent manifest strictly before `day`."""
+        prev = None
+        for p in sorted(self.root.glob("*.json")):
+            try:
+                d = date.fromisoformat(p.stem)
+            except ValueError:
+                continue
+            if d < day and (prev is None or d > prev):
+                prev = d
+        if prev is None:
+            return None
+        m = self.read(prev)
+        return m.combined_hash() if m else None
 
     def write(self, manifest: DailyManifest) -> Path:
         """Write the manifest file. Refuses to overwrite an existing day."""
@@ -112,6 +140,24 @@ class ManifestWriter:
         if path.exists():
             raise FileExistsError(
                 f"manifest already exists for {manifest.date.isoformat()}: {path}"
+            )
+        # Auto-chain to the prior day if not already linked.
+        if manifest.previous_manifest_sha256 is None:
+            prev = self.previous_day_hash(manifest.date)
+            manifest = DailyManifest(
+                date=manifest.date,
+                collector_commit=manifest.collector_commit,
+                config_hash=manifest.config_hash,
+                raw_files=manifest.raw_files,
+                raw_messages=manifest.raw_messages,
+                markets_observed=manifest.markets_observed,
+                resolved_markets=manifest.resolved_markets,
+                raw_sha256_root=manifest.raw_sha256_root,
+                dropped_connections=manifest.dropped_connections,
+                reconciliations=manifest.reconciliations,
+                book_mismatches=manifest.book_mismatches,
+                previous_manifest_sha256=prev,
+                file_hashes=manifest.file_hashes,
             )
         payload = manifest.as_dict()
         payload["manifest_sha256"] = manifest.combined_hash()
@@ -137,6 +183,7 @@ class ManifestWriter:
             dropped_connections=data["dropped_connections"],
             reconciliations=data["reconciliations"],
             book_mismatches=data["book_mismatches"],
+            previous_manifest_sha256=data.get("previous_manifest_sha256"),
             file_hashes=data["file_hashes"],
         )
 

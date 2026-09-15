@@ -52,19 +52,53 @@ class BookReconciliationResult:
 
 
 def _book_hash(bids: list, asks: list) -> str:
-    """Deterministic hash of a book's levels, independent of ordering."""
+    """Deterministic hash of canonical book levels.
+
+    Input levels are canonicalized first (see _canonical_levels), so hash
+    equality means book-state equality regardless of ordering or decimal
+    formatting in the original representation.
+    """
+    canonical = _canonical_levels(bids, asks)
     h = hashlib.sha256()
     for side in ("bids", "asks"):
-        for level in sorted(
-            bids if side == "bids" else asks,
-            key=lambda x: str(x.get("price", "")),
-        ):
-            h.update(f"{side}:{level.get('price')}:{level.get('size')};".encode())
+        for price, size in canonical[side]:
+            h.update(f"{side}:{price}:{size};".encode())
     return h.hexdigest()[:16]
 
 
-def _levels_to_dict(levels: list) -> dict[str, Decimal]:
-    return {str(x.get("price")): number(x.get("size", 0)) for x in levels}
+def _canonical_levels(
+    bids: list, asks: list
+) -> dict[str, list[tuple[str, str]]]:
+    """Canonicalize order-book levels for comparison/hashing.
+
+    Rules:
+      * bids sorted descending by price, asks ascending
+      * prices/sizes normalized through Decimal (never float serialization)
+      * zero-size levels removed (per state rules: size==0 deletes a level)
+      * duplicate prices collapsed (later size wins), NaN/negative dropped
+    """
+    def _normalize(levels, drop_side):
+        by_price: dict[Decimal, Decimal] = {}
+        for level in levels:
+            try:
+                price = number(level.get("price"))
+                size = number(level.get("size", 0))
+            except Exception:  # noqa: BLE001 - malformed level is not a book state
+                continue
+            if not price.is_finite() or not size.is_finite() or price < 0:
+                continue
+            if size == 0:
+                by_price.pop(price, None)  # size==0 deletes the level
+            else:
+                by_price[price] = size
+        return by_price
+
+    bid_map = _normalize(bids, "bids")
+    ask_map = _normalize(asks, "asks")
+    return {
+        "bids": [(str(p), str(q)) for p, q in sorted(bid_map.items(), reverse=True)],
+        "asks": [(str(p), str(q)) for p, q in sorted(ask_map.items())],
+    }
 
 
 def reconcile_book(
@@ -85,27 +119,24 @@ def reconcile_book(
         BookReconciliationResult describing whether local matches remote.
     """
     remote = parse_book(remote_raw, datetime.fromtimestamp(received_at_ns / 1e9, UTC), token)
-    local_bids = _levels_to_dict(local.get("bids", []))
-    local_asks = _levels_to_dict(local.get("asks", []))
-    remote_bids = _levels_to_dict(
-        [{"price": str(x.price), "size": str(x.size)} for x in remote.bids]
-    )
-    remote_asks = _levels_to_dict(
-        [{"price": str(x.price), "size": str(x.size)} for x in remote.asks]
+    local_canon = _canonical_levels(local.get("bids", []), local.get("asks", []))
+    remote_canon = _canonical_levels(
+        [{"price": str(x.price), "size": str(x.size)} for x in remote.bids],
+        [{"price": str(x.price), "size": str(x.size)} for x in remote.asks],
     )
 
-    all_prices = set(local_bids) | set(remote_bids) | set(local_asks) | set(remote_asks)
+    # Count differing price levels across both sides.
     difference_count = 0
     max_size_diff = Decimal(0)
-    for price in all_prices:
-        lb = local_bids.get(price, Decimal(0))
-        rb = remote_bids.get(price, Decimal(0))
-        la = local_asks.get(price, Decimal(0))
-        ra = remote_asks.get(price, Decimal(0))
-        if lb != rb or la != ra:
-            difference_count += 1
-            for a, b in ((lb, rb), (la, ra)):
-                diff = abs(a - b)
+    for side in ("bids", "asks"):
+        lmap = dict(local_canon[side])
+        rmap = dict(remote_canon[side])
+        for price in set(lmap) | set(rmap):
+            lb = lmap.get(price, Decimal(0))
+            rb = rmap.get(price, Decimal(0))
+            if lb != rb:
+                difference_count += 1
+                diff = abs(Decimal(lb) - Decimal(rb))
                 if diff > max_size_diff:
                     max_size_diff = diff
 
@@ -114,11 +145,7 @@ def reconcile_book(
         [{"price": str(x.price), "size": str(x.size)} for x in remote.bids],
         [{"price": str(x.price), "size": str(x.size)} for x in remote.asks],
     )
-    matches = (
-        local_hash == remote_hash
-        and local_bids == remote_bids
-        and local_asks == remote_asks
-    )
+    matches = local_hash == remote_hash and difference_count == 0
 
     return BookReconciliationResult(
         market=remote.condition_id,
