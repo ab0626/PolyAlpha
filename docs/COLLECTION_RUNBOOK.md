@@ -192,6 +192,30 @@ The burn-in report (`burnin/burnin-report.md`) records the live-ready
 scoreboard: phase-machine violations, intent-ledger duplicates, kill-switch
 bypasses, approval-boundary bypasses — all must be 0.
 
+### Fault evidence is append-only
+
+Each injected fault is recorded as its own event in
+`burnin/fault-evidence.jsonl` (`fault_id`, `type`, `started_at`,
+`expected_behavior`, `observed_behavior`, `result`), so "11/11 PASS" can be
+audited as a list of concrete scenarios.
+
+**Never retroactively edit a failed fault record.** If a fault fails, append a
+new event for the rerun rather than changing the failed one:
+
+    FI-007-A  hard_process_kill              FAIL
+    FI-007-B  hard_process_kill_after_fix    PASS
+
+That preserves the experimental history. Likewise, if burn-in exposes a bug,
+do not pretend the old implementation commit was fine — the honest chain is:
+
+    f5f64a1 → burn-in FAIL → bug discovered → regression test → fix
+      → new implementation commit → new burn-in → PASS
+
+The frozen research baseline (`334b911` / `v0.3.0-research-baseline-334b911`)
+remains unchanged throughout as long as `research_logic_sha256` is unchanged.
+The implementation commit is auto-detected from git at burn-in time; it is
+*by definition* the code that is running.
+
 ---
 
 ## 2. Declare the official start boundary

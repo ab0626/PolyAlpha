@@ -24,11 +24,31 @@ implements no new research logic and transmits nothing.
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+
+def _current_commit() -> str:
+    """Detect the operational implementation commit from git at run time.
+
+    The implementation commit is by definition the code that is running, so it
+    must never be hardcoded (that value would silently go stale after any
+    commit, including this one). Falls back to 'unknown' if git is unavailable.
+    """
+    try:
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=ROOT, stderr=subprocess.DEVNULL
+            )
+            .decode()
+            .strip()
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
 
 
 def main() -> int:
@@ -39,7 +59,7 @@ def main() -> int:
     parser.add_argument("--report-dir", default="burnin")
     parser.add_argument("--duration", type=float, default=3600.0, help="Seconds for normal collection")
     parser.add_argument("--baseline-commit", default="334b911")
-    parser.add_argument("--implementation-commit", default="c969f30")
+    parser.add_argument("--implementation-commit", default=_current_commit())
     parser.add_argument("--config-hash", default="")
     parser.add_argument("--collector-version", default="v0.3.0")
     parser.add_argument("--fault-injection", default="network_disconnect:true,hard_kill:true,partial_jsonl:true,rest_429:true,ws_reconnect:true")
