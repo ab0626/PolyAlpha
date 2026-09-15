@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from ..replay_verification import ReplayCheckResult
@@ -115,25 +116,44 @@ class UsHealthTracker:
 
 @dataclass
 class UsBurnInProvenance:
-    """US implementation commit + hashes + phase + worktree at burn-in start."""
+    """US implementation commit + policy/version hashes + phase + worktree.
+
+    Three-layer model:
+      FROZEN POLICY      normalization_policy_sha256, reconciliation_policy_sha256,
+                         instrument_policy_sha256 (effectively-immutable fields only)
+      LAUNCH SNAPSHOT    instrument_policy_sha256_at_start (anchor)
+      DURING RUN         versioned instrument metadata updates (append-only,
+                         timestamped, hashed) — state evolution is observed,
+                         NOT a failure
+    """
 
     implementation_commit: str
     collector_sha256: str
     interface_sha256: str
-    instrument_snapshot_hash: str
+    instrument_policy_sha256: str  # immutable-field anchor (symbol/tick/minQty/priceScale)
     reconciliation_policy_sha256: str
     phase: str
     working_tree_dirty: bool
+    metadata_chain: "UsInstrumentMetadataChain | None" = None
+
+    def __post_init__(self) -> None:
+        if self.metadata_chain is None:
+            object.__setattr__(self, "metadata_chain", UsInstrumentMetadataChain())
+
+    @property
+    def chain(self) -> "UsInstrumentMetadataChain":
+        return self.metadata_chain
 
     def as_dict(self) -> dict:
         return {
             "implementation_commit": self.implementation_commit,
             "collector_sha256": self.collector_sha256,
             "interface_sha256": self.interface_sha256,
-            "instrument_snapshot_hash": self.instrument_snapshot_hash,
+            "instrument_policy_sha256": self.instrument_policy_sha256,
             "reconciliation_policy_sha256": self.reconciliation_policy_sha256,
             "phase": self.phase,
             "working_tree_dirty": self.working_tree_dirty,
+            "instrument_metadata_chain": self.metadata_chain.as_dict(),
         }
 
 
@@ -147,6 +167,10 @@ class UsBurnInReport:
     replay: ReplayCheckResult
     fault_injection_passed: bool
     gate_passed: bool = False
+    # Final observed instrument-policy hash (computed from the live instrument
+    # set at report time). If it differs from the launch anchor with no
+    # attributed metadata-chain entry, that is unexplained policy drift.
+    final_instrument_policy_sha256: str = ""
 
     def hard_failure_count(self) -> int:
         """US-specific zero-tolerance hard-failure counters."""
@@ -164,7 +188,11 @@ class UsBurnInReport:
         )
 
     def qualifying(self) -> tuple[bool, list[str]]:
-        """US FINAL GATE: zero-tolerance hard failures + replay + faults."""
+        """US FINAL GATE: zero-tolerance hard failures + replay + faults.
+
+        Instrument policy (immutable fields) drift is a hard failure; observed
+        state evolution captured in the metadata chain is NOT a failure.
+        """
         failures: list[str] = []
         h = self.health
         if h.unknown_symbol_events:
@@ -187,7 +215,30 @@ class UsBurnInReport:
             failures.append("fault_injection")
         if self.provenance.working_tree_dirty:
             failures.append("working_tree_dirty")
+        # Instrument policy drift (immutable fields) is a hard failure.
+        if self._policy_drifted:
+            failures.append("instrument_policy_drift")
         return (len(failures) == 0, failures)
+
+    @property
+    def _policy_drifted(self) -> bool:
+        """Unexplained drift of the instrument policy anchor.
+
+        If the final observed policy hash differs from the launch anchor, it is
+        only acceptable if the change is attributed in the metadata chain
+        (proving it was observed, versioned, replayable). Unexplained drift
+        with no chain entry is a hard failure.
+        """
+        if not self.final_instrument_policy_sha256:
+            return False  # no final hash supplied -> cannot assert drift
+        if self.final_instrument_policy_sha256 == self.provenance.instrument_policy_sha256:
+            return False  # policy unchanged
+        policy_changes = [
+            u for u in self.provenance.metadata_chain.updates
+            if u["field"] in ("tick_size", "price_scale", "minimum_trade_qty")
+        ]
+        # A policy change attributed in the chain is explained; otherwise drift.
+        return len(policy_changes) == 0
 
     def as_dict(self) -> dict:
         return {
@@ -199,6 +250,7 @@ class UsBurnInReport:
             "replay": self.replay.as_dict(),
             "fault_injection_passed": self.fault_injection_passed,
             "hard_failure_count": self.hard_failure_count(),
+            "final_instrument_policy_sha256": self.final_instrument_policy_sha256,
             "gate_passed": self.gate_passed,
         }
 
@@ -220,7 +272,10 @@ def render_us_burnin_markdown(report: UsBurnInReport) -> str:
         f"Implementation commit: {report.provenance.implementation_commit}",
         f"Collector SHA256: {report.provenance.collector_sha256}",
         f"Interface SHA256: {report.provenance.interface_sha256}",
-        f"Instrument snapshot hash: {report.provenance.instrument_snapshot_hash}",
+        f"Instrument policy SHA256 (launch anchor): {report.provenance.instrument_policy_sha256}",
+        f"Instrument policy SHA256 (final observed): {report.final_instrument_policy_sha256 or '(not supplied)'}",
+        f"Instrument metadata updates: {report.provenance.metadata_chain.as_dict()['update_count']}",
+        f"Instrument metadata chain root: {report.provenance.metadata_chain.root_hash()}",
         f"Reconciliation policy SHA256: {report.provenance.reconciliation_policy_sha256}",
         f"Phase: {report.provenance.phase}",
         f"Worktree at launch: {'CLEAN' if not report.provenance.working_tree_dirty else 'DIRTY (NOT ELIGIBLE)'}",
@@ -279,11 +334,16 @@ def write_us_burnin_report(
     return directory, digest
 
 
-def instrument_snapshot_hash(instruments) -> str:
-    """Deterministic hash of the authoritative instrument snapshot.
+def instrument_policy_hash(instruments) -> str:
+    """Deterministic hash of the EFFECTIVELY-IMMUTABLE instrument fields.
 
-    Locks the exact instrument-normalization rules (symbol, tickSize,
-    minimumTradeQty, priceScale, state) that the burn-in validates against.
+    Locks the exact instrument-normalization rules that the burn-in validates
+    against: symbol, tickSize, minimumTradeQty, priceScale. These must NOT
+    change silently during a run; drift here is a hard failure.
+
+    Deliberately EXCLUDES state (and any other field that legitimately evolves,
+    e.g. PREOPEN -> OPEN -> CLOSED). State evolution is captured by the
+    versioned metadata chain, not the policy anchor.
     """
     h = hashlib.sha256()
     for symbol in sorted(instruments._by_symbol):
@@ -295,10 +355,55 @@ def instrument_snapshot_hash(instruments) -> str:
                     "tick_size": str(inst.tick_size),
                     "minimum_trade_qty": str(inst.minimum_trade_qty),
                     "price_scale": inst.price_scale,
-                    "state": inst.state.value,
                 },
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode("utf-8")
         )
     return h.hexdigest()
+
+
+@dataclass
+class UsInstrumentMetadataChain:
+    """Versioned, append-only, timestamped, hashed instrument metadata updates.
+
+    Fields that legitimately evolve during a run (e.g. market state) are
+    recorded here as observed + attributed + replayable versions — they are
+    NOT provenance failures. The chain root hash proves the full update
+    history was captured deterministically.
+    """
+
+    updates: list[dict] = field(default_factory=list)
+
+    def record(self, symbol: str, field: str, old_value, new_value) -> dict:
+        from datetime import timezone
+
+        update = {
+            "sequence": len(self.updates) + 1,
+            "symbol": symbol,
+            "field": field,
+            "old_value": old_value,
+            "new_value": new_value,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        # Chain: each update is hashed together with the prior root, making
+        # the history append-only and tamper-evident.
+        prior = self.root_hash()
+        update["prior_hash"] = prior
+        canonical = json.dumps(update, sort_keys=True, separators=(",", ":"))
+        update["hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        self.updates.append(update)
+        return update
+
+    def root_hash(self) -> str:
+        """Merkle-ish root over the full metadata history."""
+        if not self.updates:
+            return hashlib.sha256(b"").hexdigest()
+        return self.updates[-1]["hash"]
+
+    def as_dict(self) -> dict:
+        return {
+            "update_count": len(self.updates),
+            "root_hash": self.root_hash(),
+            "updates": list(self.updates),
+        }
