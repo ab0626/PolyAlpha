@@ -1,6 +1,10 @@
 # Polyalpha
 
-A runnable Python 3.12+ research and paper-trading platform for prediction markets. The implementation starts with recorded market state and realistic execution, then adds accounting, correlated exposure limits, probability forecasts, calibration, and receipt-time replay. It has no real-order submission or wallet capability.
+A production-oriented quantitative prediction-market trading system under empirical validation. The implementation starts with point-in-time research, execution-aware backtesting, and immutable forward market-data capture, then adds shadow/paper execution, rigorous risk controls, and a staged path toward operator-approved live deployment.
+
+**Execution mode:** current execution is `RESEARCH` / `PAPER` / `SHADOW` only. The target architecture is *live-trading-ready* — an execution abstraction (`OrderIntent` → `ExecutionGateway`), a pre-trade safety gate, kill switch, order-state reconciliation, and idempotency are in place — but **no autonomous real-money wagering is implemented**. Live deployment requires empirical validation, compliance checks, and explicit operator approval, and remains behind a deliberate human approval boundary.
+
+**Alpha status: UNKNOWN** — not positive, not negative — until prospective evidence establishes otherwise.
 
 ## Quick start
 
