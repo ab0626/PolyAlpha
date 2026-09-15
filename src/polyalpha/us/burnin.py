@@ -171,6 +171,11 @@ class UsBurnInReport:
     # set at report time). If it differs from the launch anchor with no
     # attributed metadata-chain entry, that is unexplained policy drift.
     final_instrument_policy_sha256: str = ""
+    # Fields of the frozen instrument policy that the venue contract EXPLICITLY
+    # permits to change during a run (e.g. none for priceScale/tickSize/minQty
+    # by default). A recorded change to a field NOT listed here is attributable
+    # but policy-breaking -> NON-QUALIFYING.
+    permitted_policy_changes: frozenset = frozenset()
 
     def hard_failure_count(self) -> int:
         """US-specific zero-tolerance hard-failure counters."""
@@ -190,8 +195,15 @@ class UsBurnInReport:
     def qualifying(self) -> tuple[bool, list[str]]:
         """US FINAL GATE: zero-tolerance hard failures + replay + faults.
 
-        Instrument policy (immutable fields) drift is a hard failure; observed
-        state evolution captured in the metadata chain is NOT a failure.
+        Three-way instrument provenance semantics:
+          1. expected mutable metadata change (state lifecycle) recorded in the
+             chain                  -> PASS
+          2. frozen-policy change, unrecorded
+                                     -> HARD FAIL (instrument_policy_drift)
+          3. frozen-policy change, recorded but NOT in permitted_policy_changes
+                                     -> NON-QUALIFYING
+                                     (instrument_policy_change_not_permitted)
+             Frozen-policy change, recorded AND permitted -> PASS
         """
         failures: list[str] = []
         h = self.health
@@ -215,30 +227,46 @@ class UsBurnInReport:
             failures.append("fault_injection")
         if self.provenance.working_tree_dirty:
             failures.append("working_tree_dirty")
-        # Instrument policy drift (immutable fields) is a hard failure.
-        if self._policy_drifted:
+        # Instrument policy provenance: three-way distinction.
+        policy_status = self._policy_status
+        if policy_status == "hard_failure":
             failures.append("instrument_policy_drift")
+        elif policy_status == "not_permitted":
+            failures.append("instrument_policy_change_not_permitted")
         return (len(failures) == 0, failures)
 
     @property
-    def _policy_drifted(self) -> bool:
-        """Unexplained drift of the instrument policy anchor.
+    def _policy_status(self) -> str:
+        """Classify the instrument policy anchor vs the metadata chain.
 
-        If the final observed policy hash differs from the launch anchor, it is
-        only acceptable if the change is attributed in the metadata chain
-        (proving it was observed, versioned, replayable). Unexplained drift
-        with no chain entry is a hard failure.
+        Returns one of:
+          "ok"             policy unchanged, or change recorded AND permitted
+          "hard_failure"   policy changed, change NOT recorded (unexplained)
+          "not_permitted"  policy changed, change recorded but NOT permitted
         """
         if not self.final_instrument_policy_sha256:
-            return False  # no final hash supplied -> cannot assert drift
+            return "ok"  # no final hash supplied -> cannot assert change
         if self.final_instrument_policy_sha256 == self.provenance.instrument_policy_sha256:
-            return False  # policy unchanged
-        policy_changes = [
+            return "ok"  # policy unchanged
+
+        # A frozen-policy field changed (policy hash differs). Find which fields
+        # were recorded as changed in the metadata chain.
+        policy_fields = ("tick_size", "price_scale", "minimum_trade_qty")
+        recorded_policy_changes = [
             u for u in self.provenance.metadata_chain.updates
-            if u["field"] in ("tick_size", "price_scale", "minimum_trade_qty")
+            if u["field"] in policy_fields
         ]
-        # A policy change attributed in the chain is explained; otherwise drift.
-        return len(policy_changes) == 0
+        if not recorded_policy_changes:
+            # Policy changed but nothing was recorded -> unexplained drift.
+            return "hard_failure"
+
+        # Policy changed and is recorded. It is only acceptable if the field is
+        # explicitly permitted by the venue contract.
+        permitted = self.permitted_policy_changes
+        recorded_fields = {u["field"] for u in recorded_policy_changes}
+        if recorded_fields.issubset(permitted):
+            return "ok"  # recorded AND explicitly permitted
+        return "not_permitted"
 
     def as_dict(self) -> dict:
         return {
@@ -251,6 +279,8 @@ class UsBurnInReport:
             "fault_injection_passed": self.fault_injection_passed,
             "hard_failure_count": self.hard_failure_count(),
             "final_instrument_policy_sha256": self.final_instrument_policy_sha256,
+            "permitted_policy_changes": sorted(self.permitted_policy_changes),
+            "instrument_policy_status": self._policy_status,
             "gate_passed": self.gate_passed,
         }
 
@@ -274,6 +304,8 @@ def render_us_burnin_markdown(report: UsBurnInReport) -> str:
         f"Interface SHA256: {report.provenance.interface_sha256}",
         f"Instrument policy SHA256 (launch anchor): {report.provenance.instrument_policy_sha256}",
         f"Instrument policy SHA256 (final observed): {report.final_instrument_policy_sha256 or '(not supplied)'}",
+        f"Instrument policy status: {report._policy_status}",
+        f"Instrument policy permitted changes: {', '.join(sorted(report.permitted_policy_changes)) or '(none)'}",
         f"Instrument metadata updates: {report.provenance.metadata_chain.as_dict()['update_count']}",
         f"Instrument metadata chain root: {report.provenance.metadata_chain.root_hash()}",
         f"Reconciliation policy SHA256: {report.provenance.reconciliation_policy_sha256}",

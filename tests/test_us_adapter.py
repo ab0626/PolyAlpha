@@ -1155,9 +1155,11 @@ class TestUsPolicyDriftGate:
         chain.record("SYMB_1001", "state", "PREOPEN", "OPEN")
         chain.record("SYMB_1001", "state", "OPEN", "CLOSED")
         # Policy anchor unchanged (state is not in the policy hash).
+        assert report._policy_status == "ok"
         passed, failures = report.qualifying()
         assert passed is True
         assert "instrument_policy_drift" not in failures
+        assert "instrument_policy_change_not_permitted" not in failures
 
     def test_unexplained_policy_drift_fails(self):
         """A final policy hash differing from the launch anchor with no chain
@@ -1168,11 +1170,28 @@ class TestUsPolicyDriftGate:
         assert passed is False
         assert "instrument_policy_drift" in failures
 
-    def test_attributed_policy_change_passes(self):
-        """A policy change recorded in the metadata chain is attributed and
-        replayable -> not drift."""
+    def test_recorded_unpermitted_policy_change_fails(self):
+        """A policy change recorded in the chain is attributable but, unless
+        the venue contract explicitly permits the field, it is policy-breaking
+        -> NON-QUALIFYING."""
         report = _us_report()
         report.provenance.metadata_chain.record("SYMB_1001", "price_scale", 1000, 10000)
         report.final_instrument_policy_sha256 = "q" * 64  # differs from launch
         passed, failures = report.qualifying()
-        assert passed is True  # policy change is attributed via the chain
+        assert passed is False
+        assert "instrument_policy_change_not_permitted" in failures
+        assert "instrument_policy_drift" not in failures  # not unexplained, just unpermitted
+
+    def test_recorded_permitted_policy_change_passes(self):
+        """A recorded policy change to a field the venue contract explicitly
+        permits -> attributable AND acceptable -> PASS."""
+        report = _us_report()
+        report.permitted_policy_changes = frozenset({"price_scale"})
+        report.provenance.metadata_chain.record("SYMB_1001", "price_scale", 1000, 10000)
+        report.final_instrument_policy_sha256 = "q" * 64  # differs from launch
+        passed, failures = report.qualifying()
+        assert passed is True
+
+    def test_default_permits_nothing(self):
+        """By default no frozen-policy field is permitted to change."""
+        assert UsBurnInReport.__dataclass_fields__["permitted_policy_changes"].default == frozenset()
