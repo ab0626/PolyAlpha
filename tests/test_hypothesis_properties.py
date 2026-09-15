@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis.strategies import (
     composite,
     decimals,
@@ -37,6 +37,25 @@ from polyalpha.uncertainty import UncertaintyEstimate
 
 D = Decimal
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def stable_settings(max_examples):
+    """Deterministic, load-immune Hypothesis settings.
+
+    derandomize=True fixes a per-test seed so a run is fully reproducible and
+    cannot flip based on collection order or global RNG state.
+
+    suppress_health_check=[HealthCheck.too_slow] disables the wall-clock input
+    generation check: the decimals() composite is fast when the machine is
+    idle, but can exceed the ~1s check under full-suite CPU load, producing an
+    order-dependent FailedHealthCheck even though the strategy and assertion
+    are valid.
+    """
+    return settings(
+        max_examples=max_examples,
+        derandomize=True,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
 
 
 # ─── Strategies ───────────────────────────────────────────────────────────────
@@ -93,14 +112,14 @@ class TestBrierScoreProperties:
     """Properties of the Brier score: 0 = perfect, 1 = worst, symmetry."""
 
     @given(probs=lists(prob_strategy(), min_size=5, max_size=50))
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_brier_perfect_predictions(self, probs):
         outcomes = [1 if p >= D("0.5") else 0 for p in probs]
         result = cal_metrics([float(p) for p in probs], outcomes)
         assert 0 <= result["brier"] <= 1
 
     @given(n=integers(min_value=5, max_value=30))
-    @settings(max_examples=20)
+    @stable_settings(max_examples=20)
     def test_brier_worst_case(self, n):
         probs = [1.0] * n
         outcomes = [0] * n
@@ -108,7 +127,7 @@ class TestBrierScoreProperties:
         assert result["brier"] == 1.0
 
     @given(n=integers(min_value=5, max_value=30))
-    @settings(max_examples=20)
+    @stable_settings(max_examples=20)
     def test_brier_best_case(self, n):
         probs = [0.0] * n
         outcomes = [0] * n
@@ -116,14 +135,14 @@ class TestBrierScoreProperties:
         assert result["brier"] == 0.0
 
     @given(probs=lists(prob_strategy(), min_size=5, max_size=30))
-    @settings(max_examples=30)
+    @stable_settings(max_examples=30)
     def test_brier_bounded(self, probs):
         outcomes = [1 if p >= D("0.5") else 0 for p in probs]
         result = cal_metrics([float(p) for p in probs], outcomes)
         assert 0 <= result["brier"] <= 1
 
     @given(probs=lists(prob_strategy(), min_size=5, max_size=30))
-    @settings(max_examples=30)
+    @stable_settings(max_examples=30)
     def test_ece_bounded(self, probs):
         outcomes = [1 if p >= D("0.5") else 0 for p in probs]
         result = cal_metrics([float(p) for p in probs], outcomes)
@@ -134,7 +153,7 @@ class TestLogLossProperties:
     """Log loss properties: non-negative, penalizes confident wrong predictions."""
 
     @given(n=integers(min_value=5, max_value=30))
-    @settings(max_examples=20)
+    @stable_settings(max_examples=20)
     def test_log_loss_perfect(self, n):
         probs = [0.001] * n
         outcomes = [0] * n
@@ -142,7 +161,7 @@ class TestLogLossProperties:
         assert result["log_loss"] >= 0
 
     @given(probs=lists(prob_strategy(), min_size=5, max_size=30))
-    @settings(max_examples=30)
+    @stable_settings(max_examples=30)
     def test_log_loss_nonnegative(self, probs):
         outcomes = [1 if p >= D("0.5") else 0 for p in probs]
         result = cal_metrics([float(p) for p in probs], outcomes)
@@ -156,32 +175,32 @@ class TestKellyFractionProperties:
     """Kelly fraction: non-negative, bounded [0, 1], zero when no edge."""
 
     @given(p=prob_strategy(), price=price_strategy())
-    @settings(max_examples=100)
+    @stable_settings(max_examples=100)
     def test_kelly_nonnegative(self, p, price):
         result = kelly_fraction(p, price)
         assert result >= 0
 
     @given(p=prob_strategy(), price=price_strategy())
-    @settings(max_examples=100)
+    @stable_settings(max_examples=100)
     def test_kelly_bounded(self, p, price):
         result = kelly_fraction(p, price)
         assert 0 <= result <= 1
 
     @given(price=price_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_kelly_no_edge_at_fair(self, price):
         p = float(price)
         result = kelly_fraction(D(str(p)), price)
         assert result == 0
 
     @given(p=decimals(min_value=D("0.9"), max_value=D(1), places=4), price=price_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_kelly_high_prob(self, p, price):
         result = kelly_fraction(p, price)
         assert 0 <= result <= 1
 
     @given(price=price_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_fractional_kelly_smaller(self, price):
         p = D(str(float(price))) + D("0.1")
         if p > 1:
@@ -195,19 +214,19 @@ class TestGrossEdgeProperties:
     """Gross edge: positive when fair > execution, negative otherwise."""
 
     @given(fair=prob_strategy(), vwap=price_strategy())
-    @settings(max_examples=100)
+    @stable_settings(max_examples=100)
     def test_yes_edge_formula(self, fair, vwap):
         edge = calculate_gross_edge(fair, vwap, "YES")
         assert edge == fair - vwap
 
     @given(fair=prob_strategy(), vwap=price_strategy())
-    @settings(max_examples=100)
+    @stable_settings(max_examples=100)
     def test_no_edge_formula(self, fair, vwap):
         edge = calculate_gross_edge(fair, vwap, "NO")
         assert edge == (1 - fair) - vwap
 
     @given(fair=prob_strategy(), vwap=price_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_yes_no_symmetry(self, fair, vwap):
         yes_edge = calculate_gross_edge(fair, vwap, "YES")
         no_edge = calculate_gross_edge(fair, vwap, "NO")
@@ -241,13 +260,13 @@ class TestLiquidityPenaltyProperties:
     """Liquidity penalty: zero when depth >= requested, positive otherwise."""
 
     @given(depth=nonneg_decimal(), requested=nonneg_decimal())
-    @settings(max_examples=100)
+    @stable_settings(max_examples=100)
     def test_penalty_nonneg(self, depth, requested):
         penalty = calculate_liquidity_penalty(depth, requested)
         assert penalty >= 0
 
     @given(requested=nonneg_decimal())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_zero_depth_doubles_penalty(self, requested):
         penalty = calculate_liquidity_penalty(D(0), requested)
         assert penalty == D("0.005") * 2
@@ -257,7 +276,7 @@ class TestStaleDataPenaltyProperties:
     """Stale data penalty: zero for fresh data, increases with age."""
 
     @given(age=st_floats(min_value=0, max_value=100))
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_penalty_nonneg(self, age):
         penalty = calculate_stale_data_penalty(age)
         assert penalty >= 0
@@ -323,7 +342,7 @@ class TestConstraintProperties:
         p2=prob_strategy(),
         p3=prob_strategy(),
     )
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_partition_violation(self, p1, p2, p3):
         c = Constraint(
             kind="partition",
@@ -338,7 +357,7 @@ class TestConstraintProperties:
             assert float(violations_list[0]["magnitude"]) > 0
 
     @given(p1=prob_strategy(), p2=prob_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_exclusive_violation(self, p1, p2):
         c = Constraint(
             kind="exclusive",
@@ -356,7 +375,7 @@ class TestConstraintProperties:
             assert len(violations_list) == 0
 
     @given(p1=prob_strategy(), p2=prob_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_implication_violation(self, p1, p2):
         c = Constraint(
             kind="implication",
@@ -373,7 +392,7 @@ class TestConstraintProperties:
             assert len(violations_list) == 0
 
     @given(p1=prob_strategy(), p2=prob_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_complement_violation(self, p1, p2):
         c = Constraint(
             kind="complement",
@@ -388,7 +407,7 @@ class TestConstraintProperties:
             assert violations_list[0]["kind"] == "complement"
 
     @given(p1=prob_strategy(), p2=prob_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_subsume_violation(self, p1, p2):
         c = Constraint(
             kind="subsume",
@@ -406,7 +425,7 @@ class TestConstraintProperties:
             assert len(violations_list) == 0
 
     @given(p=prob_strategy())
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_threshold_violation(self, p):
         c = Constraint(
             kind="threshold",
@@ -431,7 +450,7 @@ class TestUncertaintyProperties:
     """Uncertainty estimate bounds: lower <= probability <= upper."""
 
     @given(p=prob_strategy(), score=decimals(min_value=D(0), max_value=D(1), places=4))
-    @settings(max_examples=50)
+    @stable_settings(max_examples=50)
     def test_bounds_ordering(self, p, score):
         lo = max(D(0), p - score)
         hi = min(D(1), p + score)
