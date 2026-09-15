@@ -22,6 +22,18 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "frozen" / "v0.3.0-baseline.yaml"
 INTEGRITY = "integrity:"
 MODEL_PATHS = ("src/polyalpha",)
+# Collection-layer modules are data-acquisition infrastructure, not model
+# logic. They are intentionally EXCLUDED from the frozen model hash so that
+# fixing collector bugs during the burn-in does not invalidate the baseline.
+MODEL_EXCLUDE = {
+    "rawstore.py",
+    "market_collector.py",
+    "reconciler.py",
+    "market_metadata.py",
+    "collector_health.py",
+    "daily_manifest.py",
+    "collection.py",
+}
 FEATURE_PATHS = (
     "src/polyalpha/features",
     "src/polyalpha/domain.py",
@@ -30,9 +42,11 @@ FEATURE_PATHS = (
 )
 
 
-def _sha256_of_files(rel_paths: list[Path]) -> str:
+def _sha256_of_files(rel_paths: list[Path], exclude: set[str] | None = None) -> str:
     h = hashlib.sha256()
     for p in sorted(rel_paths, key=lambda x: str(x)):
+        if exclude and p.name in exclude:
+            continue
         h.update(p.read_bytes())
     return h.hexdigest()
 
@@ -91,13 +105,18 @@ def _write_config(integrity: dict[str, str]) -> None:
 
 
 def freeze() -> None:
+    # Write all integrity fields with config_sha256 blank first, because the
+    # config hash must cover the written values (git_commit etc.), not the
+    # stale values already on disk from a previous freeze.
     integrity = {
         "git_commit": _git_commit(),
         "git_tag": "v0.3.0-research-baseline",
-        "model_source_sha256": _sha256_of_files(_collect(MODEL_PATHS)),
+        "model_source_sha256": _sha256_of_files(_collect(MODEL_PATHS), MODEL_EXCLUDE),
         "feature_schema_sha256": _sha256_of_files(_collect(FEATURE_PATHS)),
-        "config_sha256": _config_sha256(),
+        "config_sha256": "",
     }
+    _write_config(integrity)
+    integrity["config_sha256"] = _config_sha256()
     _write_config(integrity)
     print("Frozen baseline written to", CONFIG)
     for k, v in integrity.items():
@@ -110,7 +129,7 @@ def verify() -> int:
         ("git_commit", _git_commit(), "working tree HEAD has changed since freeze"),
         (
             "model_source_sha256",
-            _sha256_of_files(_collect(MODEL_PATHS)),
+            _sha256_of_files(_collect(MODEL_PATHS), MODEL_EXCLUDE),
             "model source differs from frozen baseline",
         ),
         (

@@ -40,6 +40,42 @@ experiment:
   random_seed: 4262026
 
 # ============================================================
+# Universe separation (collection vs research vs signal vs executable).
+# The COLLECTION universe is deliberately broad: every reasonable active
+# order-book market is captured raw, so we can later ask "what happened to
+# the markets my filter rejected?". Research/signal/executable filters are
+# applied downstream, never at ingestion.
+# ============================================================
+universes:
+  collection:
+    active_only: true
+    include_markets_without_volume: true
+    max_pages: 1000
+    page_size: 100
+    reconcile_interval_seconds: 30
+    reconcile_max_tokens_per_pass: 25
+    raw_root: "data/raw"
+    manifest_root: "data/manifests"
+  research:
+    min_liquidity: "5000"
+    min_volume: "25000"
+    max_spread: "0.05"
+  signal:
+    min_net_edge: "0.025"
+  executable:
+    min_net_edge: "0.025"
+    max_spread: "0.05"
+
+collection:
+  database: "data/research.sqlite3"
+  page_size: 100
+  max_pages: 1
+  timeout_seconds: 20
+  attempts: 3
+  interval_seconds: 30
+  ws_heartbeat_seconds: 10
+
+# ============================================================
 # Integrity hashes — provenance for the frozen baseline.
 #   git_commit             : the tagged research-baseline commit
 #   model_source_sha256    : hash of src/polyalpha/**/*.py
@@ -47,8 +83,8 @@ experiment:
 #   config_sha256          : hash of THIS file (computed below)
 # ============================================================
 integrity:
-  git_commit: "eb2c5f4b9bcf5c27ad9db3bec64c2822a9f3a53a"
+  git_commit: "16d239bd16083563d0191e44fe4a10d691143ca6"
   git_tag: "v0.3.0-research-baseline"
-  model_source_sha256: "efc1f98bc9803a06a83f247fc252b5b073288ac3823c1faa655b560d1990bdf4"
+  model_source_sha256: "f772f8c9f9e983cbdaaa597320fe9d03c45dce7aa6a588274c054044e77248f2"
   feature_schema_sha256: "1857e04f5fc99afbb9b927e41e101a9c7b0f5fc29815c3271c665ccfd3e9048f"
-  config_sha256: "75d5fa475de79a005a584d76f984c4afd1ca0e4da457e6e4728f7bc42fcab8f1"
+  config_sha256: "66840b1737c365338527c7ad41d4821965366d52dbe76146947466875311e0e3"

@@ -31,7 +31,6 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
-import os
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -164,6 +163,7 @@ class RawStore:
             sort_keys=True,
             separators=(",", ":"),
         )
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         record = RawRecord(
             received_at_ns=record.received_at_ns,
             source=record.source,
@@ -172,9 +172,15 @@ class RawStore:
             message_sequence_local=record.message_sequence_local,
             processed_at_ns=record.processed_at_ns,
             payload=record.payload,
-            sha256=hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            sha256=digest,
         )
-        self._writer.write(canonical + "\n")
+        # Persist the digest alongside the canonical fields so a replay can
+        # independently verify each record was not mutated.
+        with_digest = json.loads(canonical)
+        with_digest["sha256"] = digest
+        self._writer.write(
+            json.dumps(with_digest, sort_keys=True, separators=(",", ":")) + "\n"
+        )
         # Flush so a crash cannot silently lose the most recent records and so
         # replay-while-running observes appended data.
         self._writer.flush()

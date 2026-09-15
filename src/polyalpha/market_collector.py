@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from .domain import Level, number
+from .domain import number
 from .parsing import parse_book
 from .rawstore import RawStore, SOURCE_MARKET_WS
 
@@ -181,7 +181,7 @@ class MarketCollector:
                 else:
                     # Unknown event type: still captured raw; do not fail the loop.
                     self.stats.record("parse_errors")
-            except (KeyError, ValueError, TypeError) as error:
+            except (KeyError, ValueError, TypeError):
                 self.stats.parse_errors += 1
                 self.invalidate()
                 raise
@@ -246,9 +246,9 @@ class MarketCollector:
             else:
                 levels[str(price)] = size
             # Validate top-of-book if the feed reports it.
-            for field, side_key in (("best_bid", "BUY"), ("best_ask", "SELL")):
-                if field in change and change[field] is not None:
-                    actual = number(change[field])
+            for top_field, side_key in (("best_bid", "BUY"), ("best_ask", "SELL")):
+                if top_field in change and change[top_field] is not None:
+                    actual = number(change[top_field])
                     best = max(bids, key=lambda k: number(k)) if bids else None
                     if side_key == "BUY" and best is not None and number(best) != actual:
                         raise ValueError("top-of-book mismatch; resynchronize")
@@ -286,12 +286,16 @@ def run_collector(
     duration_seconds: float | None = None,
     reconnect_delay: float = 5.0,
     recv_timeout: float = 1.0,
+    interval_seconds: float | None = None,
+    on_interval: Any | None = None,
 ) -> CollectorStats:
     """Run the market collector until duration_seconds elapses or interrupted.
 
     Uses the sync `websockets` client. Maintains the application-level
     heartbeat, invalidates book state on any disconnect, and only resumes
-    after a fresh full book snapshot arrives. Returns the collector stats.
+    after a fresh full book snapshot arrives. If interval_seconds and
+    on_interval are given, on_interval() is invoked periodically inside the
+    loop (e.g. REST reconciliation).
 
     NOTE: this is the live-network path; unit tests exercise `process()`
     directly with synthetic frames.
@@ -303,9 +307,12 @@ def run_collector(
     deadline = (
         time.monotonic() + duration_seconds if duration_seconds else float("inf")
     )
+    next_interval = (
+        time.monotonic() + interval_seconds if interval_seconds is not None else None
+    )
 
     while time.monotonic() < deadline:
-        connection_id = collector._new_connection_id()
+        collector._new_connection_id()
         if collector.stats.connected_at:
             collector.stats.reconnect_count += 1
         try:
@@ -321,6 +328,13 @@ def run_collector(
                     if time.monotonic() >= next_ping:
                         ws.send("PING")
                         next_ping = time.monotonic() + collector.heartbeat_seconds
+                    if (
+                        next_interval is not None
+                        and time.monotonic() >= next_interval
+                    ):
+                        if on_interval is not None:
+                            on_interval()
+                        next_interval = time.monotonic() + interval_seconds
                     try:
                         message = ws.recv(timeout=recv_timeout)
                     except TimeoutError:
@@ -331,7 +345,7 @@ def run_collector(
                         # Derived snapshots are intentionally NOT written to the
                         # raw store; the raw layer holds only upstream messages.
                         pass
-        except (ConnectionClosed, OSError, ValueError, KeyError) as error:
+        except (ConnectionClosed, OSError, ValueError, KeyError):
             collector.stats.parse_errors += 1
             collector.invalidate()
             time.sleep(reconnect_delay)

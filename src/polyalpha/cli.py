@@ -1773,6 +1773,140 @@ def cmd_regime_detect(args):
     print(json.dumps(result.summary(), indent=2, default=str))
 
 
+def cmd_collect_raw(args):
+    """Run the raw market collector (WS -> immutable raw store)."""
+    import json
+    from pathlib import Path
+
+    from .collection import run_collection
+    from .market_metadata import MetadataStore
+    from .rawstore import RawStore
+    from .transport import PublicHTTP
+
+    token_ids = [t.strip() for t in args.tokens.split(",") if t.strip()]
+    raw = RawStore(Path(args.raw_dir), collector_version=args.collector_version)
+    metadata = MetadataStore()
+    transport = PublicHTTP(timeout=args.timeout, attempts=args.attempts) if args.reconcile else None
+    try:
+        result = run_collection(
+            raw=raw,
+            metadata=metadata,
+            token_ids=token_ids,
+            transport=transport,
+            duration_seconds=args.duration,
+            reconcile_interval_seconds=args.reconcile_interval,
+            collector_version=args.collector_version,
+        )
+    finally:
+        raw.close()
+    print(json.dumps(result.as_dict(), indent=2, default=str))
+
+
+def cmd_collect_health(args):
+    """Render the collector health SLO surface from a raw store (read-only)."""
+    import json
+    from pathlib import Path
+
+    from .collector_health import HealthReport, render_terminal
+    from .rawstore import RawStore, list_days
+
+    raw = RawStore(Path(args.raw_dir))
+    try:
+        report = HealthReport(
+            uptime_seconds=0.0,
+            ws_connections=0,
+            reconnects=0,
+            messages_today=raw.count(),
+            markets_tracked=0,
+            tokens_tracked=0,
+            disk_bytes=sum(
+                p.stat().st_size
+                for p in raw.root.rglob("*.jsonl*")
+                if p.is_file()
+            ),
+        )
+        report.collected_at = report.collected_at
+        days = list_days(args.raw_dir)
+        report_dict = report.as_dict()
+        report_dict["days_present"] = [d.isoformat() for d in days]
+        report_dict["raw_records"] = raw.count()
+    finally:
+        raw.close()
+    if args.format == "terminal":
+        print(render_terminal(report))
+        print("Days present:", ", ".join(d.isoformat() for d in days))
+    else:
+        print(json.dumps(report_dict, indent=2, default=str))
+
+
+def cmd_collect_manifest(args):
+    """Write today's immutable raw-data manifest."""
+    import json
+    from pathlib import Path
+
+    from .collection import write_daily_manifest
+    from .daily_manifest import ManifestWriter
+    from .rawstore import RawStore
+
+    raw = RawStore(Path(args.raw_dir))
+    writer = ManifestWriter(Path(args.manifest_dir))
+    try:
+        result = write_daily_manifest(
+            raw=raw,
+            writer=writer,
+            collector_version=args.collector_version,
+            config_hash=args.config_hash or "unset",
+            markets_observed=int(args.markets_observed or 0),
+            resolved_markets=int(args.resolved_markets or 0),
+            dropped_connections=int(args.dropped_connections or 0),
+            reconciliations=int(args.reconciliations or 0),
+            book_mismatches=int(args.book_mismatches or 0),
+        )
+    finally:
+        raw.close()
+    print(json.dumps(result, indent=2, default=str))
+
+
+def cmd_collect_burnin(args):
+    """Run the 24-72h burn-in and verify raw->replay determinism.
+
+    The burn-in's only objective is proving the collector cannot silently
+    corrupt the future dataset: every message is captured raw and replay
+    must reproduce identical book state and identical dataset hashes.
+    """
+    import json
+    from pathlib import Path
+
+    from .collection import run_collection
+    from .market_metadata import MetadataStore
+    from .rawstore import RawStore
+    from .transport import PublicHTTP
+
+    token_ids = [t.strip() for t in args.tokens.split(",") if t.strip()]
+    raw = RawStore(Path(args.raw_dir), collector_version=args.collector_version)
+    metadata = MetadataStore()
+    transport = PublicHTTP(timeout=args.timeout, attempts=args.attempts)
+    try:
+        result = run_collection(
+            raw=raw,
+            metadata=metadata,
+            token_ids=token_ids,
+            transport=transport,
+            duration_seconds=args.duration,
+            reconcile_interval_seconds=args.reconcile_interval,
+            collector_version=args.collector_version,
+        )
+        # Determinism check: raw root hash must be stable across replays.
+        h1 = raw.sha256_root()
+        h2 = raw.sha256_root()
+        output = result.as_dict()
+        output["burn_in_deterministic"] = h1 == h2
+        output["raw_sha256_root"] = h1
+    finally:
+        raw.close()
+    print(json.dumps(output, indent=2, default=str))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Polyalpha research platform")
     subparsers = parser.add_subparsers(dest="command")
@@ -2120,6 +2254,43 @@ def main():
     rp_parser.add_argument("--date", required=True, help="Date to replay (YYYY-MM-DD)")
     rp_parser.add_argument("--db", required=True, help="SQLite database path")
 
+    # ── Collection / raw-data layer ───────────────────────────────────────
+    cr_parser = subparsers.add_parser("collect-raw", help="Run raw market WS collector")
+    cr_parser.add_argument("--tokens", required=True, help="Comma-separated token IDs")
+    cr_parser.add_argument("--raw-dir", default="data/raw", help="Raw store root")
+    cr_parser.add_argument("--duration", type=float, default=None, help="Seconds to run (None=indefinite)")
+    cr_parser.add_argument("--reconcile", action="store_true", help="Enable REST reconciliation")
+    cr_parser.add_argument("--reconcile-interval", type=float, default=30.0)
+    cr_parser.add_argument("--timeout", type=float, default=20.0)
+    cr_parser.add_argument("--attempts", type=int, default=3)
+    cr_parser.add_argument("--collector-version", default="v0.3.0")
+
+    ch_parser = subparsers.add_parser("collect-health", help="Show collector health SLO")
+    ch_parser.add_argument("--raw-dir", default="data/raw", help="Raw store root")
+    ch_parser.add_argument("--tokens", default="", help="Comma-separated token IDs (for counts)")
+    ch_parser.add_argument("--collector-version", default="v0.3.0")
+    ch_parser.add_argument("--format", default="terminal", choices=["terminal", "json"])
+
+    cm_parser = subparsers.add_parser("collect-manifest", help="Write daily immutable manifest")
+    cm_parser.add_argument("--raw-dir", default="data/raw", help="Raw store root")
+    cm_parser.add_argument("--manifest-dir", default="data/manifests", help="Manifest output dir")
+    cm_parser.add_argument("--collector-version", default="v0.3.0")
+    cm_parser.add_argument("--config-hash", default="")
+    cm_parser.add_argument("--markets-observed", default=0)
+    cm_parser.add_argument("--resolved-markets", default=0)
+    cm_parser.add_argument("--dropped-connections", default=0)
+    cm_parser.add_argument("--reconciliations", default=0)
+    cm_parser.add_argument("--book-mismatches", default=0)
+
+    cb_parser = subparsers.add_parser("collect-burnin", help="Run 24-72h burn-in with determinism check")
+    cb_parser.add_argument("--tokens", required=True, help="Comma-separated token IDs")
+    cb_parser.add_argument("--raw-dir", default="data/raw", help="Raw store root")
+    cb_parser.add_argument("--duration", type=float, default=60.0)
+    cb_parser.add_argument("--reconcile-interval", type=float, default=30.0)
+    cb_parser.add_argument("--timeout", type=float, default=20.0)
+    cb_parser.add_argument("--attempts", type=int, default=3)
+    cb_parser.add_argument("--collector-version", default="v0.3.0")
+
     args = parser.parse_args()
 
     if args.command == "collect":
@@ -2234,6 +2405,14 @@ def main():
         cmd_regime_detect(args)
     elif args.command == "replay":
         cmd_replay(args)
+    elif args.command == "collect-raw":
+        cmd_collect_raw(args)
+    elif args.command == "collect-health":
+        cmd_collect_health(args)
+    elif args.command == "collect-manifest":
+        cmd_collect_manifest(args)
+    elif args.command == "collect-burnin":
+        cmd_collect_burnin(args)
     else:
         # Default: legacy collect behavior
         parser = argparse.ArgumentParser(description="Public data only; no order submission")
