@@ -1,0 +1,73 @@
+# Research-specific configuration for extended analysis
+# Uses looser filters for exploration, stricter for production validation.
+
+collection:
+  database: "data/research.sqlite3"
+  page_size: 100
+  max_pages: 3
+  timeout_seconds: 30
+  attempts: 3
+  interval_seconds: 60
+
+market_filter:
+  min_liquidity: "2000"
+  min_volume: "10000"
+  max_spread: "0.10"
+  max_age_seconds: 60
+  min_depth_shares: "50"
+
+signal:
+  min_net_edge: "0.015"
+  spread_edge_multiplier: "1.5"
+  max_prediction_age_seconds: 60
+  confidence_level: "0.8"
+
+execution:
+  latency_seconds: 2
+  exit_policy: "edge"
+  max_book_levels: 10
+  slippage_buffer: "0.003"
+
+model:
+  uncertainty: "0.04"
+  market_prior_weight: "0.20"
+  fundamental_weight: "0.55"
+  microstructure_weight: "0.10"
+  relative_value_weight: "0.15"
+
+risk:
+  initial_cash: "10000"
+  normal: "0.005"
+  market: "0.02"
+  event: "0.05"
+  cluster: "0.05"
+  category: "0.10"
+  total: "0.20"
+  daily_loss: "0.02"
+  drawdown: "0.08"
+
+sizing:
+  use_kelly: false
+  kelly_multiplier: "0.25"
+  max_market_fraction: "0.02"
+
+anomaly:
+  spread_window: 50
+  volume_window: 50
+  imbalance_threshold: "0.8"
+  spread_z_threshold: "3.0"
+
+monitoring:
+  drift_alert_threshold: 0.05
+  min_drift_samples: 20
+  feature_psi_threshold: 0.2
+
+resolution:
+  require_review: true
+  base_penalty: "0.01"
+  ambiguity_weight: "0.05"
+
+calibration:
+  method: "isotonic"
+  window_days: 30
+  min_training_events: 4

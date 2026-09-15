@@ -1,0 +1,35 @@
+[collection]
+database = "data/research.sqlite3"
+page_size = 100
+max_pages = 1
+timeout_seconds = 20
+attempts = 3
+interval_seconds = 30
+
+[market_filter]
+min_liquidity = "5000"
+min_volume = "25000"
+max_spread = "0.05"
+max_age_seconds = 30
+min_depth_shares = "100"
+
+[signal]
+min_net_edge = "0.025"
+
+[execution]
+latency_seconds = 1
+exit_policy = "hold"
+
+[model]
+uncertainty = "0.05"
+
+[risk]
+initial_cash = "10000"
+normal = "0.005"
+market = "0.02"
+event = "0.05"
+cluster = "0.05"
+category = "0.10"
+total = "0.20"
+daily_loss = "0.02"
+drawdown = "0.08"

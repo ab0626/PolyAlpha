@@ -1,0 +1,68 @@
+# polymarket-alpha base configuration
+# All monetary values are strings to preserve Decimal precision.
+
+collection:
+  database: "data/research.sqlite3"
+  page_size: 100
+  max_pages: 1
+  timeout_seconds: 20
+  attempts: 3
+  interval_seconds: 30
+
+market_filter:
+  min_liquidity: "5000"
+  min_volume: "25000"
+  max_spread: "0.05"
+  max_age_seconds: 30
+  min_depth_shares: "100"
+
+signal:
+  min_net_edge: "0.025"
+  spread_edge_multiplier: "1.25"
+  max_prediction_age_seconds: 30
+  confidence_level: "1.0"
+
+execution:
+  latency_seconds: 1
+  exit_policy: "hold"  # hold | edge
+  max_book_levels: 10
+  slippage_buffer: "0.002"
+
+model:
+  uncertainty: "0.05"
+  market_prior_weight: "0.25"
+  fundamental_weight: "0.50"
+  microstructure_weight: "0.10"
+  relative_value_weight: "0.15"
+
+risk:
+  initial_cash: "10000"
+  normal: "0.005"
+  market: "0.02"
+  event: "0.05"
+  cluster: "0.05"
+  category: "0.10"
+  total: "0.20"
+  daily_loss: "0.02"
+  drawdown: "0.08"
+
+sizing:
+  use_kelly: false
+  kelly_multiplier: "0.25"
+  max_market_fraction: "0.02"
+
+anomaly:
+  spread_window: 50
+  volume_window: 50
+  imbalance_threshold: "0.8"
+  spread_z_threshold: "3.0"
+
+monitoring:
+  drift_alert_threshold: 0.05
+  min_drift_samples: 20
+  feature_psi_threshold: 0.2
+
+resolution:
+  require_review: true
+  base_penalty: "0.01"
+  ambiguity_weight: "0.05"

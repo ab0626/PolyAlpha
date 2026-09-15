@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polyalpha"
+version = "0.2.0"
+description = "Point-in-time prediction-market research infrastructure"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.16,<1"]
+research = ["scikit-learn>=1.5,<2"]
+stream = ["websockets>=14,<18"]
+postgres = ["psycopg[binary]>=3.2,<4"]
+yaml = ["pyyaml>=6,<7"]
+dashboard = ["streamlit>=1.30,<2"]
+
+[project.scripts]
+polyalpha = "polyalpha.cli:main"
+polyalpha-replay = "polyalpha.research:main"
+polyalpha-paper = "polyalpha.paper:main"
+polyalpha-evaluate = "polyalpha.evaluate:main"
+polyalpha-forecast = "polyalpha.forecast_runner:main"
+polyalpha-dataset = "polyalpha.dataset:main"
+polyalpha-train = "polyalpha.training:main"
+polyalpha-scan = "polyalpha.scan:main"
+polyalpha-bias = "polyalpha.bias:main"
+polyalpha-walk-forward = "polyalpha.walk_forward:main"
+polyalpha-compare = "polyalpha.strategies:main"
+polyalpha-paper-run = "polyalpha.paper_runner:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
