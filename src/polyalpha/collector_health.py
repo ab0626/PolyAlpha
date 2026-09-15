@@ -39,6 +39,17 @@ class HealthReport:
     oldest_stale_book_seconds: float | None = None
     disk_bytes: int = 0
     compression_ratio: float | None = None
+    # Research-coverage inputs (evidence-based stopping, not wall-clock).
+    unique_resolved_events: int = 0
+    independent_clusters: int = 0
+    effective_n: int = 0
+    category_coverage: int = 0
+    time_to_resolution_coverage: int = 0
+    liquidity_regime_coverage: int = 0
+    spread_regime_coverage: int = 0
+    raw_integrity_failures: int = 0
+    replay_failures: int = 0
+    unresolved_reconciliation: int = 0
 
     def as_dict(self) -> dict:
         return {
@@ -66,6 +77,16 @@ class HealthReport:
             "oldest_stale_book_seconds": self.oldest_stale_book_seconds,
             "disk_bytes": self.disk_bytes,
             "compression_ratio": self.compression_ratio,
+            "unique_resolved_events": self.unique_resolved_events,
+            "independent_clusters": self.independent_clusters,
+            "effective_n": self.effective_n,
+            "category_coverage": self.category_coverage,
+            "time_to_resolution_coverage": self.time_to_resolution_coverage,
+            "liquidity_regime_coverage": self.liquidity_regime_coverage,
+            "spread_regime_coverage": self.spread_regime_coverage,
+            "raw_integrity_failures": self.raw_integrity_failures,
+            "replay_failures": self.replay_failures,
+            "unresolved_reconciliation": self.unresolved_reconciliation,
         }
 
 
@@ -150,9 +171,10 @@ def render_terminal(report: HealthReport) -> str:
 def render_dashboard(report: HealthReport) -> str:
     """The 'become boring' collection dashboard.
 
-    Deliberately surfaces only instrument-health fields. Model performance is
-    shown as LOCKED so nobody is tempted to evaluate strategy PnL during the
-    collection window.
+    Exposes only integrity, coverage, latency, resolved-event count, category
+    coverage, and effective sample-size inputs - never strategy performance.
+    Model performance is shown as LOCKED so nobody can overfit to the
+    accumulating dataset by inspecting which categories/thresholds look good.
     """
     days = report.uptime_seconds / 86400.0
     elapsed = f"{int(days)}d {int((days % 1) * 24)}h"
@@ -162,32 +184,34 @@ def render_dashboard(report: HealthReport) -> str:
         else "   n/a"
     )
     lines = [
-        "POLYALPHA COLLECTION",
+        "POLYALPHA - COLLECTION RUN",
         "",
-        f"Elapsed                    {elapsed:>12}",
+        f"Elapsed                  {elapsed:>12}",
         "",
-        "RAW DATA",
-        f"Events                  {report.messages_today:>12,}",
-        f"Raw size                    {report.disk_bytes:>12,} bytes",
-        f"Hash failures                     {0:>12}",
-        f"Partial records                   {0:>12}",
+        f"Raw events             {report.messages_today:>12,}",
+        f"Markets observed       {report.markets_tracked:>12}",
+        f"Resolved markets       {report.resolutions:>12}",
+        f"Unique resolved events {report.unique_resolved_events:>12}",
+        f"Independent clusters   {report.independent_clusters:>12}",
+        f"Effective N            {report.effective_n:>12}",
         "",
-        "MARKETS",
-        f"Seen                       {report.markets_tracked:>12}",
-        f"Tokens tracked            {report.tokens_tracked:>12}",
-        f"Resolved                  {report.resolutions:>12}",
+        "COVERAGE",
+        f"Categories             {report.category_coverage:>12}",
+        f"Time-to-resolution     {report.time_to_resolution_coverage:>12}",
+        f"Liquidity regimes      {report.liquidity_regime_coverage:>12}",
+        f"Spread regimes         {report.spread_regime_coverage:>12}",
         "",
-        "FIDELITY",
-        f"WS reconnects             {report.reconnects:>12}",
-        f"REST reconciliation     {match_rate:>12}",
+        "INTEGRITY",
+        f"Raw integrity failures {report.raw_integrity_failures:>12}",
+        f"Replay failures        {report.replay_failures:>12}",
+        f"Unresolved reconc.     {report.unresolved_reconciliation:>12}",
+        f"WS reconnects          {report.reconnects:>12}",
+        f"REST reconciliation   {match_rate:>12}",
         "",
         "LATENCY",
-        f"Receive P50              {report.median_receive_lag_ms or 0:>10.1f} ms",
-        f"Receive P95              {report.p95_receive_lag_ms or 0:>10.1f} ms",
-        f"Receive P99              {report.p99_receive_lag_ms or 0:>10.1f} ms",
-        "",
-        "RESEARCH",
-        f"Effective resolved N          {0:>12}",
+        f"Receive P50            {report.median_receive_lag_ms or 0:>10.1f} ms",
+        f"Receive P95            {report.p95_receive_lag_ms or 0:>10.1f} ms",
+        f"Receive P99            {report.p99_receive_lag_ms or 0:>10.1f} ms",
         "",
         "MODEL PERFORMANCE",
         "████████████ LOCKED ████████████",

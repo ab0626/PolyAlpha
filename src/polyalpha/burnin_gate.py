@@ -136,6 +136,68 @@ def evaluate_burn_in_gate(
     return gate
 
 
+def zero_tolerance_failures(report: "BurnInReport") -> list[str]:
+    """Assert the absolute zero-tolerance criteria.
+
+    These counters MUST be zero for the gate to pass:
+      raw hash mismatches, wire-fidelity failures, manifest-chain failures,
+      unresolved REST/book mismatches, stale-delta applications, replay A/B
+      differences, phase-machine violations, intent-ledger duplicates,
+      kill-switch bypasses, approval-boundary bypasses, venue transmissions.
+
+    Distinct from ACCEPTABLE non-zero counters (WS reconnects, quarantined
+    partial lines, REST timeouts/429s, corrected reconciliation mismatches,
+    book invalidations) which are evidence recovery worked — provided nothing
+    remains unresolved.
+
+    Returns a list of failing criterion names (empty => pass).
+    """
+    failures: list[str] = []
+    checks = {
+        "raw_hash_mismatches": report.hash_mismatches,
+        "wire_fidelity_failures": report.wire_fidelity_failures,
+        "manifest_chain_failures": report.manifest_chain_failures,
+        "unresolved_book_mismatches": report.rest_unresolved_mismatches,
+        "stale_delta_applications": report.stale_delta_applications,
+        "replay_differences": (
+            0 if report.replay_deterministic and report.replay_hash_a == report.replay_hash_b else 1
+        ),
+        "phase_machine_violations": report.phase_machine_violations,
+        "intent_ledger_duplicates": report.intent_ledger_duplicates,
+        "kill_switch_bypasses": report.kill_switch_bypasses,
+        "approval_boundary_bypasses": report.approval_boundary_bypasses,
+        "venue_transmissions_attempted": report.venue_transmissions_attempted,
+    }
+    for name, value in checks.items():
+        if value != 0:
+            failures.append(name)
+    return failures
+
+
+def gate_verdict(report: "BurnInReport") -> tuple[bool, list[str]]:
+    """Full burn-in gate verdict from a BurnInReport.
+
+    Returns (passed, failures) where failures combines zero-tolerance
+    violations, replay non-determinism, and any recorded scenario FAIL.
+    """
+    failures = zero_tolerance_failures(report)
+    if not report.replay_deterministic or report.replay_hash_a != report.replay_hash_b:
+        failures.append("replay_a_b_differ")
+    if not report.metadata_reconstruction_ok:
+        failures.append("metadata_reconstruction")
+    if not report.resolution_lifecycle_ok:
+        failures.append("resolution_lifecycle")
+    if not report.crash_recovery_ok:
+        failures.append("crash_recovery")
+    for name, ok in (report.fault_injection or {}).items():
+        if not ok:
+            failures.append(f"fault:{name}")
+    for name, ok in (report.live_ready or {}).items():
+        if not ok:
+            failures.append(f"live_ready:{name}")
+    return (len(failures) == 0, failures)
+
+
 # ── REAL_DATA_START marker ───────────────────────────────────────────────────
 
 

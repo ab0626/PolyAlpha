@@ -20,9 +20,11 @@ sys.path.insert(0, "src")
 from polyalpha.burnin_gate import (  # noqa: E402
     BurnInReport,
     evaluate_burn_in_gate,
+    gate_verdict,
     verify_real_data_start_marker,
     write_burn_in_report,
     write_real_data_start_marker,
+    zero_tolerance_failures,
 )
 from polyalpha.collector_health import (  # noqa: E402
     HealthReport,
@@ -743,11 +745,27 @@ class TestHealthReport:
         assert "5" in text
 
     def test_render_dashboard_locks_model(self):
-        report = HealthReport(uptime_seconds=172800.0, messages_today=1_000_000)
+        report = HealthReport(
+            uptime_seconds=172800.0, messages_today=1_000_000,
+            unique_resolved_events=176, independent_clusters=148,
+            effective_n=84, category_coverage=6,
+            liquidity_regime_coverage=4, spread_regime_coverage=4,
+            raw_integrity_failures=0, replay_failures=0,
+            unresolved_reconciliation=0,
+        )
         text = render_dashboard(report)
-        assert "POLYALPHA COLLECTION" in text
+        assert "POLYALPHA - COLLECTION RUN" in text
         assert "2d 0h" in text  # 172800s = 2 days
         assert "LOCKED" in text  # model performance must be locked
+        # Coverage inputs must be surfaced.
+        assert "Unique resolved events" in text
+        assert "Independent clusters" in text
+        assert "Effective N" in text
+        assert "Categories" in text
+        assert "Liquidity regimes" in text
+        # Integrity must be visible and zero.
+        assert "Raw integrity failures" in text
+        assert "Replay failures" in text
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -913,3 +931,59 @@ class TestBurnInReport:
         assert "1,000,000" in md
         assert "Venue transmissions attempted: 0" in md
         assert "intent_restart_recovery: PASS" in md
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ZERO-TOLERANCE GATE
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestZeroTolerance:
+    def test_clean_report_passes(self):
+        report = _burnin_report()
+        assert zero_tolerance_failures(report) == []
+        passed, failures = gate_verdict(report)
+        assert passed is True
+        assert failures == []
+
+    def test_each_zero_tolerance_counter_blocks(self):
+        """Every zero-tolerance criterion must individually fail the gate."""
+        # (report field, criterion name)
+        for field, criterion in {
+            "hash_mismatches": "raw_hash_mismatches",
+            "wire_fidelity_failures": "wire_fidelity_failures",
+            "manifest_chain_failures": "manifest_chain_failures",
+            "stale_delta_applications": "stale_delta_applications",
+            "phase_machine_violations": "phase_machine_violations",
+            "intent_ledger_duplicates": "intent_ledger_duplicates",
+            "kill_switch_bypasses": "kill_switch_bypasses",
+            "approval_boundary_bypasses": "approval_boundary_bypasses",
+            "venue_transmissions_attempted": "venue_transmissions_attempted",
+        }.items():
+            report = _burnin_report(**{field: 1})
+            failures = zero_tolerance_failures(report)
+            assert criterion in failures, f"{field} should fail zero-tolerance"
+            passed, _ = gate_verdict(report)
+            assert passed is False, f"{field} should block the gate"
+
+    def test_unresolved_mismatches_block_but_corrected_do_not(self):
+        """Corrected reconciliation mismatches are acceptable; unresolved are not."""
+        ok = _burnin_report(rest_corrected_mismatches=5, rest_matching=995)
+        assert zero_tolerance_failures(ok) == []  # corrected ok
+        bad = _burnin_report(rest_unresolved_mismatches=1)
+        assert "unresolved_book_mismatches" in zero_tolerance_failures(bad)
+
+    def test_replay_a_b_differ_blocks(self):
+        report = _burnin_report(replay_hash_b="b" * 64, replay_deterministic=False)
+        passed, failures = gate_verdict(report)
+        assert passed is False
+        assert "replay_a_b_differ" in failures
+
+    def test_fault_and_live_ready_scenario_fail_blocks(self):
+        report = _burnin_report(
+            fault_injection={"network_disconnect": False},
+            live_ready={"toctou": True},
+        )
+        passed, failures = gate_verdict(report)
+        assert passed is False
+        assert "fault:network_disconnect" in failures
