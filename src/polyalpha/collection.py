@@ -15,7 +15,7 @@ from datetime import date
 
 from .collector_health import HealthReport, build_health_report
 from .daily_manifest import ManifestWriter, build_daily_manifest
-from .market_collector import MarketCollector, CollectorStats, run_collector
+from .market_collector import CollectorStats, MarketCollector, run_collector
 from .market_metadata import MetadataStore
 from .rawstore import RawStore
 from .reconciler import Reconciler

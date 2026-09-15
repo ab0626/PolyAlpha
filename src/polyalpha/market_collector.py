@@ -30,7 +30,7 @@ from typing import Any
 
 from .domain import number
 from .parsing import parse_book
-from .rawstore import RawStore, SOURCE_MARKET_WS
+from .rawstore import SOURCE_MARKET_WS, RawStore
 
 
 @dataclass

@@ -25,7 +25,7 @@ from polyalpha.collector_health import (  # noqa: E402
 from polyalpha.daily_manifest import ManifestWriter, build_daily_manifest  # noqa: E402
 from polyalpha.market_collector import CollectorStats, MarketCollector  # noqa: E402
 from polyalpha.market_metadata import MetadataStore  # noqa: E402
-from polyalpha.rawstore import RawStore, SOURCE_MARKET_WS, list_days  # noqa: E402
+from polyalpha.rawstore import SOURCE_MARKET_WS, RawStore, list_days  # noqa: E402
 from polyalpha.reconciler import Reconciler, reconcile_book  # noqa: E402
 
 TOKEN = "107505882767731489358349912513945399560393482969656700824895970500493757150417"
