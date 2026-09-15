@@ -72,7 +72,14 @@ class UsRawCollector:
         )
 
     def discover_markets(self, limit: int = 100, offset: int = 0) -> list[dict]:
-        """Fetch /v1/markets, register identifiers, and capture raw."""
+        """Fetch /v1/markets, register identifiers, and capture raw.
+
+        On the retail surfaces the market slug IS the instrument symbol (REST
+        book/bbo paths key on /v1/markets/{slug}/...), so the identifier is
+        registered with us_exchange_symbol=slug. The authoritative exchange
+        symbol (refdata/instruments) replaces it at execution time; until then
+        slug-as-symbol keeps reconciliation identity resolvable.
+        """
         raw_payload, received = self.client.markets({"limit": limit, "offset": offset})
         self._capture(SOURCE_US_RETAIL_MARKETS, "discovery", raw_payload, None)
         markets = raw_payload.get("markets", [])
@@ -80,7 +87,7 @@ class UsRawCollector:
             slug = market.get("slug")
             internal = f"us:{slug}" if slug else None
             if slug and internal and self.registry.by_slug(slug) is None:
-                self.registry.register(internal, slug)
+                self.registry.register(internal, slug, us_exchange_symbol=slug)
             self.stats.markets += 1
         return markets
 
