@@ -183,6 +183,10 @@ def main() -> int:
     if current.phase == "US_BASELINE_FROZEN":
         phase_store.transition("US_BURNIN_RUNNING")
         print("PHASE: US_BASELINE_FROZEN -> US_BURNIN_RUNNING")
+    elif current.phase == "US_BURNIN_FAILED":
+        # Retry path: a corrected run relaunches from the failed state.
+        phase_store.transition("US_BURNIN_RUNNING")
+        print("PHASE: US_BURNIN_FAILED -> US_BURNIN_RUNNING (retry)")
     else:
         print(f"PHASE: already {current.phase}")
 
