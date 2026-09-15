@@ -250,27 +250,84 @@ def main() -> int:
         print(f"INSTRUMENTS anchored: {len(instrument_registry)}")
 
         # Live collection loop for the burn-in duration.
+        from decimal import Decimal as _D
+
+        from polyalpha.domain import Book, Level
+        from polyalpha.us.adapter import parse_bbo, parse_book
+        from polyalpha.us.grpc_stream import StreamEvent
+        from polyalpha.us.reconcile import (
+            SourceBook,
+            UsReconciliationReport,
+            UsSourceKind,
+            reconcile,
+        )
+
+        reconciliation_report = UsReconciliationReport()
         deadline = time.monotonic() + args.duration
         cycle = 0
         while time.monotonic() < deadline:
             cycle += 1
             collector.collect_books(slugs)
+            # Cross-surface reconciliation: retail /book (primary) vs /bbo
+            # (cross). The BBO carries bestBid/bestAsk; we project it onto a
+            # canonical Book so the reconciler's level comparison applies.
+            for slug in slugs:
+                identifier = identifier_registry.by_slug(slug)
+                if identifier is None:
+                    continue
+                try:
+                    book_raw, book_received = client.market_book(slug)
+                    bbo_raw, _ = client.market_bbo(slug)
+                    book = parse_book(book_raw, book_received, identifier)
+                    bbo = parse_bbo(bbo_raw, identifier)
+                    bbo_book = Book(
+                        token_id=identifier.long_side_id,
+                        condition_id=identifier.condition_id,
+                        source_at=book.source_at,
+                        received_at=book.received_at,
+                        bids=(
+                            (Level(bbo["best_bid"], _D("1")),)
+                            if bbo["best_bid"] is not None else ()
+                        ),
+                        asks=(
+                            (Level(bbo["best_ask"], _D("1")),)
+                            if bbo["best_ask"] is not None else ()
+                        ),
+                        tick_size=book.tick_size,
+                        min_order_size=book.min_order_size,
+                        source_hash="bbo",
+                    )
+                    result = reconcile(
+                        SourceBook(
+                            source_kind=UsSourceKind.RETAIL,
+                            symbol=slug,
+                            book=book,
+                            tick_size=book.tick_size,
+                        ),
+                        SourceBook(
+                            source_kind=UsSourceKind.RETAIL,
+                            symbol=slug,
+                            book=bbo_book,
+                            tick_size=book.tick_size,
+                        ),
+                        identifier_registry,
+                        lag_threshold_seconds=5.0,
+                        qty_tolerance=_D("0.01"),
+                    )
+                    reconciliation_report.add(result)
+                    health.on_reconciliation(result)
+                except Exception as error:  # noqa: BLE001
+                    health.on_stream_event(StreamEvent(
+                        kind="error", message=f"reconcile {slug}: {error}"))
             try:
                 collector.collect_events({"limit": 25, "offset": (cycle - 1) % 5 * 25})
             except Exception as error:  # noqa: BLE001
-                health.on_stream_event(
-                    __import__("polyalpha.us.grpc_stream", fromlist=["StreamEvent"])
-                    .StreamEvent(kind="error", message=f"events: {error}"))
+                health.on_stream_event(StreamEvent(kind="error", message=f"events: {error}"))
             time.sleep(2.0)
 
-        # Reconciliation health: the collector surfaces parse/state errors via
-        # its stats.errors counter; 429s surface as UsRateLimited.
-        for _ in range(3):
-            try:
-                client.markets({"limit": 1})
-            except Exception:  # noqa: BLE001
-                pass
         print(f"COLLECTION CYCLES: {cycle}")
+        print("RECONCILIATION:",
+              json.dumps(reconciliation_report.summary(), indent=2))
     finally:
         raw.close()
 
