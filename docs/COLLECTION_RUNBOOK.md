@@ -1,10 +1,42 @@
 # PolyAlpha v0.3.0 — Real-Data Collection Runbook
 
-**Status:** PREPARED — no real data collected yet
+**Status:** PREPARED — no real data collected yet (International)
 **Frozen baseline:** `v0.3.0-research-baseline` + immutable tag `v0.3.0-research-baseline-334b911`
 
 This runbook operationalizes the empirical-validation phase. It is the
 operating procedure, not a design document. Follow it in order.
+
+---
+
+## 0.6 Venue decision — International (frozen) vs Polymarket US (pivot)
+
+As of this state, **International** is preserved as a completed engineering /
+reference lineage (baseline `334b911`, frozen, burn-in NOT started,
+`REAL_DATA_START` absent). It is NOT deleted or rewritten, but it is also NOT
+the intended production venue if US is the target.
+
+**Polymarket US** is the primary production venue direction. The US adapter
+layer is implemented and offline-verified (`src/polyalpha/us/`): USRetailAdapter
+(market discovery, L2 books, BBO, events, settlement, price history),
+canonical 3-way identifier mapping, the full US market-state model (not
+`active: bool`), a US raw collector into `data/us/...`, and a separate US
+phase machine.
+
+US has its **own raw lineage** (`data/us/{retail,exchange}/raw`, manifests,
+burnin, `REAL_DATA_START_US.json`) and its **own phase sequence**
+(`US_BASELINE_FROZEN → US_BURNIN_RUNNING → US_BURNIN_PASSED →
+REAL_DATA_START_US → US_COLLECTION_RUNNING`). An International collector
+burn-in would prove nothing about US marketSlug parsing, scaled priceScale
+conversion, gRPC behavior, US settlement finality, or US market-state
+transitions.
+
+The US engineering order (from the US API reference):
+1. **USRetailAdapter** ✅ implemented (parser, discovery, book, bbo, events, settlement)
+2. **Canonical ID mapping** ✅ implemented (internal_market_id ↔ slug ↔ symbol)
+3. **US state model** ✅ implemented (full lifecycle + predicates)
+4. **US raw collector** ✅ implemented (venue-specific lineage)
+5. **USExchangeAdapter** (refdata/instruments) — NEXT
+6. **gRPC real-time feed** — after the normalization layer is stable
 
 ---
 

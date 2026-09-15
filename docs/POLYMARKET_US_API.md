@@ -1,7 +1,7 @@
-# Polymarket US API Reference (Corrected)
+﻿# Polymarket US API Reference (Corrected)
 
 **Source:** https://docs.polymarket.us (fetched 2026-09-15, deep pass)
-**Status:** DRAFT — reference only, no code built against it yet
+**Status:** ADAPTER BUILT — USRetailAdapter, identifier registry, state model, raw collector, and US phase machine are implemented and offline-verified (`src/polyalpha/us/`, `tests/test_us_adapter.py`). USExchangeAdapter (refdata/gRPC) is the documented next phase.
 **Relevance:** Polymarket US is a CFTC-regulated US exchange with a **fundamentally different API** from Polymarket International (`docs.polymarket.com` / CLOB). The current PolyAlpha collector targets International. US is a **separate venue adapter** and a **separate empirical data lineage** — never a retrofit of International parsing.
 
 > Corrected from first draft: Polymarket US is **three** distinct surfaces, not two, and `gateway.polymarket.us` (public data) is logically separate from `api.polymarket.us` (authenticated trading).

@@ -48,6 +48,33 @@ ALLOWED_TRANSITIONS = {
 
 TERMINAL_PHASES = ("REAL_DATA_START", "COLLECTION_RUNNING")
 
+# ── Polymarket US phase table (separate empirical lineage) ────────────────
+# US has its own phases; an International collector burn-in proves nothing
+# about US marketSlug parsing, scaled priceScale conversion, gRPC behavior,
+# US settlement finality, or US market-state transitions.
+
+US_VALID_PHASES = (
+    "US_DEVELOPMENT",
+    "US_BASELINE_FROZEN",
+    "US_BURNIN_RUNNING",
+    "US_BURNIN_FAILED",
+    "US_BURNIN_PASSED",
+    "REAL_DATA_START_US",
+    "US_COLLECTION_RUNNING",
+)
+
+US_ALLOWED_TRANSITIONS = {
+    "US_DEVELOPMENT": {"US_BASELINE_FROZEN"},
+    "US_BASELINE_FROZEN": {"US_BURNIN_RUNNING"},
+    "US_BURNIN_RUNNING": {"US_BURNIN_FAILED", "US_BURNIN_PASSED"},
+    "US_BURNIN_FAILED": {"US_BURNIN_RUNNING"},
+    "US_BURNIN_PASSED": {"REAL_DATA_START_US"},
+    "REAL_DATA_START_US": {"US_COLLECTION_RUNNING"},
+    "US_COLLECTION_RUNNING": set(),
+}
+
+US_PHASE_TABLE = (US_VALID_PHASES, US_ALLOWED_TRANSITIONS)
+
 
 @dataclass(frozen=True)
 class PhaseState:
@@ -68,14 +95,24 @@ class PhaseState:
 class PhaseStore:
     """Read/write the phase state file. Transitions are validated."""
 
-    def __init__(self, path: str | Path, baseline_commit: str = ""):
+    def __init__(
+        self,
+        path: str | Path,
+        baseline_commit: str = "",
+        valid_phases: tuple[str, ...] = VALID_PHASES,
+        allowed_transitions: dict[str, set[str]] = ALLOWED_TRANSITIONS,
+        start_phase: str = "DEVELOPMENT",
+    ):
         self.path = Path(path)
         self.baseline_commit = baseline_commit
+        self.valid_phases = valid_phases
+        self.allowed_transitions = allowed_transitions
+        self.start_phase = start_phase
 
     def _default(self) -> PhaseState:
         now = datetime.now(UTC).isoformat()
         return PhaseState(
-            phase="DEVELOPMENT",
+            phase=self.start_phase,
             baseline_commit=self.baseline_commit,
             updated_at=now,
             transition_log=[],
@@ -86,7 +123,7 @@ class PhaseStore:
             return self._default()
         data = json.loads(self.path.read_text(encoding="utf-8"))
         return PhaseState(
-            phase=data.get("phase", "DEVELOPMENT"),
+            phase=data.get("phase", self.start_phase),
             baseline_commit=data.get("baseline_commit", self.baseline_commit),
             updated_at=data.get("updated_at", ""),
             transition_log=data.get("transition_log", []),
@@ -102,10 +139,10 @@ class PhaseStore:
 
     def transition(self, to_phase: str) -> PhaseState:
         """Move to to_phase if the transition is allowed, else raise."""
-        if to_phase not in VALID_PHASES:
+        if to_phase not in self.valid_phases:
             raise ValueError(f"invalid phase: {to_phase}")
         current = self.read()
-        allowed = ALLOWED_TRANSITIONS[current.phase]
+        allowed = self.allowed_transitions[current.phase]
         if to_phase not in allowed:
             raise ValueError(
                 f"invalid transition {current.phase} -> {to_phase} "
@@ -131,6 +168,28 @@ class PhaseStore:
             raise ValueError(
                 f"phase {current.phase} not in required {phases}"
             )
+
+
+class UsPhaseStore(PhaseStore):
+    """Polymarket US phase state machine (separate lineage)."""
+
+    def __init__(self, path: str | Path, baseline_commit: str = ""):
+        super().__init__(
+            path=path,
+            baseline_commit=baseline_commit,
+            valid_phases=US_VALID_PHASES,
+            allowed_transitions=US_ALLOWED_TRANSITIONS,
+            start_phase="US_DEVELOPMENT",
+        )
+
+
+def initialize_us_phase(path: str | Path, baseline_commit: str) -> PhaseState:
+    """Write the initial US_BASELINE_FROZEN phase (idempotent)."""
+    store = UsPhaseStore(path, baseline_commit)
+    current = store.read()
+    if current.phase != "US_DEVELOPMENT":
+        return current
+    return store.transition("US_BASELINE_FROZEN")
 
 
 def initialize_phase(path: str | Path, baseline_commit: str) -> PhaseState:
