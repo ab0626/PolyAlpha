@@ -51,7 +51,29 @@ def _current_commit() -> str:
         return "unknown"
 
 
+def _worktree_dirty() -> list[str]:
+    """Return the list of uncommitted/untracked paths, or [] if clean.
+
+    A burn-in launch must run against the exact code identified by HEAD;
+    uncommitted source changes would mean HEAD does not describe all the code
+    being executed.
+    """
+    try:
+        out = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=ROOT, stderr=subprocess.DEVNULL
+        ).decode()
+    except (OSError, subprocess.CalledProcessError):
+        return ["(git unavailable)"]
+    return [line for line in out.splitlines() if line.strip()]
+
+
 def main() -> int:
+    # Capture the implementation commit ONCE at process start. If a branch
+    # checkout happens mid-run, the historical run still identifies the code
+    # state from which it was launched.
+    impl_commit = _current_commit()
+    dirty = _worktree_dirty()
+
     parser = argparse.ArgumentParser(description="Run the live burn-in sequence")
     parser.add_argument("--tokens", required=True, help="Comma-separated token IDs (broad universe)")
     parser.add_argument("--raw-dir", default="data/raw")
@@ -59,13 +81,33 @@ def main() -> int:
     parser.add_argument("--report-dir", default="burnin")
     parser.add_argument("--duration", type=float, default=3600.0, help="Seconds for normal collection")
     parser.add_argument("--baseline-commit", default="334b911")
-    parser.add_argument("--implementation-commit", default=_current_commit())
+    parser.add_argument("--implementation-commit", default=impl_commit)
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="Launch despite an unclean worktree (documented edge cases only)")
     parser.add_argument("--config-hash", default="")
     parser.add_argument("--collector-version", default="v0.3.0")
     parser.add_argument("--fault-injection", default="network_disconnect:true,hard_kill:true,partial_jsonl:true,rest_429:true,ws_reconnect:true")
     parser.add_argument("--live-ready", default="intent_restart_recovery:true,approval_restart_recovery:true,double_approval:true,toctou:true,risk_ownership:true")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and stop (no collection)")
     args = parser.parse_args()
+
+    # Enforce the launch invariant: the worktree must be clean so the recorded
+    # implementation_commit describes ALL the code being executed.
+    if dirty and not args.allow_dirty:
+        print("ERROR: worktree is not clean; implementation_commit would not "
+              "describe the running code.")
+        for line in dirty[:20]:
+            print(f"  dirty: {line}")
+        print("Commit or stash before launch, or pass --allow-dirty only for "
+              "documented edge cases.")
+        return 1
+    launch = {
+        "baseline_commit": args.baseline_commit,
+        "baseline_tag": "v0.3.0-research-baseline-334b911",
+        "implementation_commit": args.implementation_commit,
+        "working_tree_dirty": bool(dirty),
+    }
+    print("LAUNCH RECORD:", json.dumps(launch, indent=2))
 
     from polyalpha.phases import PhaseStore
 
@@ -77,6 +119,7 @@ def main() -> int:
 
     if args.dry_run:
         plan = {
+            "launch": launch,
             "phase_before": current.phase,
             "next": "BURNIN_RUNNING",
             "collect": {"tokens": args.tokens.split(","), "duration_seconds": args.duration},

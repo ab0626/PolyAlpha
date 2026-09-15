@@ -216,6 +216,26 @@ remains unchanged throughout as long as `research_logic_sha256` is unchanged.
 The implementation commit is auto-detected from git at burn-in time; it is
 *by definition* the code that is running.
 
+### Clean-worktree launch invariant
+
+The burn-in launch must run against the exact code identified by HEAD. If the
+worktree is dirty, `git rev-parse HEAD` does not describe all the code being
+executed. `scripts/run_burnin.py` therefore **fails closed** unless the
+worktree is clean (or `--allow-dirty` is passed for a documented edge case):
+
+    git status --porcelain   # must be empty
+    git rev-parse HEAD       # the implementation commit
+
+The launch record establishes:
+
+    baseline_commit       = 334b911
+    baseline_tag          = v0.3.0-research-baseline-334b911
+    implementation_commit = <HEAD at process start>
+    working_tree_dirty    = false
+
+The implementation commit is captured **once** at process start — a later
+branch checkout does not change what the historical run identifies.
+
 ---
 
 ## 2. Declare the official start boundary
