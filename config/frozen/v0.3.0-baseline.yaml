@@ -83,8 +83,8 @@ collection:
 #   config_sha256          : hash of THIS file (computed below)
 # ============================================================
 integrity:
-  git_commit: "65adf2bf3751e98093b39008ba9e0c4eb677637e"
+  git_commit: "0eafa1543e03325a50262e00d5f08e7a66071c78"
   git_tag: "v0.3.0-research-baseline"
-  model_source_sha256: "8da8e01d23682b9f08b94544514c9836142bd749b225cd8d6f876c3684cc58bb"
+  model_source_sha256: "7d02ec9466fc6868c3bd10374972630a7e81a35d4b565690c38ec6d88fa07da0"
   feature_schema_sha256: "1857e04f5fc99afbb9b927e41e101a9c7b0f5fc29815c3271c665ccfd3e9048f"
-  config_sha256: "83c4109c880c1bc4f8c78e54ab14f41f534ebdb9f9409e2e1662ef65b13d4a44"
+  config_sha256: "5138dc42a6890c51225933625fb17bf9211ce22eaecf005f50122b18e617fed0"
