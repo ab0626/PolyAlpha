@@ -381,13 +381,25 @@ def main() -> int:
 
     passed, failures = report.qualifying()
     report.gate_passed = passed
-    # Rewrite with gate verdict.
+    # Record the final phase: US_BURNIN_PASSED on success (the ONLY valid
+    # predecessor of REAL_DATA_START_US), US_BURNIN_FAILED on failure.
+    if passed:
+        current_phase = phase_store.read().phase
+        if current_phase != "US_BURNIN_PASSED":
+            phase_store.transition("US_BURNIN_PASSED")
+            report.provenance.phase = "US_BURNIN_PASSED"
+    else:
+        current_phase = phase_store.read().phase
+        if current_phase != "US_BURNIN_FAILED":
+            phase_store.transition("US_BURNIN_FAILED")
+        report.provenance.phase = "US_BURNIN_FAILED"
+    # Rewrite with the gate verdict + final phase.
     write_us_burnin_report(report, report_dir)
     if passed:
         print("US FINAL GATE: PASS")
+        print("Phase: US_BURNIN_PASSED")
         print("Next: operator writes REAL_DATA_START_US marker.")
         return 0
-    phase_store.transition("US_BURNIN_FAILED")
     print(f"US FINAL GATE: FAIL ({failures})")
     print("PHASE: -> US_BURNIN_FAILED (fix correctness/safety only, add regression, rerun)")
     return 1
