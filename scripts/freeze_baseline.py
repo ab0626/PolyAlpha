@@ -125,8 +125,16 @@ def freeze() -> None:
 
 def verify() -> int:
     frozen = _parse_integrity()
+    # The frozen commit records what the model/schema state was when frozen.
+    # HEAD legitimately moves when the freeze config itself is committed, so
+    # the git_commit check only requires that the frozen commit still exists.
+    frozen_commit = frozen.get("git_commit", "")
     checks = [
-        ("git_commit", _git_commit(), "working tree HEAD has changed since freeze"),
+        (
+            "git_commit",
+            frozen_commit,
+            "working tree HEAD has changed since freeze",
+        ),
         (
             "model_source_sha256",
             _sha256_of_files(_collect(MODEL_PATHS), MODEL_EXCLUDE),
@@ -145,7 +153,23 @@ def verify() -> int:
         if expected is None or expected in ("PENDING", "SEE scripts/freeze_baseline.py"):
             print(f"  MISSING frozen {key} — run freeze first")
             failures += 1
-        elif actual != expected:
+            continue
+        if key == "git_commit":
+            # Verify the frozen commit exists; do not require it to equal HEAD,
+            # because committing the freeze config legitimately advances HEAD.
+            try:
+                subprocess.check_call(
+                    ["git", "cat-file", "-e", f"{actual}^{{commit}}"],
+                    cwd=ROOT,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                print(f"  ok   {key}: {actual}")
+            except subprocess.CalledProcessError:
+                print(f"  FAIL {key}: frozen commit {actual} no longer exists")
+                failures += 1
+            continue
+        if actual != expected:
             print(f"  FAIL {key}: frozen={expected} actual={actual} ({msg})")
             failures += 1
         else:
