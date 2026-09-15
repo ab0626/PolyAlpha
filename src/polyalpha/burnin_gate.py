@@ -474,6 +474,84 @@ def write_burn_in_report(report: BurnInReport, directory: str | Path) -> tuple[P
     return directory, digest
 
 
+# ── Per-fault evidence (so "22/22 PASS" has a record of what the 22 were) ──
+
+
+@dataclass(frozen=True)
+class FaultInjectionEvent:
+    """One injected fault and its observed recovery behavior.
+
+    Matches the review's schema exactly: when the report says
+    "Fault injection: 22/22 PASS" there is a machine-readable record of what
+    those 22 tests actually were, without needing to read code.
+    """
+
+    fault_id: str
+    type: str
+    started_at: str
+    expected_behavior: list[str]
+    observed_behavior: str
+    result: str  # "PASS" | "FAIL"
+
+    def as_dict(self) -> dict:
+        return {
+            "fault_id": self.fault_id,
+            "type": self.type,
+            "started_at": self.started_at,
+            "expected_behavior": self.expected_behavior,
+            "observed_behavior": self.observed_behavior,
+            "result": self.result,
+        }
+
+
+class FaultEvidenceWriter:
+    """Append-only JSONL of injected-fault events, one per fault.
+
+    Written under the burn-in report directory as fault-evidence.jsonl so the
+    integrity report and its evidence are co-located and auditable.
+    """
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+
+    def record(self, event: FaultInjectionEvent) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event.as_dict(), sort_keys=True) + "\n")
+
+    def read_all(self) -> list[FaultInjectionEvent]:
+        if not self.path.exists():
+            return []
+        events: list[FaultInjectionEvent] = []
+        with open(self.path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue  # partial trailing line from a crash
+                events.append(
+                    FaultInjectionEvent(
+                        fault_id=data["fault_id"],
+                        type=data["type"],
+                        started_at=data["started_at"],
+                        expected_behavior=data["expected_behavior"],
+                        observed_behavior=data["observed_behavior"],
+                        result=data["result"],
+                    )
+                )
+        return events
+
+    def summary(self) -> dict:
+        events = self.read_all()
+        return {
+            "total": len(events),
+            "passed": sum(1 for e in events if e.result == "PASS"),
+            "failed": sum(1 for e in events if e.result == "FAIL"),
+        }
+
+
 def _render_burnin_markdown(report: BurnInReport) -> str:
     def check(ok: bool) -> str:
         return "PASS" if ok else "FAIL"

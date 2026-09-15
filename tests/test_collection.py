@@ -19,6 +19,8 @@ sys.path.insert(0, "src")
 
 from polyalpha.burnin_gate import (  # noqa: E402
     BurnInReport,
+    FaultEvidenceWriter,
+    FaultInjectionEvent,
     evaluate_burn_in_gate,
     gate_verdict,
     verify_real_data_start_marker,
@@ -987,3 +989,51 @@ class TestZeroTolerance:
         passed, failures = gate_verdict(report)
         assert passed is False
         assert "fault:network_disconnect" in failures
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# FAULT-EVIDENCE RECORDING
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestFaultEvidence:
+    def test_record_and_read(self, tmp_path):
+        path = tmp_path / "fault-evidence.jsonl"
+        writer = FaultEvidenceWriter(path)
+        writer.record(FaultInjectionEvent(
+            fault_id="FI-007", type="hard_process_kill",
+            started_at="2026-09-15T00:00:00Z",
+            expected_behavior=["partial line detected", "no duplicate replay"],
+            observed_behavior="recovered cleanly",
+            result="PASS",
+        ))
+        events = writer.read_all()
+        assert len(events) == 1
+        assert events[0].fault_id == "FI-007"
+        assert events[0].result == "PASS"
+        assert events[0].expected_behavior == ["partial line detected", "no duplicate replay"]
+
+    def test_summary_counts(self, tmp_path):
+        path = tmp_path / "fault-evidence.jsonl"
+        writer = FaultEvidenceWriter(path)
+        for i in range(3):
+            writer.record(FaultInjectionEvent(
+                fault_id=f"FI-{i:03d}", type="fault", started_at="t",
+                expected_behavior=[], observed_behavior="ok", result="PASS",
+            ))
+        writer.record(FaultInjectionEvent(
+            fault_id="FI-999", type="fault", started_at="t",
+            expected_behavior=[], observed_behavior="bad", result="FAIL",
+        ))
+        summary = writer.summary()
+        assert summary["total"] == 4
+        assert summary["passed"] == 3
+        assert summary["failed"] == 1
+
+    def test_partial_trailing_line_tolerated(self, tmp_path):
+        path = tmp_path / "fault-evidence.jsonl"
+        writer = FaultEvidenceWriter(path)
+        writer.record(FaultInjectionEvent("FI-1", "x", "t", [], "ok", "PASS"))
+        with open(path, "a", encoding="utf-8") as f:
+            f.write('{"fault_id": "partial')
+        assert len(writer.read_all()) == 1
