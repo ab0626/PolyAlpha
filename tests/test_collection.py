@@ -18,20 +18,25 @@ import pytest
 sys.path.insert(0, "src")
 
 from polyalpha.burnin_gate import (  # noqa: E402
+    BurnInReport,
     evaluate_burn_in_gate,
     verify_real_data_start_marker,
+    write_burn_in_report,
     write_real_data_start_marker,
 )
 from polyalpha.collector_health import (  # noqa: E402
     HealthReport,
     build_health_report,
+    render_dashboard,
     render_terminal,
 )
 from polyalpha.daily_manifest import ManifestWriter, build_daily_manifest  # noqa: E402
 from polyalpha.market_collector import CollectorStats, MarketCollector  # noqa: E402
 from polyalpha.market_metadata import MetadataStore  # noqa: E402
+from polyalpha.phases import PhaseStore, initialize_phase  # noqa: E402
 from polyalpha.rawstore import SOURCE_MARKET_WS, RawStore, list_days  # noqa: E402
 from polyalpha.reconciler import Reconciler, reconcile_book  # noqa: E402
+from polyalpha.replay_verification import run_dual_replay  # noqa: E402
 
 TOKEN = "107505882767731489358349912513945399560393482969656700824895970500493757150417"
 MARKET = "0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75"
@@ -731,3 +736,155 @@ class TestHealthReport:
         text = render_terminal(report)
         assert "COLLECTOR HEALTH" in text
         assert "5" in text
+
+    def test_render_dashboard_locks_model(self):
+        report = HealthReport(uptime_seconds=172800.0, messages_today=1_000_000)
+        text = render_dashboard(report)
+        assert "POLYALPHA COLLECTION" in text
+        assert "2d 0h" in text  # 172800s = 2 days
+        assert "LOCKED" in text  # model performance must be locked
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# PHASE STATE MACHINE
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestPhaseStore:
+    def test_init_to_baseline_frozen(self, tmp_path):
+        path = tmp_path / "phase.json"
+        state = initialize_phase(path, "abc123")
+        assert state.phase == "BASELINE_FROZEN"
+        assert state.baseline_commit == "abc123"
+
+    def test_valid_transition(self, tmp_path):
+        path = tmp_path / "phase.json"
+        initialize_phase(path, "abc")
+        store = PhaseStore(path, "abc")
+        store.transition("BURNIN_RUNNING")
+        store.transition("BURNIN_PASSED")
+        assert store.read().phase == "BURNIN_PASSED"
+        assert len(store.read().transition_log) == 3
+
+    def test_invalid_transition_rejected(self, tmp_path):
+        path = tmp_path / "phase.json"
+        initialize_phase(path, "abc")
+        store = PhaseStore(path, "abc")
+        with pytest.raises(ValueError, match="invalid transition"):
+            store.transition("BURNIN_PASSED")  # DEVELOPMENT can only -> BASELINE_FROZEN
+
+    def test_require(self, tmp_path):
+        path = tmp_path / "phase.json"
+        initialize_phase(path, "abc")
+        store = PhaseStore(path, "abc")
+        store.require("BASELINE_FROZEN")  # ok
+        with pytest.raises(ValueError):
+            store.require("BURNIN_PASSED")
+
+    def test_marker_requires_burnin_passed(self, tmp_path):
+        """REAL_DATA_START marker must not write unless phase == BURNIN_PASSED."""
+        from polyalpha.phases import PhaseStore as PS
+
+        phase_path = tmp_path / "phase.json"
+        initialize_phase(phase_path, "abc")  # -> BASELINE_FROZEN
+        store = PS(phase_path, "abc")
+        marker_path = tmp_path / "REAL_DATA_START.json"
+        with pytest.raises(ValueError):
+            write_real_data_start_marker(
+                marker_path, "tag", "abc", "c" * 64, "m" * 64, "f" * 64,
+                "col", "b" * 64, phase_store=store,
+            )
+        assert not marker_path.exists()
+
+        # Advance through the phases, then it must succeed.
+        store.transition("BURNIN_RUNNING")
+        store.transition("BURNIN_PASSED")
+        write_real_data_start_marker(
+            marker_path, "tag", "abc", "c" * 64, "m" * 64, "f" * 64,
+            "col", "b" * 64, phase_store=store,
+        )
+        assert marker_path.exists()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# DUAL-REPLAY DETERMINISM
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestDualReplay:
+    def test_replay_a_equals_replay_b(self, tmp_path):
+        raw_root = tmp_path / "raw"
+        with RawStore(raw_root, "v1") as store:
+            for i in range(5):
+                store.append(
+                    SOURCE_MARKET_WS, "c", {"i": i}, wire=f'{{"i":{i}}}',
+                    received_at_ns=1_700_000_000_000_000_000 + i,
+                )
+        result = run_dual_replay(raw_root)
+        assert result.deterministic is True
+        assert result.hash_a == result.hash_b
+        assert result.records_a == 5
+        assert result.records_b == 5
+
+    def test_replay_detects_mutation(self, tmp_path):
+        raw_root = tmp_path / "raw"
+        with RawStore(raw_root, "v1") as store:
+            store.append(SOURCE_MARKET_WS, "c", {"i": 1}, wire='{"i":1}')
+        scan_before = RawStore(raw_root).scan()
+        assert scan_before["partial_lines"] == 0
+        # Append a forged/truncated line: must be detected as a partial record.
+        import gzip as _gz
+        target = list(raw_root.rglob("*.jsonl.gz"))[0]
+        with _gz.open(target, "rb") as fh:
+            content = fh.read()
+        with _gz.open(target, "wb") as fh:
+            fh.write(content)
+            fh.write(b'{"canonical_json":"partial')
+        scan_after = RawStore(raw_root).scan()
+        assert scan_after["partial_lines"] == 1
+        assert scan_after["valid"] == scan_before["valid"]  # valid records intact
+        # A truncated trailing line is quarantined, not silently replayed.
+        assert RawStore(raw_root).count() == 1
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# BURN-IN REPORT
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestBurnInReport:
+    def test_write_and_hash(self, tmp_path):
+        report = BurnInReport(
+            period_start="2026-09-15", period_end="2026-09-16",
+            baseline_commit="abc123", messages=1_000_000, markets=500,
+            reconnects=7, forced_failures=10, replay_deterministic=True,
+            raw_corruption=0, partial_records=2, hash_mismatches=0,
+            invalid_delta_applications=0, unresolved_book_mismatches=0,
+            manifest_chain_ok=True, metadata_reconstruction_ok=True,
+            resolution_lifecycle_ok=True, crash_recovery_ok=True,
+            gate_passed=True,
+        )
+        directory, digest = write_burn_in_report(report, tmp_path / "burnin")
+        assert (tmp_path / "burnin" / "burnin-report.json").exists()
+        assert (tmp_path / "burnin" / "burnin-report.md").exists()
+        assert len(digest) == 64
+        # Hash is stable.
+        d2, digest2 = write_burn_in_report(report, tmp_path / "burnin2")
+        assert digest == digest2
+
+    def test_report_markdown_content(self, tmp_path):
+        report = BurnInReport(
+            period_start="2026-09-15", period_end="2026-09-16",
+            baseline_commit="abc", messages=1_000_000, markets=500,
+            reconnects=7, forced_failures=10, replay_deterministic=True,
+            raw_corruption=0, partial_records=2, hash_mismatches=0,
+            invalid_delta_applications=0, unresolved_book_mismatches=0,
+            manifest_chain_ok=True, metadata_reconstruction_ok=True,
+            resolution_lifecycle_ok=True, crash_recovery_ok=True,
+            gate_passed=True,
+        )
+        _, digest = write_burn_in_report(report, tmp_path / "burnin")
+        md = (tmp_path / "burnin" / "burnin-report.md").read_text(encoding="utf-8")
+        assert "PolyAlpha Collection Burn-In" in md
+        assert "Gate: PASS" in md
+        assert "1,000,000" in md

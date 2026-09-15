@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .phases import PhaseStore  # noqa: F401  (used in type annotations)
+
 # ── Burn-in gate ─────────────────────────────────────────────────────────────
 
 
@@ -182,8 +184,15 @@ def write_real_data_start_marker(
     feature_schema_sha256: str,
     collector_commit: str,
     burnin_report_sha256: str,
+    phase_store: "PhaseStore | None" = None,
 ) -> RealDataStartMarker:
-    """Write the immutable REAL_DATA_START marker. Refuses to overwrite."""
+    """Write the immutable REAL_DATA_START marker. Refuses to overwrite.
+
+    When a phase_store is provided, it must be in BURNIN_PASSED phase;
+    otherwise the marker write is rejected.
+    """
+    if phase_store is not None:
+        phase_store.require("BURNIN_PASSED")
     path = Path(marker_path)
     if path.exists():
         raise FileExistsError(f"REAL_DATA_START marker already exists: {path}")
@@ -232,3 +241,102 @@ def verify_real_data_start_marker(path: str | Path) -> tuple[bool, str]:
     if data.get("phase") != "REAL_DATA_START":
         return False, f"unexpected phase: {data.get('phase')}"
     return True, "ok"
+
+
+# ── Burn-in report artifact ──────────────────────────────────────────────────
+
+
+@dataclass
+class BurnInReport:
+    period_start: str
+    period_end: str
+    baseline_commit: str
+    messages: int
+    markets: int
+    reconnects: int
+    forced_failures: int
+    replay_deterministic: bool
+    raw_corruption: int
+    partial_records: int
+    hash_mismatches: int
+    invalid_delta_applications: int
+    unresolved_book_mismatches: int
+    manifest_chain_ok: bool
+    metadata_reconstruction_ok: bool
+    resolution_lifecycle_ok: bool
+    crash_recovery_ok: bool
+    gate_passed: bool
+
+    def as_dict(self) -> dict:
+        return {
+            "period_start": self.period_start,
+            "period_end": self.period_end,
+            "baseline_commit": self.baseline_commit,
+            "messages": self.messages,
+            "markets": self.markets,
+            "reconnects": self.reconnects,
+            "forced_failures": self.forced_failures,
+            "replay_deterministic": self.replay_deterministic,
+            "raw_corruption": self.raw_corruption,
+            "partial_records": self.partial_records,
+            "hash_mismatches": self.hash_mismatches,
+            "invalid_delta_applications": self.invalid_delta_applications,
+            "unresolved_book_mismatches": self.unresolved_book_mismatches,
+            "manifest_chain_ok": self.manifest_chain_ok,
+            "metadata_reconstruction_ok": self.metadata_reconstruction_ok,
+            "resolution_lifecycle_ok": self.resolution_lifecycle_ok,
+            "crash_recovery_ok": self.crash_recovery_ok,
+            "gate_passed": self.gate_passed,
+        }
+
+    def combined_hash(self) -> str:
+        canonical = json.dumps(self.as_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def write_burn_in_report(report: BurnInReport, directory: str | Path) -> tuple[Path, str]:
+    """Write burnin-report.json + burnin-report.md, returning (dir, sha256)."""
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    digest = report.combined_hash()
+
+    json_path = directory / "burnin-report.json"
+    json_path.write_text(
+        json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    md = _render_burnin_markdown(report)
+    (directory / "burnin-report.md").write_text(md, encoding="utf-8")
+    return directory, digest
+
+
+def _render_burnin_markdown(report: BurnInReport) -> str:
+    def check(ok: bool) -> str:
+        return "PASS" if ok else "FAIL"
+
+    lines = [
+        "PolyAlpha Collection Burn-In",
+        "",
+        f"Period: {report.period_start} → {report.period_end}",
+        f"Baseline: {report.baseline_commit}",
+        "",
+        f"Messages: {report.messages:,}",
+        f"Markets: {report.markets}",
+        f"Reconnects: {report.reconnects}",
+        f"Forced failures: {report.forced_failures}",
+        "",
+        f"Replay deterministic: {check(report.replay_deterministic)}",
+        f"Raw corruption: {report.raw_corruption}",
+        f"Partial records: {report.partial_records} quarantined",
+        f"Hash mismatches: {report.hash_mismatches}",
+        f"Invalid delta applications: {report.invalid_delta_applications}",
+        f"Unresolved book mismatches: {report.unresolved_book_mismatches}",
+        f"Manifest chain: {check(report.manifest_chain_ok)}",
+        f"Metadata reconstruction: {check(report.metadata_reconstruction_ok)}",
+        f"Resolution lifecycle: {check(report.resolution_lifecycle_ok)}",
+        f"Crash recovery: {check(report.crash_recovery_ok)}",
+        "",
+        f"Gate: {check(report.gate_passed)}",
+        "",
+    ]
+    return "\n".join(lines)

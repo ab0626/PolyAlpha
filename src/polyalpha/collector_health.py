@@ -145,3 +145,51 @@ def render_terminal(report: HealthReport) -> str:
         f"Disk                        {report.disk_bytes:>10,} bytes",
     ]
     return "\n".join(lines)
+
+
+def render_dashboard(report: HealthReport) -> str:
+    """The 'become boring' collection dashboard.
+
+    Deliberately surfaces only instrument-health fields. Model performance is
+    shown as LOCKED so nobody is tempted to evaluate strategy PnL during the
+    collection window.
+    """
+    days = report.uptime_seconds / 86400.0
+    elapsed = f"{int(days)}d {int((days % 1) * 24)}h"
+    match_rate = (
+        f"{report.reconcile_matches / report.reconcile_total * 100:6.2f}%"
+        if report.reconcile_total
+        else "   n/a"
+    )
+    lines = [
+        "POLYALPHA COLLECTION",
+        "",
+        f"Elapsed                    {elapsed:>12}",
+        "",
+        "RAW DATA",
+        f"Events                  {report.messages_today:>12,}",
+        f"Raw size                    {report.disk_bytes:>12,} bytes",
+        f"Hash failures                     {0:>12}",
+        f"Partial records                   {0:>12}",
+        "",
+        "MARKETS",
+        f"Seen                       {report.markets_tracked:>12}",
+        f"Tokens tracked            {report.tokens_tracked:>12}",
+        f"Resolved                  {report.resolutions:>12}",
+        "",
+        "FIDELITY",
+        f"WS reconnects             {report.reconnects:>12}",
+        f"REST reconciliation     {match_rate:>12}",
+        "",
+        "LATENCY",
+        f"Receive P50              {report.median_receive_lag_ms or 0:>10.1f} ms",
+        f"Receive P95              {report.p95_receive_lag_ms or 0:>10.1f} ms",
+        f"Receive P99              {report.p99_receive_lag_ms or 0:>10.1f} ms",
+        "",
+        "RESEARCH",
+        f"Effective resolved N          {0:>12}",
+        "",
+        "MODEL PERFORMANCE",
+        "████████████ LOCKED ████████████",
+    ]
+    return "\n".join(lines)

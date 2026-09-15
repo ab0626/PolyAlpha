@@ -21,25 +21,64 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "frozen" / "v0.3.0-baseline.yaml"
 INTEGRITY = "integrity:"
-MODEL_PATHS = ("src/polyalpha",)
-# Collection-layer modules are data-acquisition infrastructure, not model
-# logic. They are intentionally EXCLUDED from the frozen model hash so that
-# fixing collector bugs during the burn-in does not invalidate the baseline.
-MODEL_EXCLUDE = {
-    "rawstore.py",
-    "market_collector.py",
-    "reconciler.py",
-    "market_metadata.py",
-    "collector_health.py",
-    "daily_manifest.py",
-    "collection.py",
-}
-FEATURE_PATHS = (
+
+# ── Explicit hash domains ─────────────────────────────────────────────────
+# The model/research hash must NOT depend on every file under src/polyalpha.
+# Define three disjoint domains with a clean invariant:
+#
+#   collector may evolve for correctness fixes
+#   interface may evolve
+#   BUT research_logic_sha256 must equal the REAL_DATA_START value.
+#
+# research_logic_sha256 : the frozen research decision logic
+# collector_sha256      : data-acquisition infra (fixable during burn-in)
+# interface_sha256      : CLI / dashboard / reporting glue
+RESEARCH_PATHS = (
+    "src/polyalpha/models",
     "src/polyalpha/features",
+    "src/polyalpha/forecasting.py",
+    "src/polyalpha/calibration.py",
+    "src/polyalpha/uncertainty.py",
+    "src/polyalpha/signals.py",
+    "src/polyalpha/sizing.py",
+    "src/polyalpha/expected_value.py",
+    "src/polyalpha/risk.py",
+    "src/polyalpha/relative_value.py",
+    "src/polyalpha/graph.py",
+    "src/polyalpha/execution.py",
+    "src/polyalpha/backtest.py",
+    "src/polyalpha/walk_forward.py",
     "src/polyalpha/domain.py",
     "src/polyalpha/research_dataset.py",
     "src/polyalpha/parsing.py",
+    "config/frozen/v0.3.0-baseline.yaml",
 )
+COLLECTOR_PATHS = (
+    "src/polyalpha/rawstore.py",
+    "src/polyalpha/market_collector.py",
+    "src/polyalpha/reconciler.py",
+    "src/polyalpha/market_metadata.py",
+    "src/polyalpha/collector_health.py",
+    "src/polyalpha/daily_manifest.py",
+    "src/polyalpha/collection.py",
+)
+INTERFACE_PATHS = (
+    "src/polyalpha/cli.py",
+    "src/polyalpha/dashboard",
+    "src/polyalpha/dashboard.py",
+)
+
+
+def _config_content_without_self_hash() -> bytes:
+    """Config bytes with the integrity section removed.
+
+    research_logic_sha256 covers the *frozen parameters* of the config, not
+    the integrity metadata block. Hashing the parameters without the integrity
+    block avoids the circular dependency where writing the hash changes it.
+    """
+    text = CONFIG.read_text(encoding="utf-8")
+    stripped = re.sub(re.escape(INTEGRITY) + r"[\s\S]*$", "", text, count=1)
+    return stripped.encode("utf-8")
 
 
 def _sha256_of_files(rel_paths: list[Path], exclude: set[str] | None = None) -> str:
@@ -47,7 +86,12 @@ def _sha256_of_files(rel_paths: list[Path], exclude: set[str] | None = None) -> 
     for p in sorted(rel_paths, key=lambda x: str(x)):
         if exclude and p.name in exclude:
             continue
-        h.update(p.read_bytes())
+        if p == CONFIG:
+            # The frozen config hash must not depend on its own mutable
+            # config_sha256 line; otherwise writing the hash changes it.
+            h.update(_config_content_without_self_hash())
+        else:
+            h.update(p.read_bytes())
     return h.hexdigest()
 
 
@@ -111,8 +155,9 @@ def freeze() -> None:
     integrity = {
         "git_commit": _git_commit(),
         "git_tag": "v0.3.0-research-baseline",
-        "model_source_sha256": _sha256_of_files(_collect(MODEL_PATHS), MODEL_EXCLUDE),
-        "feature_schema_sha256": _sha256_of_files(_collect(FEATURE_PATHS)),
+        "research_logic_sha256": _sha256_of_files(_collect(RESEARCH_PATHS)),
+        "collector_sha256": _sha256_of_files(_collect(COLLECTOR_PATHS)),
+        "interface_sha256": _sha256_of_files(_collect(INTERFACE_PATHS)),
         "config_sha256": "",
     }
     _write_config(integrity)
@@ -136,14 +181,9 @@ def verify() -> int:
             "working tree HEAD has changed since freeze",
         ),
         (
-            "model_source_sha256",
-            _sha256_of_files(_collect(MODEL_PATHS), MODEL_EXCLUDE),
-            "model source differs from frozen baseline",
-        ),
-        (
-            "feature_schema_sha256",
-            _sha256_of_files(_collect(FEATURE_PATHS)),
-            "feature schema differs from frozen baseline",
+            "research_logic_sha256",
+            _sha256_of_files(_collect(RESEARCH_PATHS)),
+            "research logic differs from frozen baseline",
         ),
         ("config_sha256", _config_sha256(), "frozen config file has been modified"),
     ]

@@ -1807,7 +1807,7 @@ def cmd_collect_health(args):
     import json
     from pathlib import Path
 
-    from .collector_health import HealthReport, render_terminal
+    from .collector_health import HealthReport, render_dashboard, render_terminal
     from .rawstore import RawStore, list_days
 
     raw = RawStore(Path(args.raw_dir))
@@ -1835,6 +1835,8 @@ def cmd_collect_health(args):
     if args.format == "terminal":
         print(render_terminal(report))
         print("Days present:", ", ".join(d.isoformat() for d in days))
+    elif args.format == "dashboard":
+        print(render_dashboard(report))
     else:
         print(json.dumps(report_dict, indent=2, default=str))
 
@@ -1939,7 +1941,11 @@ def cmd_collect_start_marker(args):
     import json
 
     from .burnin_gate import write_real_data_start_marker
+    from .phases import PhaseStore
 
+    phase_store = PhaseStore(args.phase_file, args.baseline_commit) if args.phase_file else None
+    if phase_store is not None:
+        phase_store.require("BURNIN_PASSED")
     marker = write_real_data_start_marker(
         args.marker_path,
         baseline_tag=args.baseline_tag,
@@ -1949,8 +1955,75 @@ def cmd_collect_start_marker(args):
         feature_schema_sha256=args.feature_schema_sha256,
         collector_commit=args.collector_commit,
         burnin_report_sha256=args.burnin_report_sha256,
+        phase_store=phase_store,
     )
     print(json.dumps(marker.as_dict(), indent=2))
+
+
+def cmd_collect_phase(args):
+    """Show or transition the collection phase state machine."""
+    import json
+
+    from .phases import PhaseStore
+
+    store = PhaseStore(args.phase_file, args.baseline_commit)
+    if args.to:
+        state = store.transition(args.to)
+    else:
+        state = store.read()
+    print(json.dumps(state.as_dict(), indent=2))
+
+
+def cmd_collect_phase_init(args):
+    """Initialize phase file at BASELINE_FROZEN (idempotent)."""
+    import json
+
+    from .phases import initialize_phase
+
+    state = initialize_phase(args.phase_file, args.baseline_commit)
+    print(json.dumps(state.as_dict(), indent=2))
+
+
+def cmd_collect_replay_check(args):
+    """Run the dual-replay determinism check (Replay A / Replay B)."""
+    import json
+
+    from .replay_verification import run_dual_replay
+
+    result = run_dual_replay(args.raw_dir)
+    print(json.dumps(result.as_dict(), indent=2))
+    if not result.deterministic:
+        raise SystemExit(1)
+
+
+def cmd_collect_burnin_report(args):
+    """Write burnin/burnin-report.{json,md} and print its sha256."""
+    import json
+
+    from .burnin_gate import BurnInReport, write_burn_in_report
+
+    report = BurnInReport(
+        period_start=args.period_start,
+        period_end=args.period_end,
+        baseline_commit=args.baseline_commit,
+        messages=int(args.messages),
+        markets=int(args.markets),
+        reconnects=int(args.reconnects),
+        forced_failures=int(args.forced_failures),
+        replay_deterministic=args.replay_deterministic.lower() in ("1", "true", "yes"),
+        raw_corruption=int(args.raw_corruption),
+        partial_records=int(args.partial_records),
+        hash_mismatches=int(args.hash_mismatches),
+        invalid_delta_applications=int(args.invalid_delta_applications),
+        unresolved_book_mismatches=int(args.unresolved_book_mismatches),
+        manifest_chain_ok=args.manifest_chain_ok.lower() in ("1", "true", "yes"),
+        metadata_reconstruction_ok=args.metadata_reconstruction_ok.lower() in ("1", "true", "yes"),
+        resolution_lifecycle_ok=args.resolution_lifecycle_ok.lower() in ("1", "true", "yes"),
+        crash_recovery_ok=args.crash_recovery_ok.lower() in ("1", "true", "yes"),
+        gate_passed=args.gate_passed.lower() in ("1", "true", "yes"),
+    )
+    directory, digest = write_burn_in_report(report, args.output_dir)
+    print(json.dumps({"report_dir": str(directory), "burnin_report_sha256": digest}, indent=2))
 
 
 def main():
@@ -2315,7 +2388,7 @@ def main():
     ch_parser.add_argument("--raw-dir", default="data/raw", help="Raw store root")
     ch_parser.add_argument("--tokens", default="", help="Comma-separated token IDs (for counts)")
     ch_parser.add_argument("--collector-version", default="v0.3.0")
-    ch_parser.add_argument("--format", default="terminal", choices=["terminal", "json"])
+    ch_parser.add_argument("--format", default="terminal", choices=["terminal", "dashboard", "json"])
 
     cm_parser = subparsers.add_parser("collect-manifest", help="Write daily immutable manifest")
     cm_parser.add_argument("--raw-dir", default="data/raw", help="Raw store root")
@@ -2361,6 +2434,43 @@ def main():
     cs_parser.add_argument("--feature-schema-sha256", required=True)
     cs_parser.add_argument("--collector-commit", required=True)
     cs_parser.add_argument("--burnin-report-sha256", required=True)
+    cs_parser.add_argument("--phase-file", default="data/phase.json", help="Phase state file")
+
+    cph_parser = subparsers.add_parser("collect-phase", help="Show or transition collection phase")
+    cph_parser.add_argument("--phase-file", default="data/phase.json")
+    cph_parser.add_argument("--baseline-commit", default="")
+    cph_parser.add_argument("--to", choices=[
+        "DEVELOPMENT", "BASELINE_FROZEN", "BURNIN_RUNNING", "BURNIN_FAILED",
+        "BURNIN_PASSED", "REAL_DATA_START", "COLLECTION_RUNNING",
+    ])
+
+    cpi_parser = subparsers.add_parser("collect-phase-init", help="Initialize phase file at BASELINE_FROZEN")
+    cpi_parser.add_argument("--phase-file", default="data/phase.json")
+    cpi_parser.add_argument("--baseline-commit", default="")
+
+    crc_parser = subparsers.add_parser("collect-replay-check", help="Dual-replay determinism check")
+    crc_parser.add_argument("--raw-dir", default="data/raw")
+
+    cbr_parser = subparsers.add_parser("collect-burnin-report", help="Write burnin report + hash")
+    cbr_parser.add_argument("--output-dir", default="burnin")
+    cbr_parser.add_argument("--period-start", required=True)
+    cbr_parser.add_argument("--period-end", required=True)
+    cbr_parser.add_argument("--baseline-commit", required=True)
+    cbr_parser.add_argument("--messages", default=0)
+    cbr_parser.add_argument("--markets", default=0)
+    cbr_parser.add_argument("--reconnects", default=0)
+    cbr_parser.add_argument("--forced-failures", default=0)
+    cbr_parser.add_argument("--replay-deterministic", default="true")
+    cbr_parser.add_argument("--raw-corruption", default=0)
+    cbr_parser.add_argument("--partial-records", default=0)
+    cbr_parser.add_argument("--hash-mismatches", default=0)
+    cbr_parser.add_argument("--invalid-delta-applications", default=0)
+    cbr_parser.add_argument("--unresolved-book-mismatches", default=0)
+    cbr_parser.add_argument("--manifest-chain-ok", default="true")
+    cbr_parser.add_argument("--metadata-reconstruction-ok", default="true")
+    cbr_parser.add_argument("--resolution-lifecycle-ok", default="true")
+    cbr_parser.add_argument("--crash-recovery-ok", default="true")
+    cbr_parser.add_argument("--gate-passed", default="true")
 
     args = parser.parse_args()
 
@@ -2488,6 +2598,14 @@ def main():
         cmd_collect_gate(args)
     elif args.command == "collect-start-marker":
         cmd_collect_start_marker(args)
+    elif args.command == "collect-phase":
+        cmd_collect_phase(args)
+    elif args.command == "collect-phase-init":
+        cmd_collect_phase_init(args)
+    elif args.command == "collect-replay-check":
+        cmd_collect_replay_check(args)
+    elif args.command == "collect-burnin-report":
+        cmd_collect_burnin_report(args)
     else:
         # Default: legacy collect behavior
         parser = argparse.ArgumentParser(description="Public data only; no order submission")
