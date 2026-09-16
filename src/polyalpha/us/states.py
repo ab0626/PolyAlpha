@@ -27,12 +27,13 @@ class UsMarketState(str, Enum):
 
     @classmethod
     def parse(cls, raw: str) -> "UsMarketState":
-        """Parse both retail (MARKET_STATE_*) and exchange (bare) spellings."""
+        """Parse retail (MARKET_STATE_*), exchange refdata (INSTRUMENT_STATE_*),
+        gRPC (STATE_*), and bare spellings of a market state."""
         value = raw.strip().upper()
-        if value.startswith("MARKET_STATE_"):
-            value = value[len("MARKET_STATE_"):]
-        if value.startswith("STATE_"):
-            value = value[len("STATE_"):]
+        for prefix in ("MARKET_STATE_", "INSTRUMENT_STATE_", "STATE_"):
+            if value.startswith(prefix):
+                value = value[len(prefix):]
+                break
         try:
             return cls(value)
         except ValueError:

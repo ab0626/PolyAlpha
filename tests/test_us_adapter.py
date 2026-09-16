@@ -151,6 +151,17 @@ class TestUsStates:
             UsMarketState.MATCH_AND_CLOSE_AUCTION
         )
 
+    def test_parse_exchange_refdata_prefix(self):
+        # Docs: refdata/instruments + orderbook states are prefixed
+        # INSTRUMENT_STATE_ (e.g. INSTRUMENT_STATE_OPEN). The authoritative
+        # refdata parse path must accept them.
+        assert UsMarketState.parse("INSTRUMENT_STATE_OPEN") == UsMarketState.OPEN
+        assert UsMarketState.parse("INSTRUMENT_STATE_PREOPEN") == UsMarketState.PREOPEN
+        assert UsMarketState.parse("INSTRUMENT_STATE_HALTED") == UsMarketState.HALTED
+        assert UsMarketState.parse("INSTRUMENT_STATE_CLOSED") == UsMarketState.CLOSED
+        assert UsMarketState.parse("INSTRUMENT_STATE_EXPIRED") == UsMarketState.EXPIRED
+        assert UsMarketState.parse("INSTRUMENT_STATE_TERMINATED") == UsMarketState.TERMINATED
+
     def test_predicates(self):
         assert UsMarketState.OPEN.is_tradable()
         assert UsMarketState.OPEN.accepts_orders()
