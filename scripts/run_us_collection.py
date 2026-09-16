@@ -104,6 +104,10 @@ def main() -> int:
                 collector.collect_events({"limit": 25, "offset": (cycles - 1) % 5 * 25})
             except Exception as error:  # noqa: BLE001
                 print(f"events error (cycle {cycles}): {error}")
+            # Settlements are rare; poll periodically (every 10 cycles) so the
+            # forward "unique resolved markets" metric has a real source.
+            if cycles % 10 == 0:
+                collector.collect_settlements(slugs)
             time.sleep(max(0.0, args.interval))
     finally:
         raw.close()
@@ -128,7 +132,7 @@ def main() -> int:
         "raw_counts": stats.as_dict(),
         "reconciliations": 0,  # sustained runner does not run the burn-in gate
         "evidence": {
-            "unique_resolved_markets": 0,  # from settlement lifecycle over time
+            "unique_resolved_markets": stats.settlements,
             "independent_event_clusters": 0,  # from event data accumulation
             "effective_n": 0,  # research dataset computation, model LOCKED
             "category_coverage": 0,

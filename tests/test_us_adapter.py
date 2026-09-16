@@ -287,21 +287,20 @@ class TestUsAdapters:
 
     def test_parse_settlement_finality(self):
         reg = _registry()
-        raw = {
-            "marketData": {
-                "stats": {
-                    "settlementPx": {"value": "0.55", "currency": "USD"},
-                    "settlementPreliminaryFlag": True,
-                }
-            }
-        }
-        settlement = parse_settlement(raw, reg.by_slug("chiefs-super-bowl-lx"))
-        assert settlement["is_final"] is False
-        assert settlement["settlement_preliminary"] is True
-        # Final settlement must flip the flag.
-        raw["marketData"]["stats"]["settlementPreliminaryFlag"] = False
-        final = parse_settlement(raw, reg.by_slug("chiefs-super-bowl-lx"))
+        identifier = reg.by_slug("chiefs-super-bowl-lx")
+        # Documented /settlement shape: {slug, settlement}; 404 = not settled.
+        # A 200 with a settlement value is the FINAL price (0 or 1 for binary).
+        final = parse_settlement({"slug": "chiefs-super-bowl-lx", "settlement": 1}, identifier)
         assert final["is_final"] is True
+        assert final["settlement_preliminary"] is False
+        assert final["settlement_px"] == D("1")
+        zero = parse_settlement({"slug": "chiefs-super-bowl-lx", "settlement": 0}, identifier)
+        assert zero["settlement_px"] == D("0")
+        assert zero["is_final"] is True
+        # No settlement value -> unresolved/unknown, NOT final.
+        unknown = parse_settlement({"slug": "chiefs-super-bowl-lx"}, identifier)
+        assert unknown["is_final"] is False
+        assert unknown["settlement_px"] is None
 
     def test_price_history_preserves_spread(self):
         """longPrice + shortPrice can sum > 1 — this is NOT a trade tape."""
@@ -341,6 +340,10 @@ class _FakeClient:
     def market_bbo(self, slug):
         self.calls.append(("bbo", slug))
         return {"marketData": {}}, NOW
+
+    def market_settlement(self, slug):
+        self.calls.append(("settlement", slug))
+        return {"slug": slug, "settlement": 1}, NOW
 
     def events(self, params=None):
         self.calls.append(("events", params))
@@ -391,6 +394,21 @@ class TestUsRawCollector:
             collector.collect_books(["chiefs-super-bowl-lx"])
             assert collector.stats.books == 1
             assert collector.stats.errors == 0
+
+    def test_collect_settlements(self, tmp_path):
+        from polyalpha.rawstore import RawStore
+
+        client = _FakeClient()
+        reg = _registry()
+        with RawStore(tmp_path / "us" / "retail" / "raw", collector_version="test") as raw:
+            collector = UsRawCollector(client, raw, reg)
+            collector.discover_markets()
+            collector.collect_settlements(["chiefs-super-bowl-lx"])
+            assert collector.stats.settlements == 1
+            assert collector.stats.errors == 0
+            # Settlement payload captured under the US settlement source label.
+            sources = {r.source for r in raw.replay()}
+            assert "polymarket_us_retail_settlement" in sources
 
 
 # ══════════════════════════════════════════════════════════════════════════

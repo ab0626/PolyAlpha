@@ -185,19 +185,24 @@ def parse_price_history(raw: dict) -> list[PriceHistoryPoint]:
 
 
 def parse_settlement(raw: dict, identifier: UsIdentifier) -> dict:
-    """Normalize a settlement payload into a flat dict with a finality flag."""
-    data = raw.get("marketData", raw)
-    settlement = data.get("stats", {}).get("settlementPx") or data.get("settlementPx")
+    """Normalize a settlement payload into a flat dict with a finality flag.
+
+    Documented /v1/markets/{slug}/settlement response:
+        {"slug": str, "settlement": <decimal>}
+    A market that has NOT settled returns 404, so a 200 with no settlement
+    value should be treated as unresolved/unknown, not final. The `settlement`
+    field is the final settlement price (0 or 1 for a binary contract).
+    """
+    settlement = raw.get("settlement")
+    if settlement is None:
+        # Prefer an explicit no-settlement marker over guessing finality.
+        settlement = raw.get("marketData", {}).get("settlementPx")
     return {
         "internal_market_id": identifier.internal_market_id,
         "settlement_px": amount_to_decimal(settlement) if settlement is not None else None,
-        "settlement_preliminary": bool(
-            data.get("stats", {}).get("settlementPreliminaryFlag", False)
-        ),
-        "settlement_calculation_method": data.get("stats", {}).get(
-            "settlementPriceCalculationMethod"
-        ),
-        "is_final": not bool(data.get("stats", {}).get("settlementPreliminaryFlag", False)),
+        "settlement_preliminary": False,  # /settlement returns the final price
+        "settlement_calculation_method": None,
+        "is_final": settlement is not None,
     }
 
 
