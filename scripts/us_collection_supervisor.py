@@ -43,7 +43,7 @@ NO_DATA_ALERT_SECONDS = 300  # 5 min without new raw bytes while collector shoul
 # code the qualifying burn-in ran (collector + US adapter), verified byte-identical
 # at launch. The supervisor wrapper itself is newer; it is recorded separately as
 # supervisor_commit so provenance never conflates the two.
-COLLECTION_IMPL_COMMIT = "d207a119f82256e01d11fc020c11f460aa107635"
+COLLECTION_IMPL_COMMIT = "bf8dc83b15cac97b2d95e0479d1b2a5ff674e436"
 
 
 def _now() -> str:
