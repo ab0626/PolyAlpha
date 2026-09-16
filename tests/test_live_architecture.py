@@ -49,7 +49,7 @@ from polyalpha.order_reconciliation import (  # noqa: E402
 from polyalpha.pre_trade_gate import LivePreTradeGate  # noqa: E402
 from polyalpha.promotion_gate import LiveReadinessGate  # noqa: E402
 
-NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+NOW = datetime.now(UTC)
 
 
 class _Market:
