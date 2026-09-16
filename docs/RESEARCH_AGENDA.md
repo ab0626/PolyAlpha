@@ -267,5 +267,5 @@ the effective N per family, and the decision for each hypothesis.
 ## Version history
 
 - **v2.0** — initial pre-registration (this document). Created at commit
-  (to be filled at commit time), while MODEL PERFORMANCE: LOCKED, ALPHA:
-  UNKNOWN, before any outcome-conditioned analysis.
+  `f543f587ea2288b9d6d4aa7a01b68630d225c8a7`, while MODEL PERFORMANCE: LOCKED,
+  ALPHA: UNKNOWN, before any outcome-conditioned analysis.
