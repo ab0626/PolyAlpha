@@ -69,8 +69,24 @@ The US engineering order (from the US API reference):
    US_BASELINE_FROZEN → US_BURNIN_RUNNING → live collection → fault injection →
    reconciliation → A/B replay → US FINAL GATE: PASS → US_BURNIN_PASSED →
    REAL_DATA_START_US → US_COLLECTION_RUNNING.
-9. **US burn-in run** — NEXT (operational): run the live US burn-in with the
-   frozen baseline, then write REAL_DATA_START_US.
+9. **US burn-in run** ✅ COMPLETE — live US burn-in passed at
+    `master@deb3c93` (2026-09-16T02:15Z): 50 live markets, 2,144 raw records,
+    500 book-vs-book reconciliations (500 MATCH, 0 hard failures), replay
+    A == B, all zero-tolerance counters == 0, 5/5 fault checks, policy
+    launch == final, worktree clean. **US FINAL GATE: PASS → US_BURNIN_PASSED**.
+10. **REAL_DATA_START_US** ✅ WRITTEN — immutable marker
+    `data/us/REAL_DATA_START_US.json` (self-hash `523eefef…`) bound to
+    `implementation_commit=deb3c93`, instrument + reconciliation policy
+    hashes, burn-in report SHA256, replay A/B, `ALPHA_UNKNOWN`. Phase:
+    `REAL_DATA_START_US`.
+11. **US collection experiment** — NEXT (operational): begin sustained US
+    collection (`US_COLLECTION_RUNNING`). From REAL_DATA_START_US onward the
+    metric is forward accumulation of evidence (unique resolved markets,
+    independent event clusters, effective N, category coverage,
+    liquidity/spread regimes, time-to-resolution coverage, metadata/lifecycle
+    coverage, collection integrity) — NOT test counts or reconciliation
+    totals. Research model stays locked; ALPHA = UNKNOWN. No burn-in gate
+    changes; longer soak is operational evidence collected during this phase.
 
 ---
 
