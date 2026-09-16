@@ -36,6 +36,15 @@ DEFAULT_REPORT_DIR = ROOT / "data" / "us" / "reports"
 US_BASELINE_VERSION = "v0.4.0-us-research-baseline"
 
 
+def _config_sha256() -> str:
+    """Hash of the frozen US baseline config (attribution for manifests)."""
+    import hashlib
+
+    return hashlib.sha256(
+        Path(ROOT / "config" / "frozen" / "us-v0.4.0-baseline.yaml").read_bytes()
+    ).hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sustained US collection (evidence regime)")
     parser.add_argument("--duration", type=float, default=3600.0,
@@ -111,6 +120,35 @@ def main() -> int:
     ended_at = datetime.now(UTC).isoformat()
     uptime = time.monotonic() - start
     stats = collector.stats
+
+    # Daily hash-chained manifest for the US raw lineage: makes collection
+    # attributable (write-once fingerprint of the day's raw files, chained to
+    # the prior day). The frozen US baseline declares data/us/manifests; this
+    # is the collector-side attribution the regime requires. It is not used to
+    # change any research behavior.
+    from datetime import date as _date
+
+    from polyalpha.daily_manifest import ManifestWriter, build_daily_manifest
+
+    manifest_writer = ManifestWriter(ROOT / "data" / "us" / "manifests")
+    today = _date.today()
+    manifest = build_daily_manifest(
+        raw=raw,
+        day=today,
+        collector_commit=US_BASELINE_VERSION,
+        config_hash=_config_sha256(),
+        markets_observed=len(markets_seen),
+        resolved_markets=0,  # US settlements accumulate over time
+        dropped_connections=0,
+        reconciliations=0,
+        book_mismatches=0,
+        previous_manifest_sha256=None,
+    )
+    try:
+        manifest_path = manifest_writer.write(manifest)
+        print(f"MANIFEST: {manifest_path} (sha256={manifest.combined_hash()})")
+    except FileExistsError:
+        print(f"MANIFEST: already exists for {today.isoformat()} (append-only, kept)")
 
     # Forward-evidence report (evidence accumulation, not engineering metrics).
     # Coverage fields are derived from what this run observed; the research
