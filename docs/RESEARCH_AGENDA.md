@@ -451,4 +451,5 @@ Family | Primary Metric (e.g. ΔBrier) | Net Edge | PnL | N_eff | CI | Verdict
 - **v2.2** — addendum: deterministic Kelly schedule (replaces the ambiguous
   0.10–0.25 band), Family 7 classifier immutability + change control, required
   per-family attribution reporting format. v2.0/v2.1 bodies unchanged. Written
-  while MODEL PERFORMANCE: LOCKED, ALPHA: UNKNOWN.
+  while MODEL PERFORMANCE: LOCKED, ALPHA: UNKNOWN. Addendum content committed at
+  `308a486222ca037524022891d6dce49377087784`.
