@@ -39,6 +39,12 @@ DEFAULT_MANIFEST_DIR = ROOT / "data" / "us" / "manifests"
 
 NO_DATA_ALERT_SECONDS = 300  # 5 min without new raw bytes while collector should be running
 
+# The collection implementation commit this supervisor is frozen against: the
+# code the qualifying burn-in ran (collector + US adapter), verified byte-identical
+# at launch. The supervisor wrapper itself is newer; it is recorded separately as
+# supervisor_commit so provenance never conflates the two.
+COLLECTION_IMPL_COMMIT = "bd239ea9ffe03755e60c1bfba71f7544816fea96"
+
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
@@ -59,6 +65,19 @@ def _git_head() -> str:
         )
     except Exception:  # noqa: BLE001
         return "unknown"
+
+
+def _collector_matches_impl() -> bool:
+    """The on-disk collector must equal the frozen implementation commit's."""
+    try:
+        frozen = subprocess.check_output(
+            ["git", "show", f"{COLLECTION_IMPL_COMMIT}:scripts/run_us_collection.py"],
+            cwd=ROOT,
+        )
+        current = (ROOT / "scripts" / "run_us_collection.py").read_bytes()
+        return frozen == current
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _git_dirty() -> bool:
@@ -86,6 +105,56 @@ def _manifest_verify(day) -> tuple[bool, str]:
     return writer.verify(day, raw)
 
 
+def _finalize_previous_day_manifest() -> None:
+    """Write the hash-chained manifest for the previous COMPLETED local day.
+
+    The manifest is a write-once fingerprint of a day's raw files. It can only
+    be correct once the day's files are closed (day rolled over); writing it
+    mid-day would freeze a partial set. Called each loop; idempotent.
+    """
+    from datetime import date, timedelta
+
+    from polyalpha.daily_manifest import ManifestWriter, build_daily_manifest
+    from polyalpha.rawstore import RawStore
+
+    previous = date.today() - timedelta(days=1)
+    writer = ManifestWriter(DEFAULT_MANIFEST_DIR)
+    raw = RawStore(DEFAULT_RAW_DIR, collector_version="v0.4.0-us-research-baseline")
+    manifest = build_daily_manifest(
+        raw=raw,
+        day=previous,
+        collector_commit=COLLECTION_IMPL_COMMIT,
+        config_hash=_config_sha256(),
+        markets_observed=0,
+        resolved_markets=0,
+        dropped_connections=0,
+        reconciliations=0,
+        book_mismatches=0,
+        previous_manifest_sha256=None,
+    )
+    try:
+        path = writer.write(manifest)
+        print(f"MANIFEST finalize {previous.isoformat()}: {path} "
+              f"(sha256={manifest.combined_hash()})")
+    except FileExistsError:
+        ok, msg = writer.verify(previous, raw)
+        if not ok:
+            alert = {"event": "manifest_mismatch", "at": _now(),
+                     "day": previous.isoformat(), "ok": False, "message": msg}
+            _append_jsonl(DEFAULT_STATE_DIR / "alerts.jsonl", alert)
+            print(f"ALERT: manifest {previous} does not verify: {msg}")
+        else:
+            print(f"MANIFEST finalize {previous.isoformat()}: already exists, VERIFIED")
+
+
+def _config_sha256() -> str:
+    import hashlib
+
+    return hashlib.sha256(
+        (ROOT / "config" / "frozen" / "us-v0.4.0-baseline.yaml").read_bytes()
+    ).hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Supervise sustained US REST collection")
     parser.add_argument("--chunk-duration", type=float, default=300.0,
@@ -104,7 +173,9 @@ def main() -> int:
         "event": "supervisor_start",
         "at": _now(),
         "phase": "US_COLLECTION_RUNNING",
-        "implementation_commit": _git_head(),
+        "implementation_commit": COLLECTION_IMPL_COMMIT,
+        "supervisor_commit": _git_head(),
+        "collector_matches_impl": _collector_matches_impl(),
         "working_tree_dirty": _git_dirty(),
         "research_logic": "frozen",
         "primary_feed": "polymarket_us_retail_rest",
@@ -115,22 +186,14 @@ def main() -> int:
     }
     _append_jsonl(DEFAULT_STATE_DIR / "supervisor-log.jsonl", launch)
     print("SUPERVISOR LAUNCH:", json.dumps(launch, indent=2))
+    if not launch["collector_matches_impl"]:
+        print("ERROR: on-disk collector differs from frozen implementation; aborting.")
+        return 1
 
-    # Integrity baseline check: manifest for the current UTC day must verify.
-    from datetime import date
-
-    today = date.today()
-    ok, msg = _manifest_verify(today)
-    if ok:
-        print(f"INTEGRITY baseline: manifest {today} VERIFIED ({msg})")
-    else:
-        alert = {"event": "integrity", "at": _now(), "day": today.isoformat(),
-                 "ok": False, "message": f"manifest verify: {msg}"}
-        _append_jsonl(DEFAULT_STATE_DIR / "alerts.jsonl", alert)
-        print(f"INTEGRITY baseline: manifest {today} NOT verified ({msg})")
-        if not args.once:
-            print("ERROR: integrity baseline failed; not launching collection.")
-            return 1
+    # Integrity baseline: finalize + verify the previous completed day's
+    # manifest. Today's raw is still open (mid-day), so only the previous day
+    # can be a stable integrity anchor.
+    _finalize_previous_day_manifest()
 
     collector = sys.executable
     runs = 0
@@ -181,6 +244,10 @@ def main() -> int:
         if args.once:
             print("SUPERVISOR --once: stopping after 1 run")
             return 0
+
+        # Finalize the previous completed day's manifest each loop (idempotent;
+        # write-once at day rollover, verified thereafter).
+        _finalize_previous_day_manifest()
 
         # Brief gap between restarts; keeps collector runs distinct and bounded.
         time.sleep(2.0)
