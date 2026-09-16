@@ -31,7 +31,11 @@ from typing import Any
 
 from ..domain import Book, Level, number, utc
 from .identifiers import UsIdentifierRegistry
-from .instruments import UsInstrumentRegistry, scaled_to_decimal
+from .instruments import (
+    UsInstrumentRegistry,
+    scaled_qty_to_decimal,
+    scaled_to_decimal,
+)
 from .states import UsMarketState
 
 D = Decimal
@@ -266,15 +270,22 @@ class UsGrpcMarketStream:
         self._last_received[symbol] = self._now()
 
         # 3. Aggregated vs unaggregated: both come as {px: int64, qty}; only
-        #    the price decoding differs via price_scale. Unaggregated raw
-        #    orders are decoded the same way (each entry is one order).
+        #    the price decoding differs via price_scale. Quantities are scaled
+        #    integers on the Direct Exchange: decimal_qty = qty / fractionalQtyScale
+        #    (fractionalQtyScale from the authoritative refdata instrument).
+        if instrument is not None:
+            frac_qty_scale = instrument.fractional_qty_scale
+        else:
+            frac_qty_scale = 1  # only if require_price_scale is False (debug)
         bids = tuple(
-            (scaled_to_decimal(entry["px"], price_scale), number(entry["qty"]))
+            (scaled_to_decimal(entry["px"], price_scale),
+             scaled_qty_to_decimal(int(entry["qty"]), frac_qty_scale))
             for entry in update_payload.get("bids", [])
             if number(entry["qty"]) > 0
         )
         offers = tuple(
-            (scaled_to_decimal(entry["px"], price_scale), number(entry["qty"]))
+            (scaled_to_decimal(entry["px"], price_scale),
+             scaled_qty_to_decimal(int(entry["qty"]), frac_qty_scale))
             for entry in update_payload.get("offers", [])
             if number(entry["qty"]) > 0
         )

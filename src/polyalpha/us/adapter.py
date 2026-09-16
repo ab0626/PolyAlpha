@@ -229,16 +229,18 @@ def parse_exchange_book(
     received_at: datetime,
     identifier: UsIdentifier,
     price_scale: int,
+    fractional_qty_scale: int,
     tick_size: Decimal | None = None,
     min_order_size: Decimal | None = None,
 ) -> Book:
     """Build a canonical Book from a Direct Exchange order book.
 
     Exchange representation differs again: prices are scaled integers
-    (px / priceScale), not retail Amount objects. `price_scale` MUST come from
-    the authoritative refdata instrument, never a default.
+    (px / priceScale) and quantities are scaled integers
+    (qty / fractionalQtyScale). Both scales MUST come from the authoritative
+    refdata instrument, never defaults.
     """
-    from .instruments import scaled_to_decimal
+    from .instruments import scaled_qty_to_decimal, scaled_to_decimal
 
     received = utc(received_at)
     data = raw.get("marketData", raw)
@@ -247,7 +249,7 @@ def parse_exchange_book(
         result = []
         for entry in data.get(key, []):
             px = scaled_to_decimal(int(entry["px"]), price_scale)
-            qty = retail_qty(entry.get("qty"))
+            qty = scaled_qty_to_decimal(int(entry["qty"]), fractional_qty_scale)
             if qty <= 0:
                 continue
             result.append(Level(px, qty))

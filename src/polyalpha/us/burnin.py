@@ -251,7 +251,7 @@ class UsBurnInReport:
 
         # A frozen-policy field changed (policy hash differs). Find which fields
         # were recorded as changed in the metadata chain.
-        policy_fields = ("tick_size", "price_scale", "minimum_trade_qty")
+        policy_fields = ("tick_size", "price_scale", "minimum_trade_qty", "fractional_qty_scale")
         recorded_policy_changes = [
             u for u in self.provenance.metadata_chain.updates
             if u["field"] in policy_fields
@@ -370,8 +370,8 @@ def instrument_policy_hash(instruments) -> str:
     """Deterministic hash of the EFFECTIVELY-IMMUTABLE instrument fields.
 
     Locks the exact instrument-normalization rules that the burn-in validates
-    against: symbol, tickSize, minimumTradeQty, priceScale. These must NOT
-    change silently during a run; drift here is a hard failure.
+    against: symbol, tickSize, minimumTradeQty, priceScale, fractionalQtyScale.
+    These must NOT change silently during a run; drift here is a hard failure.
 
     Deliberately EXCLUDES state (and any other field that legitimately evolves,
     e.g. PREOPEN -> OPEN -> CLOSED). State evolution is captured by the
@@ -387,6 +387,7 @@ def instrument_policy_hash(instruments) -> str:
                     "tick_size": str(inst.tick_size),
                     "minimum_trade_qty": str(inst.minimum_trade_qty),
                     "price_scale": inst.price_scale,
+                    "fractional_qty_scale": inst.fractional_qty_scale,
                 },
                 sort_keys=True,
                 separators=(",", ":"),

@@ -80,6 +80,7 @@ class SourceBook:
     symbol: str
     book: Book
     price_scale: int | None = None
+    fractional_qty_scale: int | None = None
     tick_size: Decimal | None = None
     state: UsMarketState | None = None
     transact_time: datetime | None = None
@@ -210,6 +211,18 @@ def reconcile(
             reason=ReconciliationReason.PRICE_SCALE_MISMATCH,
             identity_ok=True, semantics_ok=False, structure_ok=False, freshness_ok=False,
             details=f"tickSize {primary.tick_size} != {cross.tick_size}",
+        )
+    if (
+        primary.fractional_qty_scale is not None
+        and cross.fractional_qty_scale is not None
+        and primary.fractional_qty_scale != cross.fractional_qty_scale
+    ):
+        return ReconciliationResult(
+            symbol=symbol, primary=primary.source_kind, cross=cross.source_kind,
+            reason=ReconciliationReason.PRICE_SCALE_MISMATCH,
+            identity_ok=True, semantics_ok=False, structure_ok=False, freshness_ok=False,
+            details=(f"fractionalQtyScale {primary.fractional_qty_scale} != "
+                     f"{cross.fractional_qty_scale}"),
         )
 
     # ── 3. Structure ────────────────────────────────────────────────────────

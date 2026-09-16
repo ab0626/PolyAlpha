@@ -70,6 +70,7 @@ def _market_raw() -> dict:
         "category": "sports",
         "endDate": "2027-02-14T00:00:00Z",
         "state": "OPEN",
+        "orderPriceMinTickSize": 0.005,
         "marketSides": [
             {"id": "side-long", "long": True, "price": "0.555"},
             {"id": "side-short", "long": False, "price": "0.455"},
@@ -375,6 +376,22 @@ class TestUsRawCollector:
             # The raw store day-dir is under data/us/... not data/raw/
             assert (tmp_path / "us" / "retail" / "raw").exists()
 
+    def test_collector_captures_order_price_min_tick(self, tmp_path):
+        """orderPriceMinTickSize drives book parsing on the true tick grid;
+        never inferred. Captured per slug at discovery."""
+        from polyalpha.rawstore import RawStore
+
+        client = _FakeClient()
+        reg = _registry()
+        with RawStore(tmp_path / "us" / "retail" / "raw", collector_version="test") as raw:
+            collector = UsRawCollector(client, raw, reg)
+            collector.discover_markets()
+            assert collector.ticks["chiefs-super-bowl-lx"] == D("0.005")
+            # No error when the authoritative 0.005 tick is used to parse.
+            collector.collect_books(["chiefs-super-bowl-lx"])
+            assert collector.stats.books == 1
+            assert collector.stats.errors == 0
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # US PUBLIC REST CLIENT (offline)
@@ -492,6 +509,7 @@ def _instrument_raw() -> dict:
         "tickSize": "0.001",
         "minimumTradeQty": "1",
         "priceScale": 1000,
+        "fractionalQtyScale": 1,
         "state": "OPEN",
         "question": "Chiefs win Super Bowl LX?",
         "payoutValue": "1",
@@ -527,6 +545,23 @@ class TestUsInstruments:
         inst = parse_instrument(_instrument_raw())
         assert inst.scaled_to_probability(555) == D("0.555")
         assert inst.scaled_to_probability(650) == D("0.650")
+
+    def test_fractional_qty_scale_required_and_used(self):
+        inst = parse_instrument(_instrument_raw())
+        assert inst.fractional_qty_scale == 1
+        # Reviewer-documented example: scale=100 -> qty/100 contracts.
+        raw = _instrument_raw()
+        raw["fractionalQtyScale"] = 100
+        inst100 = parse_instrument(raw)
+        assert inst100.scaled_to_quantity(1) == D("0.01")
+        assert inst100.scaled_to_quantity(50) == D("0.50")
+        assert inst100.scaled_to_quantity(100) == D("1.00")
+
+    def test_parse_instrument_requires_fractional_qty_scale(self):
+        raw = _instrument_raw()
+        del raw["fractionalQtyScale"]
+        with pytest.raises(ValueError, match="fractionalQtyScale"):
+            parse_instrument(raw)
 
     def test_parse_instrument_requires_core_fields(self):
         raw = _instrument_raw()
@@ -572,16 +607,21 @@ class TestUsExchangeBook:
         raw = {
             "marketData": {
                 "marketSlug": "chiefs-super-bowl-lx",
-                "bids": [{"px": 555, "qty": "2.5"}, {"px": 550, "qty": "1.5"}],
-                "offers": [{"px": 560, "qty": "0.8"}, {"px": 565, "qty": "1.2"}],
+                "bids": [{"px": 555, "qty": "250"}, {"px": 550, "qty": "150"}],
+                "offers": [{"px": 560, "qty": "80"}, {"px": 565, "qty": "120"}],
                 "transactTime": "2026-09-15T12:00:00Z",
             }
         }
-        # price_scale MUST come from refdata, never a default.
-        book = parse_exchange_book(raw, NOW, identifier, price_scale=1000)
+        # price_scale and fractional_qty_scale MUST come from refdata, never
+        # defaults. Quantity is a scaled integer: qty / fractionalQtyScale.
+        book = parse_exchange_book(raw, NOW, identifier, price_scale=1000,
+                                   fractional_qty_scale=100)
         assert book.best_bid == D("0.555")
         assert book.best_ask == D("0.560")
         assert book.spread == D("0.005")
+        # qty=250/100 = 2.5 contracts; qty=80/100 = 0.8 contracts.
+        assert book.bids[0].size == D("2.5")
+        assert book.asks[0].size == D("0.8")
 
 
 class TestExchangeRefDataClient:
@@ -643,6 +683,26 @@ class TestGrpcStream:
         assert events[0].kind == "update"
         assert events[0].update.symbol == "SYMB_1001"
         assert stream.active_symbols == {"SYMB_1001"}
+
+    def test_grpc_qty_scaled_by_fractional_qty_scale(self):
+        """gRPC market-data quantities are scaled integers on the Direct
+        Exchange: decimal_qty = qty / fractionalQtyScale."""
+        identifiers = UsIdentifierRegistry()
+        identifiers.register("mid-1", "slug-a", "SYMB_1001")
+        instruments = UsInstrumentRegistry()
+        raw = _instrument_raw()
+        raw["fractionalQtyScale"] = 100
+        instruments.register(parse_instrument(raw))
+        stream = UsGrpcMarketStream(identifiers, instruments)
+        events = stream.process({
+            "update": {"symbol": "SYMB_1001",
+                       "bids": [{"px": 555, "qty": 50}],
+                       "offers": [{"px": 560, "qty": 100}],
+                       "transact_time": "2026-09-15T12:00:00Z"}})
+        update = events[0].update
+        # qty=50/100 = 0.50 contracts; qty=100/100 = 1.00 contract.
+        assert update.bids[0] == (D("0.555"), D("0.50"))
+        assert update.offers[0] == (D("0.560"), D("1.00"))
         assert stream.summary()["symbols_seen"] == ["SYMB_1001"]
 
     def test_heartbeat_liveness(self):
@@ -940,7 +1000,8 @@ class TestReconciliation:
             }
         }
         rest_book = parse_exchange_book(rest_raw, NOW, identifiers.by_symbol("SYMB_1001"),
-                                        price_scale=1000, tick_size=D("0.001"))
+                                        price_scale=1000, fractional_qty_scale=1,
+                                        tick_size=D("0.001"))
         r = reconcile(
             SourceBook(UsSourceKind.GRPC, "SYMB_1001", grpc_book,
                        price_scale=1000, tick_size=D("0.001"),

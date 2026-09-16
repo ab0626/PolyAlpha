@@ -31,6 +31,7 @@ class UsInstrument:
     tick_size: Decimal
     minimum_trade_qty: Decimal
     price_scale: int
+    fractional_qty_scale: int
     state: UsMarketState
     # Optional / richer fields
     question: str | None = None
@@ -54,6 +55,12 @@ class UsInstrument:
         """Convert an exchange scaled integer (px / priceScale) to Decimal."""
         return scaled_to_decimal(scaled_px, self.price_scale)
 
+    def scaled_to_quantity(self, scaled_qty: int) -> Decimal:
+        """Convert an exchange scaled integer (qty / fractionalQtyScale) to
+        Decimal contracts. Direct Exchange quantities are scaled integers;
+        decimal_contract_qty = raw_integer_qty / fractionalQtyScale."""
+        return scaled_qty_to_decimal(scaled_qty, self.fractional_qty_scale)
+
 
 def scaled_to_decimal(px: int, price_scale: int) -> Decimal:
     """Normalize an exchange scaled integer: px / price_scale."""
@@ -62,6 +69,21 @@ def scaled_to_decimal(px: int, price_scale: int) -> Decimal:
     if price_scale <= 0:
         raise ValueError("price_scale must be positive")
     return number(px) / number(price_scale)
+
+
+def scaled_qty_to_decimal(qty: int, fractional_qty_scale: int) -> Decimal:
+    """Normalize an exchange scaled quantity: qty / fractionalQtyScale.
+
+    Direct Exchange quantities are scaled integers; decimal contract quantity
+    is raw_integer_qty / fractionalQtyScale. This is venue-semantics
+    correctness: a book that omits it would misread e.g. qty=50 with scale=100
+    as 50 contracts instead of 0.50.
+    """
+    if isinstance(qty, bool) or not isinstance(qty, int):
+        raise ValueError(f"exchange quantity must be an integer, got {qty!r}")
+    if fractional_qty_scale <= 0:
+        raise ValueError("fractional_qty_scale must be positive")
+    return number(qty) / number(fractional_qty_scale)
 
 
 def _ts(value: str | None) -> datetime | None:
@@ -74,23 +96,33 @@ def parse_instrument(raw: dict) -> UsInstrument:
     """Parse a refdata/instruments entry into an authoritative UsInstrument.
 
     Expects keys matching the documented exchange reference data: symbol,
-    tickSize, minimumTradeQty, priceScale, state, question, payoutValue,
-    outcome_type, event_id, event_series, event_category, event_subcategory,
-    event_start_time, startDate, expirationDate, terminationDate,
-    long_participant_id/name, short_participant_id/name, instrument_rules.
+    tickSize, minimumTradeQty, priceScale, fractionalQtyScale, state, question,
+    payoutValue, outcome_type, event_id, event_series, event_category,
+    event_subcategory, event_start_time, startDate, expirationDate,
+    terminationDate, long_participant_id/name, short_participant_id/name,
+    instrument_rules.
+
+    fractionalQtyScale is REQUIRED: Direct Exchange quantities are scaled
+    integers (decimal_contract_qty = raw_integer_qty / fractionalQtyScale) and
+    must never be interpreted without it. It is absent on Retail, which already
+    expresses quantities as decimal contract strings.
     """
     if not raw.get("symbol"):
         raise ValueError("instrument requires symbol")
     tick = raw.get("tickSize")
     min_qty = raw.get("minimumTradeQty")
     scale = raw.get("priceScale")
-    if tick is None or min_qty is None or scale is None:
-        raise ValueError("instrument requires tickSize, minimumTradeQty, priceScale")
+    frac = raw.get("fractionalQtyScale")
+    if tick is None or min_qty is None or scale is None or frac is None:
+        raise ValueError(
+            "instrument requires tickSize, minimumTradeQty, priceScale, fractionalQtyScale"
+        )
     return UsInstrument(
         symbol=str(raw["symbol"]),
         tick_size=number(tick),
         minimum_trade_qty=number(min_qty),
         price_scale=int(scale),
+        fractional_qty_scale=int(frac),
         state=UsMarketState.parse(raw.get("state", "OPEN")),
         question=raw.get("question"),
         payout_value=number(raw["payoutValue"]) if raw.get("payoutValue") is not None else None,
@@ -140,6 +172,10 @@ class UsInstrumentRegistry:
     def price_scale_for(self, symbol: str) -> int | None:
         instrument = self.by_symbol(symbol)
         return instrument.price_scale if instrument else None
+
+    def fractional_qty_scale_for(self, symbol: str) -> int | None:
+        instrument = self.by_symbol(symbol)
+        return instrument.fractional_qty_scale if instrument else None
 
     def min_qty_for(self, symbol: str) -> Decimal | None:
         instrument = self.by_symbol(symbol)

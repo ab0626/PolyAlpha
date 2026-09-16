@@ -62,6 +62,11 @@ class UsRawCollector:
         self.registry = registry
         self.collector_version = collector_version
         self.stats = UsCollectStats()
+        # Authoritative per-slug Retail tick size (orderPriceMinTickSize),
+        # captured at discovery. Used to parse books on the correct tick grid
+        # rather than a universal fallback. Fallback applies only when the
+        # metadata is genuinely absent.
+        self.ticks: dict[str, Any] = {}
 
     def _capture(self, source: str, connection_id: str, payload: Any, wire: str | None) -> None:
         self.raw.append(
@@ -72,13 +77,16 @@ class UsRawCollector:
         )
 
     def discover_markets(self, limit: int = 100, offset: int = 0) -> list[dict]:
-        """Fetch /v1/markets, register identifiers, and capture raw.
+        """Fetch /v1/markets, register identifiers, capture raw + tick metadata.
 
         On the retail surfaces the market slug IS the instrument symbol (REST
         book/bbo paths key on /v1/markets/{slug}/...), so the identifier is
         registered with us_exchange_symbol=slug. The authoritative exchange
         symbol (refdata/instruments) replaces it at execution time; until then
         slug-as-symbol keeps reconciliation identity resolvable.
+
+        orderPriceMinTickSize is the Retail tick source (0.01/0.005/0.0025/...);
+        never inferred. It is recorded per slug so books parse on the true grid.
         """
         raw_payload, received = self.client.markets({"limit": limit, "offset": offset})
         self._capture(SOURCE_US_RETAIL_MARKETS, "discovery", raw_payload, None)
@@ -88,6 +96,12 @@ class UsRawCollector:
             internal = f"us:{slug}" if slug else None
             if slug and internal and self.registry.by_slug(slug) is None:
                 self.registry.register(internal, slug, us_exchange_symbol=slug)
+            if slug:
+                tick = market.get("orderPriceMinTickSize")
+                if tick is not None:
+                    from decimal import Decimal
+
+                    self.ticks[slug] = Decimal(str(tick))
             self.stats.markets += 1
         return markets
 
@@ -99,10 +113,14 @@ class UsRawCollector:
             if identifier is None:
                 self.stats.errors += 1
                 continue
+            # Authoritative tick from discovery metadata; an explicit tick_size
+            # argument wins. The 0.001 fallback is a last resort for genuinely
+            # absent metadata, never the primary source.
+            effective_tick = tick_size if tick_size is not None else self.ticks.get(slug)
             try:
                 raw_payload, received = self.client.market_book(slug)
                 self._capture(SOURCE_US_RETAIL_BOOK, slug, raw_payload, None)
-                parse_book(raw_payload, received, identifier, tick_size, min_size)
+                parse_book(raw_payload, received, identifier, effective_tick, min_size)
                 self.stats.books += 1
             except Exception as error:  # noqa: BLE001
                 self.stats.errors += 1
