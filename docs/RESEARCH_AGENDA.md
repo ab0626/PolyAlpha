@@ -381,3 +381,74 @@ cannot be rationalized post hoc.
   sizing layer. v2.0 body unchanged. Written while MODEL PERFORMANCE: LOCKED,
   ALPHA: UNKNOWN. Addendum content committed at
   `898698a66c24d1836a22314f2b67fd1f624bfd21`.
+
+---
+
+# v2.2 addendum
+
+Appended after v2.1 was committed. **The v2.0 and v2.1 bodies above are
+unchanged.** This addendum closes two pre-registration holes identified in
+review — the Kelly envelope being a latent selection knob, and the Family 7
+classifier's mutability — and fixes the reporting format. Written while MODEL
+PERFORMANCE: LOCKED and ALPHA: UNKNOWN, before any outcome-conditioned
+analysis.
+
+## Kelly envelope → deterministic schedule (closes the 4-way knob)
+
+The 0.10–0.25 range is an **allowed risk envelope**, not a menu to be chosen
+from after seeing returns. The fraction is a deterministic function of
+pre-specified, data-independent conditions, fixed here:
+
+```
+fraction = 0.10                                  (base)
+         + 0.05  if eval effect size   ≥ 2 × family minimum effect
+         + 0.05  if effective N        ≥ 2 × family minimum effective N
+         + 0.05  if the effect is positive on BOTH the earlier half
+                 and the later half of the eval period (temporal stability)
+         capped at 0.25
+```
+
+- **Deterministic:** no human judgment, no post-hoc selection among 0.10 /
+  0.15 / 0.20 / 0.25. The conditions are fixed now and evaluated mechanically.
+- **PROHIBITED:** choosing a fraction in the band for any reason other than the
+  schedule above; changing the schedule after returns are observed.
+- The schedule applies per family, on that family's own eval-set statistics.
+
+## Family 7 classifier immutability
+
+The shock classifier is **frozen at v2.1**: its inputs (`|Δmid|`, spread
+regime, depth change, volume proxy, related-market confirmation, time window)
+and all thresholds are fixed. It is not re-tuned after results.
+
+- **RULE:** redefining "confirmed shock" because a different threshold yields
+  nicer continuation/reversion results is prohibited.
+- **Change control:** any change to the classifier requires a new version
+  section **and** invalidation of all prior Family 7 results (they must be
+  re-run under the new classifier, or discarded — never mixed).
+- Family 7's OOS requirement is absolute: the classifier is fixed ex ante, the
+  eval is temporal hold-out, and no threshold is fitted on the eval set.
+
+## Required reporting format — per-family attribution table
+
+The evaluation report must present a **per-family attribution table**, not a
+single aggregate performance headline. A single "ensemble" number can conceal
+one real effect under several dead or overfit signals, so it is prohibited as
+the primary result.
+
+Required columns (one row per family):
+
+```
+Family | Primary Metric (e.g. ΔBrier) | Net Edge | PnL | N_eff | CI | Verdict
+```
+
+- `Verdict` ∈ {SUPPORTED, NOT SUPPORTED, DEFERRED}.
+- `N_eff` is the independent-ish event-cluster count (sampling hierarchy).
+- Any aggregate statistic may be reported **only** in addition to the
+  per-family table, never instead of it.
+
+## v2.2 version history entry
+
+- **v2.2** — addendum: deterministic Kelly schedule (replaces the ambiguous
+  0.10–0.25 band), Family 7 classifier immutability + change control, required
+  per-family attribution reporting format. v2.0/v2.1 bodies unchanged. Written
+  while MODEL PERFORMANCE: LOCKED, ALPHA: UNKNOWN.
