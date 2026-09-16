@@ -269,3 +269,114 @@ the effective N per family, and the decision for each hypothesis.
 - **v2.0** — initial pre-registration (this document). Created at commit
   `f543f587ea2288b9d6d4aa7a01b68630d225c8a7`, while MODEL PERFORMANCE: LOCKED,
   ALPHA: UNKNOWN, before any outcome-conditioned analysis.
+
+---
+
+# v2.1 addendum
+
+Appended after v2.0 was committed. **The v2.0 body above is unchanged.** This
+addendum adds one family, one refinement, and one gated sizing layer. It was
+written while MODEL PERFORMANCE: LOCKED and ALPHA: UNKNOWN, before any
+outcome-conditioned analysis.
+
+## Evidence-confidence labeling
+
+To prevent a preprint being treated later as settled law, evidence is labeled:
+
+- **[PEER]** peer-reviewed.
+- **[WP]** working paper / preprint — hypothesis-generating only; any family
+  resting solely on [WP] evidence carries a higher burden (see per-family note).
+
+Family provenance:
+- Family 1 (calibration): [PEER] Manski (2006); Wolfers–Zitzewitz;
+  **Page & Clemen (2013)**.
+- Family 2 (favorite–longshot): [PEER] Snowberg–Wolfers (2010); Ottaviani–
+  Sørensen. [WP] Cardozo & Rivero-Wildemauwe (2026).
+- Family 3 (microstructure): [PEER] Glosten–Milgrom (1985); Kyle (1985).
+- Family 4 (cross-market): [PEER] Hanson (LMSR / combinatorial aggregation).
+- Family 5 (maker/taker): [WP] Akey et al. (2026); Bürgi–Deng–Whelan (2026).
+- Family 6 (informed flow): [WP] Gómez-Cram et al. (2026).
+- Family 7 (shock continuation/reversion): [PEER] Hanson–Oprea–Porter (2006);
+  [PEER] Kyle (1985).
+- Sizing layer: [PEER] Kelly (1956).
+
+## Family 1 refinement — time-to-resolution miscalibration (Page & Clemen 2013)
+
+**Rationale:** miscalibration is not constant in time; Page & Clemen find it
+strengthens farther from expiry. This makes TTR an explicit conditioning axis,
+not merely a covariate.
+
+- **HYPOTHESIS:** the calibration residual (empirical − quoted) is
+  systematically larger in magnitude farther from resolution, and its sign
+  structure differs across TTR buckets.
+- **DATA REQUIRED:** discovery (category, `endDate`), book (price), settlement.
+- **UNIT OF ANALYSIS:** market-level observation at a fixed TTR bucket
+  (TTR = `endDate` − observation time).
+- **CLUSTER / DEPENDENCE RULE:** independent-ish event clusters; TTR buckets
+  within one cluster are not independent.
+- **TRAIN / EVAL SPLIT RULE:** global temporal split.
+- **PRIMARY METRIC:** |mean residual| per TTR bucket; monotonicity of
+  |residual| in TTR.
+- **NULL HYPOTHESIS:** |residual| is constant across TTR buckets.
+- **MINIMUM EFFECT SIZE:** ≥ 1 percentage point difference in |mean residual|
+  between the nearest and farthest TTR buckets.
+- **CONFIDENCE / SIGNIFICANCE RULE:** global FDR.
+- **MULTIPLE-TESTING CORRECTION:** global FDR across TTR buckets × category.
+- **MINIMUM EFFECTIVE N:** 200 independent-ish event clusters.
+- **SUPPORTED:** significant, ≥ min effect, monotone-in-TTR on eval.
+- **NOT SUPPORTED:** otherwise. This is a refinement of Family 1; it does not
+  create a separate tradeable alpha, it conditions Family 1.
+
+## Family 7 — Shock continuation vs. reversion (Hanson–Oprea–Porter; Kyle)
+
+**Rationale:** large price moves are heterogeneous. Moves confirmed by related
+markets, depth response, and volume are information-like; isolated moves into
+thin books that replenish are liquidity shocks. The family classifies, then
+tests continuation vs. reversion.
+
+- **HYPOTHESIS:** large Δmid events that are confirmed by related-market moves
+  and depth/volume response continue; unconfirmed moves into thin books revert.
+- **DATA REQUIRED:** book time series (Δmid, depth, spread), related slugs via
+  parent-event/event-graph linkage, `sharesTraded` delta as a volume proxy.
+- **UNIT OF ANALYSIS:** shock event (slug, timestamp, Δmid magnitude) →
+  subsequent Δmid over a fixed horizon (e.g. 60s, 300s).
+- **CLUSTER / DEPENDENCE RULE:** independent-ish event clusters; overlapping
+  shock windows within a cluster aggregate to one observation.
+- **TRAIN / EVAL SPLIT RULE:** global temporal split.
+- **PRIMARY METRIC:** mean signed subsequent Δmid for confirmed vs.
+  unconfirmed shocks (continuation coefficient and reversion coefficient).
+- **NULL HYPOTHESIS:** subsequent Δmid is independent of confirmation status.
+- **MINIMUM EFFECT SIZE:** ≥ 0.5 tick mean Δmid difference between confirmed
+  and unconfirmed shocks.
+- **CONFIDENCE / SIGNIFICANCE RULE:** global FDR.
+- **MULTIPLE-TESTING CORRECTION:** global FDR.
+- **MINIMUM EFFECTIVE N:** 200 independent-ish event clusters.
+- **SUPPORTED:** significant, ≥ min effect, on eval.
+- **NOT SUPPORTED:** otherwise.
+- **CONFIDENCE NOTE:** "confirmed" must be defined by a pre-specified rule
+  (e.g. related-market |Δmid| ≥ threshold within the same window), fixed now,
+  not chosen after seeing which classification would have been profitable.
+
+## Sizing and portfolio layer (Kelly 1956) — GATED
+
+**Status: GATED.** Applies only after at least one signal family is
+**SUPPORTED** under the decision rules above. Pre-registered now so sizing
+cannot be rationalized post hoc.
+
+- **RULE:** position size = fractional Kelly on the family's calibrated edge,
+  then apply, in order: uncertainty haircut (model/parameter uncertainty),
+  correlation haircut (within parent-event cluster), liquidity cap (size ≤
+  fraction of displayed depth), portfolio cap. Target band 0.10–0.25 Kelly.
+- **PROHIBITED:** full Kelly; sizing on an unsupported or non-significant
+  edge; sizing on a [WP]-only family without the higher burden met.
+- **UNIT:** per parent-event cluster exposure, not per child market.
+- **This layer does not create an alpha and is never evaluated as one.** It is
+  the mapping from a validated edge to capital, and it stays inactive until
+  an edge exists.
+
+## v2.1 version history entry
+
+- **v2.1** — addendum: evidence-confidence labeling, Family 1 TTR refinement
+  (Page & Clemen 2013), Family 7 shock continuation/reversion, gated Kelly
+  sizing layer. v2.0 body unchanged. Written while MODEL PERFORMANCE: LOCKED,
+  ALPHA: UNKNOWN.
