@@ -26,7 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..replay_verification import ReplayCheckResult
@@ -439,3 +439,132 @@ class UsInstrumentMetadataChain:
             "root_hash": self.root_hash(),
             "updates": list(self.updates),
         }
+
+
+@dataclass
+class UsRealDataStartMarker:
+    """Immutable REAL_DATA_START_US marker — binds the US experiment at start.
+
+    Mirrors the International RealDataStartMarker discipline for the US
+    lineage. Permanently binds:
+        baseline identity, implementation_commit, collector/interface SHA256,
+        instrument policy SHA256, reconciliation policy SHA256,
+        burn-in report SHA256, burn-in replay hash, started_at (UTC),
+        research state (ALPHA_UNKNOWN while the model is locked).
+    The marker_sha256 self-hash proves the binding was not edited after write.
+    """
+
+    phase: str
+    baseline_tag: str
+    baseline_commit: str
+    implementation_commit: str
+    collector_sha256: str
+    interface_sha256: str
+    instrument_policy_sha256: str
+    reconciliation_policy_sha256: str
+    burnin_report_sha256: str
+    burnin_replay_hash_a: str
+    burnin_replay_hash_b: str
+    started_at: str
+    research_state: str
+    execution_mode: str
+    marker_sha256: str = ""
+
+    def as_dict(self) -> dict:
+        d = {
+            "phase": self.phase,
+            "baseline_tag": self.baseline_tag,
+            "baseline_commit": self.baseline_commit,
+            "implementation_commit": self.implementation_commit,
+            "collector_sha256": self.collector_sha256,
+            "interface_sha256": self.interface_sha256,
+            "instrument_policy_sha256": self.instrument_policy_sha256,
+            "reconciliation_policy_sha256": self.reconciliation_policy_sha256,
+            "burnin_report_sha256": self.burnin_report_sha256,
+            "burnin_replay_hash_a": self.burnin_replay_hash_a,
+            "burnin_replay_hash_b": self.burnin_replay_hash_b,
+            "started_at": self.started_at,
+            "research_state": self.research_state,
+            "execution_mode": self.execution_mode,
+        }
+        if self.marker_sha256:
+            d["marker_sha256"] = self.marker_sha256
+        return d
+
+    def combined_hash(self) -> str:
+        d = self.as_dict()
+        d.pop("marker_sha256", None)
+        canonical = json.dumps(d, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def write_us_real_data_start_marker(
+    marker_path: str | Path,
+    baseline_tag: str,
+    baseline_commit: str,
+    implementation_commit: str,
+    collector_sha256: str,
+    interface_sha256: str,
+    instrument_policy_sha256: str,
+    reconciliation_policy_sha256: str,
+    burnin_report_sha256: str,
+    burnin_replay_hash_a: str,
+    burnin_replay_hash_b: str,
+    started_at: str | None = None,
+    research_state: str = "ALPHA_UNKNOWN",
+    execution_mode: str = "SHADOW_OR_COLLECTION_ONLY",
+    phase_store: "object | None" = None,
+) -> UsRealDataStartMarker:
+    """Write the immutable REAL_DATA_START_US marker. Refuses to overwrite.
+
+    Permanently binds the US experiment to the exact state at commencement:
+    the frozen US baseline, the hardened operational code at start
+    (implementation_commit, collector_sha256, interface_sha256), the US
+    instrument + reconciliation policy hashes, and the qualifying burn-in
+    report. When a phase_store is provided, it must be in US_BURNIN_PASSED
+    phase; otherwise the marker write is rejected.
+    """
+    if phase_store is not None:
+        phase_store.require("US_BURNIN_PASSED")
+    path = Path(marker_path)
+    if path.exists():
+        raise FileExistsError(f"REAL_DATA_START_US marker already exists: {path}")
+    marker = UsRealDataStartMarker(
+        phase="REAL_DATA_START_US",
+        baseline_tag=baseline_tag,
+        baseline_commit=baseline_commit,
+        implementation_commit=implementation_commit,
+        collector_sha256=collector_sha256,
+        interface_sha256=interface_sha256,
+        instrument_policy_sha256=instrument_policy_sha256,
+        reconciliation_policy_sha256=reconciliation_policy_sha256,
+        burnin_report_sha256=burnin_report_sha256,
+        burnin_replay_hash_a=burnin_replay_hash_a,
+        burnin_replay_hash_b=burnin_replay_hash_b,
+        started_at=started_at or datetime.now(UTC).isoformat(),
+        research_state=research_state,
+        execution_mode=execution_mode,
+    )
+    digest = marker.combined_hash()
+    marker = UsRealDataStartMarker(
+        phase=marker.phase,
+        baseline_tag=marker.baseline_tag,
+        baseline_commit=marker.baseline_commit,
+        implementation_commit=marker.implementation_commit,
+        collector_sha256=marker.collector_sha256,
+        interface_sha256=marker.interface_sha256,
+        instrument_policy_sha256=marker.instrument_policy_sha256,
+        reconciliation_policy_sha256=marker.reconciliation_policy_sha256,
+        burnin_report_sha256=marker.burnin_report_sha256,
+        burnin_replay_hash_a=marker.burnin_replay_hash_a,
+        burnin_replay_hash_b=marker.burnin_replay_hash_b,
+        started_at=marker.started_at,
+        research_state=marker.research_state,
+        execution_mode=marker.execution_mode,
+        marker_sha256=digest,
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(marker.as_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return marker

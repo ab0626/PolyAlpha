@@ -35,6 +35,7 @@ from polyalpha.us.burnin import (  # noqa: E402
     UsInstrumentMetadataChain,
     instrument_policy_hash,
     write_us_burnin_report,
+    write_us_real_data_start_marker,
 )
 from polyalpha.us.collector import UsRawCollector  # noqa: E402
 from polyalpha.us.exchange import ExchangeRefDataClient  # noqa: E402
@@ -1195,3 +1196,97 @@ class TestUsPolicyDriftGate:
     def test_default_permits_nothing(self):
         """By default no frozen-policy field is permitted to change."""
         assert UsBurnInReport.__dataclass_fields__["permitted_policy_changes"].default == frozenset()
+
+
+class TestUsRealDataStartMarker:
+    """REAL_DATA_START_US marker: immutable, phase-gated, self-hashed."""
+
+    def test_marker_binds_required_fields(self, tmp_path):
+        from polyalpha.phases import PhaseState, UsPhaseStore
+
+        phase_file = tmp_path / "phase.json"
+        store = UsPhaseStore(phase_file, "impl")
+        store.write(PhaseState(
+            phase="US_BURNIN_PASSED",
+            baseline_commit="impl",
+            updated_at="2026-09-16T00:00:00+00:00",
+            transition_log=[],
+        ))
+        marker = write_us_real_data_start_marker(
+            marker_path=tmp_path / "REAL_DATA_START_US.json",
+            baseline_tag="v0.4.0-us-research-baseline",
+            baseline_commit="abc",
+            implementation_commit="deb3c93",
+            collector_sha256="c" * 64,
+            interface_sha256="i" * 64,
+            instrument_policy_sha256="p" * 64,
+            reconciliation_policy_sha256="r" * 64,
+            burnin_report_sha256="b" * 64,
+            burnin_replay_hash_a="a" * 64,
+            burnin_replay_hash_b="a" * 64,
+            phase_store=store,
+        )
+        d = marker.as_dict()
+        assert d["phase"] == "REAL_DATA_START_US"
+        assert d["implementation_commit"] == "deb3c93"
+        assert d["research_state"] == "ALPHA_UNKNOWN"
+        assert len(d["marker_sha256"]) == 64
+        # Self-hash is over the binding (excluding the marker_sha256 itself).
+        assert marker.marker_sha256 == marker.combined_hash()
+
+    def test_marker_requires_passed_phase(self, tmp_path):
+        from polyalpha.phases import PhaseState, UsPhaseStore
+
+        phase_file = tmp_path / "phase.json"
+        store = UsPhaseStore(phase_file, "impl")
+        store.write(PhaseState(
+            phase="US_BURNIN_RUNNING",
+            baseline_commit="impl",
+            updated_at="2026-09-16T00:00:00+00:00",
+            transition_log=[],
+        ))
+        with pytest.raises(ValueError, match="US_BURNIN_PASSED"):
+            write_us_real_data_start_marker(
+                marker_path=tmp_path / "REAL_DATA_START_US.json",
+                baseline_tag="v0.4.0-us-research-baseline",
+                baseline_commit="abc",
+                implementation_commit="deb3c93",
+                collector_sha256="c" * 64,
+                interface_sha256="i" * 64,
+                instrument_policy_sha256="p" * 64,
+                reconciliation_policy_sha256="r" * 64,
+                burnin_report_sha256="b" * 64,
+                burnin_replay_hash_a="a" * 64,
+                burnin_replay_hash_b="a" * 64,
+                phase_store=store,
+            )
+
+    def test_marker_refuses_overwrite(self, tmp_path):
+        marker_path = tmp_path / "REAL_DATA_START_US.json"
+        write_us_real_data_start_marker(
+            marker_path=marker_path,
+            baseline_tag="v0.4.0-us-research-baseline",
+            baseline_commit="abc",
+            implementation_commit="deb3c93",
+            collector_sha256="c" * 64,
+            interface_sha256="i" * 64,
+            instrument_policy_sha256="p" * 64,
+            reconciliation_policy_sha256="r" * 64,
+            burnin_report_sha256="b" * 64,
+            burnin_replay_hash_a="a" * 64,
+            burnin_replay_hash_b="a" * 64,
+        )
+        with pytest.raises(FileExistsError, match="already exists"):
+            write_us_real_data_start_marker(
+                marker_path=marker_path,
+                baseline_tag="v0.4.0-us-research-baseline",
+                baseline_commit="abc",
+                implementation_commit="deb3c93",
+                collector_sha256="c" * 64,
+                interface_sha256="i" * 64,
+                instrument_policy_sha256="p" * 64,
+                reconciliation_policy_sha256="r" * 64,
+                burnin_report_sha256="b" * 64,
+                burnin_replay_hash_a="a" * 64,
+                burnin_replay_hash_b="a" * 64,
+            )
