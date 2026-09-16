@@ -379,4 +379,5 @@ cannot be rationalized post hoc.
 - **v2.1** — addendum: evidence-confidence labeling, Family 1 TTR refinement
   (Page & Clemen 2013), Family 7 shock continuation/reversion, gated Kelly
   sizing layer. v2.0 body unchanged. Written while MODEL PERFORMANCE: LOCKED,
-  ALPHA: UNKNOWN.
+  ALPHA: UNKNOWN. Addendum content committed at
+  `898698a66c24d1836a22314f2b67fd1f624bfd21`.
