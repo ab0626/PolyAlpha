@@ -268,9 +268,11 @@ class LivePreTradeGate:
         if current_book is None:
             return None
         # Price drift: best executable price moved relative to the intent's
-        # expected vwap / limit.
-        current_ask = self._best_price(current_book, "BUY")
-        current_bid = self._best_price(current_book, "SELL")
+        # expected vwap / limit. For a BUY you execute against the best ASK;
+        # for a SELL against the best BID. current_bid reads "bids",
+        # current_ask reads "asks" (spread = ask - bid > 0).
+        current_bid = self._best_price(current_book, "BUY")
+        current_ask = self._best_price(current_book, "SELL")
         exec_price = current_ask if intent.side == "BUY" else current_bid
         if exec_price is None:
             price_drift = D("0")

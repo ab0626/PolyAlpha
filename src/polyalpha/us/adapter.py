@@ -36,12 +36,16 @@ def amount_to_decimal(value: object, currency: str | None = None) -> Decimal:
 
 
 def scaled_to_decimal(px: int, price_scale: int) -> Decimal:
-    """Normalize an exchange scaled integer: px / price_scale."""
-    if not isinstance(px, int) and not (isinstance(px, float) and px.is_integer()):
-        raise ValueError(f"exchange price must be an integer, got {px!r}")
-    if price_scale <= 0:
-        raise ValueError("price_scale must be positive")
-    return number(px) / number(price_scale)
+    """Normalize an exchange scaled integer: px / price_scale.
+
+    Single source of truth: delegates to .instruments, which rejects bool and
+    requires a true int. This adapter-side name exists only for callers that
+    import it from here; behavior must never diverge from the canonical
+    scaling used by the exchange book parser.
+    """
+    from .instruments import scaled_to_decimal as _canonical_scaled_to_decimal
+
+    return _canonical_scaled_to_decimal(px, price_scale)
 
 
 def retail_qty(value: object) -> Decimal:

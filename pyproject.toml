@@ -11,6 +11,9 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.16,<1"]
+# Differential testing against the official Polymarket US SDK (optional; the
+# differential tests skip cleanly when it is absent).
+differential = ["polymarket-us>=0.1"]
 research = ["scikit-learn>=1.5,<2"]
 stream = ["websockets>=14,<18"]
 postgres = ["psycopg[binary]>=3.2,<4"]

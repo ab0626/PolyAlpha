@@ -1382,3 +1382,80 @@ class TestUsRealDataStartMarker:
                 burnin_replay_hash_a="a" * 64,
                 burnin_replay_hash_b="a" * 64,
             )
+
+
+
+# ============================================================
+# MUTATION-COVERAGE (kills mutation-gate survivors)
+# ============================================================
+
+
+class TestUsMutationCoverage:
+    """Boundary / bool-rejection / fallback tests that kill surviving mutants
+    in the US adapter family (see scripts/mutation_gate.py)."""
+
+    def test_scaled_to_decimal_rejects_bool(self):
+        from polyalpha.us.instruments import scaled_to_decimal
+        with pytest.raises(ValueError, match="integer"):
+            scaled_to_decimal(True, 1000)
+
+    def test_scaled_to_decimal_rejects_zero_scale(self):
+        from polyalpha.us.instruments import scaled_to_decimal
+        with pytest.raises(ValueError, match="price_scale"):
+            scaled_to_decimal(5, 0)
+
+    def test_scaled_qty_rejects_bool(self):
+        from polyalpha.us.instruments import scaled_qty_to_decimal
+        with pytest.raises(ValueError, match="integer"):
+            scaled_qty_to_decimal(True, 100)
+
+    def test_scaled_qty_rejects_zero_scale(self):
+        from polyalpha.us.instruments import scaled_qty_to_decimal
+        with pytest.raises(ValueError, match="fractional_qty_scale"):
+            scaled_qty_to_decimal(5, 0)
+
+    def test_parse_instrument_missing_any_core_field_raises(self):
+        from polyalpha.us.instruments import parse_instrument
+        for field in ("tickSize", "minimumTradeQty", "priceScale", "fractionalQtyScale"):
+            raw = _instrument_raw()
+            del raw[field]
+            with pytest.raises(ValueError, match="requires"):
+                parse_instrument(raw)
+
+    def test_parse_market_event_ids_uses_event_id(self):
+        raw = _market_raw()
+        raw["eventId"] = "EV-9"
+        m = parse_market(raw, NOW, _registry().by_slug("chiefs-super-bowl-lx"))
+        assert "EV-9" in m.event_ids
+
+    def test_parse_market_question_fallback(self):
+        raw = _market_raw()
+        raw["question"] = "Q?"
+        m = parse_market(raw, NOW, _registry().by_slug("chiefs-super-bowl-lx"))
+        assert m.question == "Q?"
+
+    def test_parse_market_description(self):
+        raw = _market_raw()
+        raw["description"] = "desc"
+        m = parse_market(raw, NOW, _registry().by_slug("chiefs-super-bowl-lx"))
+        assert m.description == "desc"
+
+    def test_exchange_book_zero_qty_dropped(self):
+        from polyalpha.us.adapter import parse_exchange_book
+        ident = _registry().by_slug("chiefs-super-bowl-lx")
+        raw = {"marketData": {
+            "bids": [{"px": 555, "qty": 0}],
+            "offers": [{"px": 560, "qty": 100}],
+            "transactTime": "2026-09-15T12:00:00Z"}}
+        book = parse_exchange_book(raw, NOW, ident, price_scale=1000, fractional_qty_scale=100)
+        assert len(book.bids) == 0
+
+    def test_states_pending_is_active(self):
+        assert UsMarketState.PENDING.is_active() is True
+
+    def test_states_pending_order_book_enabled(self):
+        # order_book_enabled = is_pre_trade() or is_tradable(): PENDING is
+        # pre-trade so the book is enabled (kills `or` -> `and` in
+        # order_book_enabled, which line-72 mutation targets).
+        assert UsMarketState.PENDING.order_book_enabled() is True
+        assert UsMarketState.CLOSED.order_book_enabled() is False

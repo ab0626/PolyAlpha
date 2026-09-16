@@ -229,6 +229,109 @@ class TestPreTradeGate:
         assert len(result.checks) >= 21
 
 
+class TestPreTradeGateMutationCoverage:
+    """Boundary / absent-field / side-routing tests that kill surviving
+    mutants in pre_trade_gate.py (see scripts/mutation_gate.py)."""
+
+    def test_market_not_accepting_rejects(self):
+        result = LivePreTradeGate().evaluate(
+            _intent(), _world(market=_Market(accepting_orders=False)))
+        assert result.approved is False
+        assert any(c.name == "accepting_orders" and not c.passed for c in result.checks)
+
+    def test_market_book_disabled_rejects(self):
+        result = LivePreTradeGate().evaluate(
+            _intent(), _world(market=_Market(enable_order_book=False)))
+        assert result.approved is False
+        assert any(c.name == "order_book_enabled" and not c.passed for c in result.checks)
+
+    def test_market_closed_rejects(self):
+        result = LivePreTradeGate().evaluate(
+            _intent(), _world(market=_Market(closed=True)))
+        assert result.approved is False
+        assert any(c.name == "not_closed" and not c.passed for c in result.checks)
+
+    def test_forecast_age_absent_rejects(self):
+        result = LivePreTradeGate().evaluate(
+            _intent(), _world(forecast_age_seconds=None))
+        assert result.approved is False
+        assert any(c.name == "forecast_fresh" and not c.passed for c in result.checks)
+
+    def test_metadata_age_absent_rejects(self):
+        result = LivePreTradeGate().evaluate(
+            _intent(), _world(metadata_age_seconds=None))
+        assert result.approved is False
+        assert any(c.name == "metadata_fresh" and not c.passed for c in result.checks)
+
+    def test_drift_boundary_exact_tolerance_passes(self):
+        """<= boundary: drift exactly equal to tolerance must PASS."""
+        gate = LivePreTradeGate(price_tolerance=D("0"), spread_tolerance=D("0.01"),
+                                depth_tolerance=D("0"), edge_tolerance=D("0"))
+        book = {"bids": [{"price": "0.49", "size": "100"}],
+                "asks": [{"price": "0.50", "size": "100"}], "hash": "h_signal"}
+        result = gate.evaluate(_intent(), _world(), book)
+        assert result.drift is not None
+        assert result.drift.price_drift == D("0")       # 0.50 ask == 0.50 limit
+        assert result.drift.spread_drift == D("0.01")   # 0.50 - 0.49
+        assert result.approved is True
+
+    def test_best_price_side_routing(self):
+        book = {"bids": [{"price": "0.49", "size": "100"}],
+                "asks": [{"price": "0.50", "size": "100"}]}
+        assert LivePreTradeGate._best_price(book, "BUY") == D("0.49")
+        assert LivePreTradeGate._best_price(book, "SELL") == D("0.50")
+
+    def test_buy_exec_price_is_ask(self):
+        """BUY executes against the best ASK (spread = ask - bid > 0)."""
+        gate = LivePreTradeGate(price_tolerance=D("0.05"), spread_tolerance=D("0.20"),
+                                depth_tolerance=D("1"), edge_tolerance=D("0.1"))
+        book = {"bids": [{"price": "0.40", "size": "100"}],
+                "asks": [{"price": "0.52", "size": "100"}], "hash": "h_signal"}
+        # limit 0.50, ask 0.52 -> price_drift 0.02 (NOT |0.40-0.50|=0.10).
+        result = gate.evaluate(_intent(), _world(), book)
+        assert result.drift.price_drift == D("0.02")
+
+    def test_spread_positive_from_ask_minus_bid(self):
+        gate = LivePreTradeGate()
+        book = {"bids": [{"price": "0.48", "size": "100"}],
+                "asks": [{"price": "0.52", "size": "100"}], "hash": "h_signal"}
+        result = gate.evaluate(_intent(), _world(), book)
+        assert result.drift.spread_drift == D("0.04")
+
+    def test_sell_depth_counts_asks_at_or_above_limit(self):
+        gate = LivePreTradeGate(depth_tolerance=D("1"))
+        intent = _intent(side="SELL", requested_shares=D("100"), limit_price=D("0.50"))
+        book = {"bids": [{"price": "0.49", "size": "100"}],
+                "asks": [{"price": "0.51", "size": "60"}, {"price": "0.52", "size": "40"}],
+                "hash": "h_signal"}
+        result = gate.evaluate(intent, _world(), book)
+        # SELL depth = asks at >= 0.50 = 60 + 40 = 100 -> depth_drift 0.
+        assert result.drift.depth_drift == D("0")
+
+    def test_one_sided_book_spread_zero(self):
+        """Only bids present: current_ask is None -> spread stays 0 (no TypeError)."""
+        gate = LivePreTradeGate(spread_tolerance=D("1"))
+        book = {"bids": [{"price": "0.49", "size": "100"}], "asks": [], "hash": "h_signal"}
+        result = gate.evaluate(_intent(), _world(), book)
+        assert result.drift.spread_drift == D("0")
+
+    def test_zero_requested_shares_depth_drift_zero(self):
+        """requested_shares == 0 -> depth_drift is exactly 0 (kills ==0 -> !=0)."""
+        gate = LivePreTradeGate()
+        intent = _intent(requested_shares=D("0"))
+        book = {"bids": [{"price": "0.49", "size": "100"}],
+                "asks": [{"price": "0.50", "size": "100"}], "hash": "h_signal"}
+        result = gate.evaluate(intent, _world(), book)
+        assert result.drift.depth_drift == D("0")
+
+    def test_edge_drift_abs_magnitude(self):
+        """Edge drift is the ABSOLUTE difference (kills abs - abs -> +)."""
+        gate = LivePreTradeGate(edge_tolerance=D("0.5"))
+        # current_net_edge 0.10 vs predicted 0.08 -> drift 0.02 (not 0.18).
+        result = gate.evaluate(_intent(), _world(current_net_edge=D("0.10")), None)
+        assert result.drift.probability_edge_drift == D("0.02")
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # EXECUTION GATEWAYS
 # ══════════════════════════════════════════════════════════════════════════
