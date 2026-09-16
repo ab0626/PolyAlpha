@@ -1224,11 +1224,13 @@ class TestUsRealDataStartMarker:
             burnin_report_sha256="b" * 64,
             burnin_replay_hash_a="a" * 64,
             burnin_replay_hash_b="a" * 64,
+            marker_writer_commit="efaf9c6",
             phase_store=store,
         )
         d = marker.as_dict()
         assert d["phase"] == "REAL_DATA_START_US"
         assert d["implementation_commit"] == "deb3c93"
+        assert d["marker_writer_commit"] == "efaf9c6"
         assert d["research_state"] == "ALPHA_UNKNOWN"
         assert len(d["marker_sha256"]) == 64
         # Self-hash is over the binding (excluding the marker_sha256 itself).

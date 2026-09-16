@@ -468,6 +468,7 @@ class UsRealDataStartMarker:
     started_at: str
     research_state: str
     execution_mode: str
+    marker_writer_commit: str = ""
     marker_sha256: str = ""
 
     def as_dict(self) -> dict:
@@ -487,6 +488,8 @@ class UsRealDataStartMarker:
             "research_state": self.research_state,
             "execution_mode": self.execution_mode,
         }
+        if self.marker_writer_commit:
+            d["marker_writer_commit"] = self.marker_writer_commit
         if self.marker_sha256:
             d["marker_sha256"] = self.marker_sha256
         return d
@@ -513,6 +516,7 @@ def write_us_real_data_start_marker(
     started_at: str | None = None,
     research_state: str = "ALPHA_UNKNOWN",
     execution_mode: str = "SHADOW_OR_COLLECTION_ONLY",
+    marker_writer_commit: str = "",
     phase_store: "object | None" = None,
 ) -> UsRealDataStartMarker:
     """Write the immutable REAL_DATA_START_US marker. Refuses to overwrite.
@@ -544,6 +548,7 @@ def write_us_real_data_start_marker(
         started_at=started_at or datetime.now(UTC).isoformat(),
         research_state=research_state,
         execution_mode=execution_mode,
+        marker_writer_commit=marker_writer_commit,
     )
     digest = marker.combined_hash()
     marker = UsRealDataStartMarker(
@@ -561,6 +566,7 @@ def write_us_real_data_start_marker(
         started_at=marker.started_at,
         research_state=marker.research_state,
         execution_mode=marker.execution_mode,
+        marker_writer_commit=marker.marker_writer_commit,
         marker_sha256=digest,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
