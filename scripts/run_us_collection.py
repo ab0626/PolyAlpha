@@ -33,7 +33,7 @@ DEFAULT_PHASE_FILE = ROOT / "data" / "us" / "phase.json"
 DEFAULT_RAW_DIR = ROOT / "data" / "us" / "retail" / "raw"
 DEFAULT_REPORT_DIR = ROOT / "data" / "us" / "reports"
 
-US_BASELINE_VERSION = "v0.4.0-us-research-baseline"
+US_BASELINE_VERSION = "v0.4.1-us-research-baseline"
 
 
 def main() -> int:
