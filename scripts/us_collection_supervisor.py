@@ -43,7 +43,7 @@ NO_DATA_ALERT_SECONDS = 300  # 5 min without new raw bytes while collector shoul
 # code the qualifying burn-in ran (collector + US adapter), verified byte-identical
 # at launch. The supervisor wrapper itself is newer; it is recorded separately as
 # supervisor_commit so provenance never conflates the two.
-COLLECTION_IMPL_COMMIT = "cb92eacf51d902e9855f6cdb305b69a2d1ef2e60"
+COLLECTION_IMPL_COMMIT = "0bb16a4be3781a4d64b236238c48c21418ff7a24"
 
 
 def _now() -> str:
@@ -101,7 +101,7 @@ def _manifest_verify(day) -> tuple[bool, str]:
     from polyalpha.rawstore import RawStore
 
     writer = ManifestWriter(DEFAULT_MANIFEST_DIR)
-    raw = RawStore(DEFAULT_RAW_DIR, collector_version="v0.4.0-us-research-baseline")
+    raw = RawStore(DEFAULT_RAW_DIR, collector_version="v0.4.1-us-research-baseline")
     return writer.verify(day, raw)
 
 
@@ -119,7 +119,7 @@ def _finalize_previous_day_manifest() -> None:
 
     previous = date.today() - timedelta(days=1)
     writer = ManifestWriter(DEFAULT_MANIFEST_DIR)
-    raw = RawStore(DEFAULT_RAW_DIR, collector_version="v0.4.0-us-research-baseline")
+    raw = RawStore(DEFAULT_RAW_DIR, collector_version="v0.4.1-us-research-baseline")
     manifest = build_daily_manifest(
         raw=raw,
         day=previous,
