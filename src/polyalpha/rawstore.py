@@ -341,10 +341,15 @@ class RawStore:
                 files.extend(self._day_files(directory))
             files = sorted(set(files))
         for f in files:
-            if f.suffix == ".gz":
-                handle = gzip.open(f, "rt", encoding="utf-8")
-            else:
-                handle = open(f, "r", encoding="utf-8")
+            try:
+                if f.suffix == ".gz":
+                    handle = gzip.open(f, "rt", encoding="utf-8")
+                else:
+                    handle = open(f, "r", encoding="utf-8")
+            except (FileNotFoundError, OSError):
+                # A live collector may finalize (unlink) a .jsonl between the
+                # directory scan and this open; skip it (transient race).
+                continue
             with handle:
                 for line in handle:
                     if not line.strip():
@@ -408,7 +413,10 @@ class RawStore:
                 files.extend(self._day_files(directory))
             files = sorted(set(files))
         for f in files:
-            handle = gzip.open(f, "rt", encoding="utf-8") if f.suffix == ".gz" else open(f, "r", encoding="utf-8")
+            try:
+                handle = gzip.open(f, "rt", encoding="utf-8") if f.suffix == ".gz" else open(f, "r", encoding="utf-8")
+            except (FileNotFoundError, OSError):
+                continue  # transient finalize/unlink race with a live collector
             with handle:
                 for line in handle:
                     if not line.strip():

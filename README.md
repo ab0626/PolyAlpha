@@ -8,6 +8,19 @@ A production-oriented quantitative prediction-market trading system under empiri
 
 **Venues.** Production target is **Polymarket US** (CFTC-regulated, US-eligible); **Kalshi** is a sibling US-accessible venue. **Polymarket International** (Gamma/CLOB, `docs.polymarket.com`) is a *research-data* lineage only — its collector is never an executable path. The split is hard-coded in `src/polyalpha/venue.py` (`is_executable` / `is_research_only`), never left to convention.
 
+## Audit manifest (snapshot — regenerate with `scripts/repo_manifest.py` or update on release)
+
+| Field | Value |
+|---|---|
+| Collection phase | `US_COLLECTION_RUNNING` (forward evidence) |
+| Venue | Polymarket US (executable target); Kalshi (sibling); International (research-data only) |
+| Alpha status | UNKNOWN |
+| Executable modes | RESEARCH / PAPER / SHADOW / LIVE_READY (no live adapter wired) |
+| Tests | 1,891 passed, 1 skipped, 5 numerical subtests |
+| Live data streams | books (2s snapshots) + fills (explicit maker/taker) |
+| Evidence gate | ~5/30 days, 0/200 settled, 4/200 independent clusters |
+| Known gaps | no validated edge; A6/A8 need fill accumulation; A7/A9 dropped (US-only); sub-second reaction horizons pending finer timestamp precision |
+
 ## Quick start
 
 From the repository root, using Python 3.12+:
@@ -118,7 +131,7 @@ polybot/
       __init__.py         Model package exports
       market_prior.py     Component A: market price as Bayesian prior
       microstructure.py   Component B: order-book dynamics model
-      fundamental.py      Component C: external-data model (stub)
+      fundamental.py      Component C: Bayesian external-data model (category priors + likelihood-ratio updates + source weighting)
     features/
       __init__.py
       orderbook.py        20+ microstructure features (imbalance, microprice, slope, HHI, momentum)
@@ -161,7 +174,7 @@ polybot/
 
 ## What has been verified
 
-- 266 tests pass, including five numerical subtests. They cover parser failures, outcome mapping, timestamps, append-only enforcement, future-data exclusion, cursor handling, fees, both requested VWAP examples, partial fills, liquidity depletion, duplicate-fill rejection, cash/basis conservation, settlement, cluster limits, loss breakers, delayed exits, stream invalidation, calibration leakage controls, payout units, resolution changes, configuration, order-book features, uncertainty estimation, expected value decomposition, Kelly sizing, anomaly detection, quality scoring, performance metrics, information pipeline, market making, walk-forward evaluation, strategy comparison, bias detection, experiment tracking, calibration/feature drift detection, market snapshots, trading signals, model ensembles, correlation analysis, event clustering, tail risk metrics, temperature scaling, correlation-adjusted risk, property-based numerical tests (fee symmetry, Kelly bounds, drawdown invariants), microstructure model, market prior model, fundamental model stub, feature importance (permutation), alpha decay analysis, resolution quality scoring with temporal decay, edge realization metrics, geographic compliance, and comprehensive integration tests.
+- 1,891 tests pass (1 skipped), including five numerical subtests. They cover parser failures, outcome mapping, timestamps, append-only enforcement, future-data exclusion, cursor handling, fees, both requested VWAP examples, partial fills, liquidity depletion, duplicate-fill rejection, cash/basis conservation, settlement, cluster limits, loss breakers, delayed exits, stream invalidation, calibration leakage controls, payout units, resolution changes, configuration, order-book features, uncertainty estimation, expected value decomposition, Kelly sizing, anomaly detection, quality scoring, performance metrics, information pipeline, market making, walk-forward evaluation, strategy comparison, bias detection, experiment tracking, calibration/feature drift detection, market snapshots, trading signals, model ensembles, correlation analysis, event clustering, tail risk metrics, temperature scaling, correlation-adjusted risk, property-based numerical tests (fee symmetry, Kelly bounds, drawdown invariants), microstructure model, market prior model, fundamental model (Bayesian external-data), feature importance (permutation), alpha decay analysis, resolution quality scoring with temporal decay, edge realization metrics, geographic compliance, and comprehensive integration tests.
 - Live Gamma/CLOB collection stored 100 markets and 200 REST books with zero REST errors. The one-page universe was explicitly marked truncated.
 - A bounded public WebSocket session persisted 292 raw stream events and 384 additional reconstructed snapshots without a reported stream gap. This does not establish absence of undetectable transport loss.
 - A separate two-cycle live paper smoke test collected four books and refreshed two markets per cycle; it produced zero fills with the empty review map.

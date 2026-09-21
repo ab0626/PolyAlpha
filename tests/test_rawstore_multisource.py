@@ -73,3 +73,18 @@ def test_open_file_coexists_with_finalized_and_advances_index(tmp_path):
 
     records = list(RawStore(tmp_path).replay())
     assert [r.payload["n"] for r in records] == [1, 2, 3]
+
+
+def test_replay_skips_transiently_missing_file(tmp_path, monkeypatch):
+    # Simulate the finalize/unlink race: _day_files lists a file that is gone
+    # by the time replay opens it. Replay must skip it, not crash.
+    with RawStore(tmp_path, "v1") as store:
+        store.append("src_alpha", "c", {"n": 1}, received_at_ns=1)
+
+    ghost = tmp_path / "src_alpha-9999.jsonl"
+
+    def fake_day_files(self, directory):
+        return [ghost]
+
+    monkeypatch.setattr(RawStore, "_day_files", fake_day_files)
+    assert list(RawStore(tmp_path).replay()) == []
