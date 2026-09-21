@@ -66,6 +66,20 @@ def test_auth_signature_verifies_and_is_stable():
     assert auth.sign("POST", "/v1/orders", ts) == sig
 
 
+def test_auth_accepts_64_byte_seed_and_public_key():
+    pytest.importorskip("nacl")
+    from nacl.signing import SigningKey
+
+    seed = bytes(range(32))
+    sk = SigningKey(seed)
+    # The venue's secret is base64(seed || public_key), 64 bytes.
+    secret_64 = base64.b64encode(seed + sk.verify_key.encode()).decode()
+    auth = UsRetailAuth("ak", secret_64)
+    sig = auth.sign("POST", "/v1/orders", "1700000000000")
+    raw_sig = base64.b64decode(sig)
+    sk.verify_key.verify(b"1700000000000POST/v1/orders", raw_sig)
+
+
 def test_auth_headers_contain_required_fields():
     pytest.importorskip("nacl")
     auth = UsRetailAuth("ak", base64.b64encode(b"1" * 32).decode())

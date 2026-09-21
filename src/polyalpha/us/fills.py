@@ -90,15 +90,26 @@ class FillRecord:
         return self.signed_size
 
 
+def _normalize_side(side: object) -> str:
+    """Normalize the venue's ORDER_SIDE_* enum to BUY/SELL."""
+    s = str(side).upper()
+    if "BUY" in s or s == "1":
+        return "BUY"
+    if "SELL" in s or s == "2":
+        return "SELL"
+    raise ValueError(f"invalid trade side: {side!r}")
+
+
 def parse_us_trade(raw: dict, received_at: datetime) -> FillRecord:
     """Parse a US retail trade message into a FillRecord.
 
-    Assumed shape (docs/POLYMARKET_US_API.md): `price`, `quantity`, `tradeTime`,
-    `maker {side, intent}`, `taker {side, intent}`, and (where present)
-    `marketSlug` / `tradeId`. Tolerates a `data` wrapper. VERIFY against the
-    live feed before trusting downstream signals.
+    Confirmed shape (polymarket-us SDK websocket/types.py):
+      {"requestId": ..., "subscriptionType": "SUBSCRIPTION_TYPE_TRADE",
+       "trade": {"marketSlug": ..., "price": Amount, "quantity": Amount,
+                 "tradeTime": ..., "maker": {"side": "ORDER_SIDE_*",
+                 "intent": "ORDER_INTENT_*"}, "taker": {...}}}
     """
-    payload = raw.get("data", raw) if isinstance(raw.get("data"), dict) else raw
+    payload = raw.get("trade", raw) if isinstance(raw.get("trade"), dict) else raw
 
     price = _amount(payload.get("price"))
     size = _amount(payload.get("quantity")) or _amount(payload.get("size"))
@@ -109,10 +120,8 @@ def parse_us_trade(raw: dict, received_at: datetime) -> FillRecord:
     maker = payload.get("maker") or {}
     taker = payload.get("taker") or {}
 
-    maker_side = str(maker.get("side", "")).upper()
-    taker_side = str(taker.get("side", "")).upper()
-    if maker_side not in ("BUY", "SELL") or taker_side not in ("BUY", "SELL"):
-        raise ValueError("US trade requires explicit maker/taker side")
+    maker_side = _normalize_side(maker.get("side"))
+    taker_side = _normalize_side(taker.get("side"))
 
     return FillRecord(
         market_slug=payload.get("marketSlug") or payload.get("slug"),

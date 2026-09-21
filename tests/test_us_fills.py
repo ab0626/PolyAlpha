@@ -7,23 +7,31 @@ from decimal import Decimal as D
 
 sys.path.insert(0, "src")
 
-from polyalpha.us.fill_signals import mean_markout, signed_flow_series
+from polyalpha.us.fill_signals import (
+    kyle_lambda_ols,
+    mean_markout,
+    side_agreement_rate,
+    signed_flow_series,
+)
 from polyalpha.us.fills import parse_us_trade
 from polyalpha.us.trade_stream import UsTradeStream
 
 NOW = datetime(2026, 9, 21, 12, 0, tzinfo=UTC)
 
 
-def _msg(taker_side="BUY", taker_intent="ORDER_INTENT_BUY_LONG", price="0.55", qty="100", trade_time="2026-09-21T12:00:00Z"):
+def _msg(taker_side="ORDER_SIDE_BUY", taker_intent="ORDER_INTENT_BUY_LONG", price="0.55", qty="100", trade_time="2026-09-21T12:00:00Z"):
+    # Shape mirrors the polymarket-us SDK websocket/types.py Trade message.
     return {
-        "type": "SUBSCRIPTION_TYPE_TRADE",
-        "marketSlug": "m1",
-        "price": price,
-        "quantity": qty,
-        "tradeTime": trade_time,
-        "maker": {"side": "SELL", "intent": "ORDER_INTENT_MAKER_SELL_LONG"},
-        "taker": {"side": taker_side, "intent": taker_intent},
-        "tradeId": "t1",
+        "requestId": "trade-sub-1",
+        "subscriptionType": "SUBSCRIPTION_TYPE_TRADE",
+        "trade": {
+            "marketSlug": "m1",
+            "price": {"value": price, "currency": "USD"},
+            "quantity": {"value": qty, "currency": "USD"},
+            "tradeTime": trade_time,
+            "maker": {"side": "ORDER_SIDE_SELL", "intent": "ORDER_INTENT_MAKER_SELL_LONG"},
+            "taker": {"side": taker_side, "intent": taker_intent},
+        },
     }
 
 
@@ -39,7 +47,7 @@ def test_parse_us_trade():
 
 def test_parse_rejects_missing_side():
     raw = _msg()
-    raw.pop("taker")
+    raw["trade"].pop("taker")
     try:
         parse_us_trade(raw, NOW)
     except ValueError:
@@ -72,7 +80,7 @@ def test_signed_flow_series_buckets():
         parse_us_trade(_msg(price="0.50", qty="10", trade_time="2026-09-21T12:00:00Z"), NOW),
         parse_us_trade(_msg(price="0.50", qty="10", trade_time="2026-09-21T12:00:30Z"), NOW),
         parse_us_trade(
-            _msg(taker_side="SELL", taker_intent="ORDER_INTENT_SELL_LONG", qty="10",
+            _msg(taker_side="ORDER_SIDE_SELL", taker_intent="ORDER_INTENT_SELL_LONG", qty="10",
                  trade_time="2026-09-21T12:01:01Z"),
             NOW,
         ),
@@ -92,3 +100,15 @@ def test_mean_markout():
     markout = mean_markout(records, price_fn, horizon_seconds=60)
     # sign=+1 (BUY), p_{t+h}-p_t = -0.02 -> adverse selection.
     assert markout == D("-0.02")
+
+
+def test_kyle_lambda_ols():
+    flow = [D("0"), D("1"), D("2"), D("3")]
+    dp = [D("0"), D("0.5"), D("1.0"), D("1.5")]
+    assert abs(kyle_lambda_ols(flow, dp) - 0.5) < 1e-9
+
+
+def test_side_agreement_rate():
+    a = ["BUY", "SELL", "BUY"]
+    b = ["BUY", "BUY", "BUY"]
+    assert abs(side_agreement_rate(a, b) - 2 / 3) < 1e-9

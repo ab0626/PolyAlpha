@@ -10,9 +10,9 @@ Layering:
   - ``UsTradeWsCollector`` (async live runner): authenticate, subscribe, receive,
     ingest, and store wire-exact raw to the RawStore.
 
-The exact handshake-auth placement and subscribe-message shape are marked
-VERIFY: confirm against the current venue docs before a live run (the raw layer
-makes any parser correction cheap — raw is authoritative).
+Handshake auth (Ed25519 headers) and the subscribe envelope are confirmed
+against the polymarket-us SDK / live feed; raw is stored wire-exact so any
+future schema change is cheap to re-parse.
 """
 
 from __future__ import annotations
@@ -77,17 +77,20 @@ class UsTradeWsCollector:
         self.stats = {"trades": 0, "duplicates": 0, "errors": 0}
 
     def _handshake_headers(self) -> dict[str, str]:
-        # VERIFY: the retail WS authenticates in the handshake; the REST header
-        # scheme (X-PM-*) over timestamp + method + path is the documented auth.
+        # Confirmed: X-PM-* headers over Ed25519(timestamp + "GET" + path).
         timestamp_ms = str(int(time.time() * 1000))
         return self.auth.headers("GET", "/v1/ws/markets", timestamp_ms)
 
     def _subscribe_message(self, markets: list[str] | None) -> dict:
-        # VERIFY the subscribe envelope against current venue docs.
-        msg: dict[str, Any] = {"type": "SUBSCRIPTION_TYPE_TRADE"}
+        # Confirmed envelope (polymarket-us SDK websocket/base.py):
+        # {"subscribe": {"requestId", "subscriptionType", "marketSlugs"}}.
+        payload: dict[str, Any] = {
+            "requestId": "polyalpha-trades",
+            "subscriptionType": "SUBSCRIPTION_TYPE_TRADE",
+        }
         if markets:
-            msg["markets"] = markets
-        return msg
+            payload["marketSlugs"] = markets
+        return {"subscribe": payload}
 
     async def run(
         self,

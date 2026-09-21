@@ -63,3 +63,35 @@ def mean_markout(
         total += sign * (ph - p0)
         n += 1
     return total / D(n) if n else D(0)
+
+
+def kyle_lambda_ols(flow: list[Decimal], dp: list[Decimal]) -> float:
+    """OLS estimate of Kyle's lambda: dp = lambda * flow + eps.
+
+    ``flow`` and ``dp`` must be aligned (same time buckets). Returns 0.0 when
+    the flow is degenerate (no variation).
+    """
+    if len(flow) != len(dp):
+        raise ValueError("flow and dp must be aligned")
+    if len(flow) < 2:
+        return 0.0
+    fx = [float(f) for f in flow]
+    fy = [float(d) for d in dp]
+    mx = sum(fx) / len(fx)
+    my = sum(fy) / len(fy)
+    num = sum((x - mx) * (y - my) for x, y in zip(fx, fy))
+    den = sum((x - mx) ** 2 for x in fx)
+    return num / den if den > 0 else 0.0
+
+
+def side_agreement_rate(a: list[str], b: list[str]) -> float:
+    """Fraction of aligned positions where two side sequences agree.
+
+    The Dubach negative-control metric: compare feed-inferred direction against
+    venue maker/taker ground truth (the paper reports ~59% agreement).
+    """
+    if len(a) != len(b):
+        raise ValueError("sequences must be aligned")
+    if not a:
+        return 1.0
+    return sum(1 for x, y in zip(a, b) if x == y) / len(a)

@@ -66,8 +66,10 @@ class UsRetailAuth:
             raise RuntimeError(
                 "PyNaCl is required for Retail auth; install the 'execution' extra"
             ) from error
-        seed = base64.b64decode(self._secret)
-        key = SigningKey(seed)
+        raw = base64.b64decode(self._secret)
+        # Polymarket US secret is base64(seed || public_key) (64 bytes) or a
+        # bare 32-byte seed; Ed25519 signing only needs the seed.
+        key = SigningKey(raw[:32])
         signed = key.sign(_signing_message(timestamp_ms, method, path))
         return base64.b64encode(signed.signature).decode("ascii")
 
