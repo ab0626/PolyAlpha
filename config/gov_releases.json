@@ -1,0 +1,60 @@
+{
+  "releases": [
+    {
+      "event_id": "nfp-2026-10-02",
+      "name": "Employment Situation (NFP) - Sep 2026",
+      "scheduled_at": "2026-10-02T12:30:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.bls.gov/schedule/2026/",
+      "related_market_slugs": []
+    },
+    {
+      "event_id": "cpi-2026-10-14",
+      "name": "Consumer Price Index - Sep 2026",
+      "scheduled_at": "2026-10-14T12:30:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.bls.gov/schedule/2026/",
+      "related_market_slugs": []
+    },
+    {
+      "event_id": "fomc-2026-10-28",
+      "name": "FOMC statement (decision day)",
+      "scheduled_at": "2026-10-28T18:00:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "related_market_slugs": []
+    },
+    {
+      "event_id": "nfp-2026-11-06",
+      "name": "Employment Situation (NFP) - Oct 2026",
+      "scheduled_at": "2026-11-06T13:30:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.bls.gov/schedule/2026/",
+      "related_market_slugs": []
+    },
+    {
+      "event_id": "cpi-2026-11-10",
+      "name": "Consumer Price Index - Oct 2026",
+      "scheduled_at": "2026-11-10T13:30:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.bls.gov/schedule/2026/",
+      "related_market_slugs": []
+    },
+    {
+      "event_id": "nfp-2026-12-04",
+      "name": "Employment Situation (NFP) - Nov 2026",
+      "scheduled_at": "2026-12-04T13:30:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.bls.gov/schedule/2026/",
+      "related_market_slugs": []
+    },
+    {
+      "event_id": "fomc-2026-12-09",
+      "name": "FOMC statement (decision day)",
+      "scheduled_at": "2026-12-09T19:00:00+00:00",
+      "category": "macro",
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "related_market_slugs": []
+    }
+  ]
+}
