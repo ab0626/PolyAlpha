@@ -6,7 +6,12 @@ from decimal import Decimal as D
 
 sys.path.insert(0, "src")
 
-from polyalpha.gov_releases import GovRelease, GovReleaseSource, load_gov_releases
+from polyalpha.gov_releases import (
+    GovRelease,
+    GovReleaseSource,
+    discover_release_contracts,
+    load_gov_releases,
+)
 from polyalpha.us.fills import FillRecord
 from polyalpha.us.quote_race import Quote
 from polyalpha.us.reaction import measure_reaction
@@ -72,3 +77,21 @@ def test_measure_reaction_computes_r_and_race():
     assert result["R"][10] is not None
     assert result["R"][300] == 1.0  # full incorporation at the stable horizon
     assert result["race"]["race_fills"] == 1
+
+
+def test_discover_release_contracts_filters_by_date_key():
+    release = GovRelease(
+        event_id="cpi-2026-10-14", name="CPI", scheduled_at=T0, category="macro",
+        source_url="x", search_terms=("cpi", "inflation"),
+    )
+
+    def search_fn(term):
+        return [{"markets": [
+            {"slug": "cpic-uscpi-september-yoy-2026-10-14-gt2pt9pct"},
+            {"slug": "cpic-uscpi-october-yoy-2026-11-10-gt2pt9pct"},  # wrong date
+            {"slug": "urc-usunemp-sa-september-2026-10-02-gt3pt7pct"},  # wrong release
+        ]}]
+
+    assert discover_release_contracts(release, search_fn) == [
+        "cpic-uscpi-september-yoy-2026-10-14-gt2pt9pct"
+    ]

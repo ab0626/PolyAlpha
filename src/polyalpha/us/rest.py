@@ -102,3 +102,7 @@ class PublicUsClient:
 
     def events(self, params: dict | None = None) -> tuple[Any, datetime]:
         return self.get("/v1/events", params)
+
+    def search(self, params: dict | None = None) -> tuple[Any, datetime]:
+        """Public /v1/search: text search over events/markets."""
+        return self.get("/v1/search", params)

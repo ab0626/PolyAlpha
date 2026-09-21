@@ -35,6 +35,7 @@ class GovRelease:
     category: str
     source_url: str
     related_market_slugs: tuple[str, ...] = ()
+    search_terms: tuple[str, ...] = ()
 
     def __post_init__(self):
         utc(self.scheduled_at)
@@ -79,7 +80,7 @@ class GovReleaseSource:
 
 def load_gov_releases(path: str | Path) -> GovReleaseSource:
     """Load a schedule from JSON: {"releases": [{event_id, name, scheduled_at,
-    category, source_url, related_market_slugs}, ...]}."""
+    category, source_url, related_market_slugs, search_terms}, ...]}."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     releases = [
         GovRelease(
@@ -89,7 +90,30 @@ def load_gov_releases(path: str | Path) -> GovReleaseSource:
             category=r.get("category", "macro"),
             source_url=r.get("source_url", ""),
             related_market_slugs=tuple(r.get("related_market_slugs", [])),
+            search_terms=tuple(r.get("search_terms", [])),
         )
         for r in data["releases"]
     ]
     return GovReleaseSource(releases)
+
+
+def discover_release_contracts(release: GovRelease, search_fn) -> list[str]:
+    """Discover relevant market slugs for a release via keyword search + date key.
+
+    ``search_fn(term)`` returns a list of event dicts (each with ``markets``,
+    each market with a ``slug``). A slug is relevant when it embeds the release
+    date (YYYY-MM-DD), which Polymarket US slugs do for macro contracts.
+    """
+    date_key = release.scheduled_at.strftime("%Y-%m-%d")
+    slugs: set[str] = set()
+    for term in release.search_terms:
+        try:
+            events = search_fn(term)
+        except Exception:  # noqa: BLE001 - discovery is best-effort
+            continue
+        for event in events:
+            for market in event.get("markets", []):
+                slug = market.get("slug")
+                if slug and date_key in slug:
+                    slugs.add(slug)
+    return sorted(slugs)

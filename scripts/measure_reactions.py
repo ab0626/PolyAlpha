@@ -2,7 +2,10 @@
 """Measure R(h) + fill-vs-quote race for scheduled gov releases from collected data.
 
 Usage:
-    python scripts/measure_reactions.py --market-slug <slug> [--event-id <id>]
+    # auto-discover the relevant contracts for each release via /v1/search
+    python scripts/measure_reactions.py --discover
+    # measure one specific contract
+    python scripts/measure_reactions.py --market-slug <slug>
 
 Replays the book and trade raw stores once, then measures each release's
 reaction window. Reports INSUFFICIENT_DATA for releases with no collected data
@@ -18,39 +21,42 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from polyalpha.gov_releases import load_gov_releases  # noqa: E402
+from polyalpha.gov_releases import discover_release_contracts, load_gov_releases  # noqa: E402
 from polyalpha.rawstore import RawStore  # noqa: E402
 from polyalpha.us.adapter import amount_to_decimal  # noqa: E402
 from polyalpha.us.fills import parse_us_trade  # noqa: E402
 from polyalpha.us.quote_race import Quote  # noqa: E402
 from polyalpha.us.reaction import measure_reaction  # noqa: E402
+from polyalpha.us.rest import PublicUsClient  # noqa: E402
 
 
 def _ts(ns: int) -> datetime:
     return datetime.fromtimestamp(ns / 1e9, UTC)
 
 
-def _load_quotes(raw_dir: str, market_slug: str) -> list[Quote]:
-    quotes = []
+def _load_all_quotes(raw_dir: str) -> dict[str, list[Quote]]:
+    out: dict[str, list[Quote]] = {}
     for r in RawStore(raw_dir).replay():
         if r.source != "polymarket_us_retail_book":
             continue
         md = r.payload.get("marketData", r.payload) or {}
-        if md.get("marketSlug") != market_slug:
+        slug = md.get("marketSlug")
+        if not slug:
             continue
         bids, offers = md.get("bids") or [], md.get("offers") or []
         if not bids or not offers:
             continue
-        quotes.append(
-            Quote(market_slug, _ts(r.received_at_ns),
+        out.setdefault(slug, []).append(
+            Quote(slug, _ts(r.received_at_ns),
                   amount_to_decimal(bids[0]["px"]), amount_to_decimal(offers[0]["px"]))
         )
-    quotes.sort(key=lambda q: q.timestamp)
-    return quotes
+    for qs in out.values():
+        qs.sort(key=lambda q: q.timestamp)
+    return out
 
 
-def _load_fills(raw_dir: str, market_slug: str) -> list:
-    out = []
+def _load_all_fills(raw_dir: str) -> dict[str, list]:
+    out: dict[str, list] = {}
     for r in RawStore(raw_dir).replay():
         if r.source != "polymarket_us_retail_trade":
             continue
@@ -58,9 +64,16 @@ def _load_fills(raw_dir: str, market_slug: str) -> list:
             f = parse_us_trade(r.payload, _ts(r.received_at_ns))
         except (ValueError, KeyError):
             continue
-        if f.market_slug == market_slug:
-            out.append(f)
+        if f.market_slug:
+            out.setdefault(f.market_slug, []).append(f)
     return out
+
+
+def _search_fn(client: PublicUsClient):
+    def _f(term: str):
+        raw, _ = client.search({"query": term, "status": "active", "limit": 20})
+        return raw.get("events", [])
+    return _f
 
 
 def main() -> int:
@@ -68,7 +81,8 @@ def main() -> int:
     parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
     parser.add_argument("--book-raw", default="data/us/retail/raw")
     parser.add_argument("--trade-raw", default="data/us/trade/raw")
-    parser.add_argument("--market-slug", required=True)
+    parser.add_argument("--market-slug", default=None)
+    parser.add_argument("--discover", action="store_true", help="auto-discover contracts via /v1/search")
     parser.add_argument("--event-id", default=None)
     parser.add_argument("--pre-seconds", type=int, default=600)
     parser.add_argument("--stable-seconds", type=int, default=1800)
@@ -83,25 +97,34 @@ def main() -> int:
         recent = source.releases_between(now - timedelta(days=2), now)
         releases = recent or source.upcoming(now)
 
-    quotes = _load_quotes(args.book_raw, args.market_slug)
-    fills = _load_fills(args.trade_raw, args.market_slug)
+    quotes_by_slug = _load_all_quotes(args.book_raw)
+    fills_by_slug = _load_all_fills(args.trade_raw)
+    client = PublicUsClient(timeout=20, attempts=2) if args.discover else None
 
     for rel in releases:
+        if args.market_slug:
+            slugs = [args.market_slug]
+        elif args.discover:
+            slugs = discover_release_contracts(rel, _search_fn(client))
+        else:
+            slugs = []
+
+        if not slugs:
+            print(json.dumps({"event_id": rel.event_id, "status": "NO_CONTRACTS",
+                              "note": "no --market-slug and no --discover (or nothing matched)"}))
+            continue
+
         start = rel.scheduled_at - timedelta(seconds=args.pre_seconds)
         end = rel.scheduled_at + timedelta(seconds=args.stable_seconds)
-        w_quotes = [q for q in quotes if start <= q.timestamp <= end]
-        w_fills = [f for f in fills if start <= f.trade_time <= end]
-        if not w_quotes:
-            print(json.dumps({
-                "event_id": rel.event_id,
-                "status": "INSUFFICIENT_DATA",
-                "note": "no book snapshots in window (release future, or market not tracked)",
-            }))
-            continue
-        print(json.dumps(
-            measure_reaction(rel, w_quotes, w_fills, stable_seconds=args.stable_seconds),
-            indent=2,
-        ))
+        for slug in slugs:
+            w_quotes = [q for q in quotes_by_slug.get(slug, []) if start <= q.timestamp <= end]
+            w_fills = [f for f in fills_by_slug.get(slug, []) if start <= f.trade_time <= end]
+            if not w_quotes:
+                print(json.dumps({"event_id": rel.event_id, "market_slug": slug,
+                                  "status": "INSUFFICIENT_DATA",
+                                  "note": "no book snapshots in window (future release, or not tracked)"}))
+                continue
+            print(json.dumps(measure_reaction(rel, w_quotes, w_fills, stable_seconds=args.stable_seconds), indent=2))
     return 0
 
 
