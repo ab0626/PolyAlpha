@@ -6,6 +6,8 @@ A production-oriented quantitative prediction-market trading system under empiri
 
 **Alpha status: UNKNOWN** — not positive, not negative — until prospective evidence establishes otherwise.
 
+**Venues.** Production target is **Polymarket US** (CFTC-regulated, US-eligible); **Kalshi** is a sibling US-accessible venue. **Polymarket International** (Gamma/CLOB, `docs.polymarket.com`) is a *research-data* lineage only — its collector is never an executable path. The split is hard-coded in `src/polyalpha/venue.py` (`is_executable` / `is_research_only`), never left to convention.
+
 ## Quick start
 
 From the repository root, using Python 3.12+:
@@ -271,6 +273,10 @@ The PostgreSQL schema has append-only receipts and views for market, book, forec
 
 ## Official integration sources
 
+**Polymarket US** (executable venue) — `docs.polymarket.us`:
+- [US API reference](https://docs.polymarket.us)
+
+**Polymarket International** (research-data lineage only) — `docs.polymarket.com`:
 - [Documentation index](https://docs.polymarket.com/llms.txt)
 - [Market discovery and cursors](https://docs.polymarket.com/api-reference/markets/list-markets-keyset-pagination)
 - [Order books](https://docs.polymarket.com/api-reference/market-data/get-order-book)

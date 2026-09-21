@@ -188,6 +188,20 @@ subsequent move.`
 **H18 (wedge structure).** The wedge is systematic in maturity, payoff structure,
 and volatility regime. `H0: wedge is zero conditional on those variables.`
 
+### A10 — Information-incorporation latency (measure 9/10; first-order tradability 4/10)
+
+The Information Incorporation Function `R_{e,m}(h) = (P(t_e+h) − P(t_e⁻)) / (P(stable) − P(t_e⁻))` in log-odds space, for a timestamped public event `e`.
+
+**H19 (gradual incorporation).** Prices under-react at short horizons: `R(h)` is materially below the eventual move for `h ≤ 30s`. `H0: R(h) = 0` for `h ≤ 30s`. Min effect: `R(h) ≥ 0.2` at some `h ≤ 30s`. (Measured by `polyalpha.information.incorporation_curve` on the existing book stream.)
+
+**H20 (fill-vs-quote race).** A material fraction of aggressive fills execute against a *stale* quote that then revises in the fill's direction. `H0: race fraction = 0`. (Measured by `polyalpha.us.quote_race` from the existing book + fill streams; Kalshi reports ~1/6.)
+
+**H21 (second-order propagation).** When an event moves market A, related markets B/C/D update with a lag: the residual `E[Δlogit(B) | Δlogit(A)] − Δlogit(B)` is nonzero and mean-reverts. `H0: residual = 0`. **This — not the first-order race — is where positive expectancy lives.**
+
+**H22 (scheduled vs unscheduled).** Reaction latency differs by schedule: scheduled events (CPI/FOMC/NFP) are a common-knowledge `t_0` and the first-order race is unwinnable by a non-colocated participant; unscheduled events bottleneck on detect+understand+map. `H0: latency is identical across schedule conditional on attention.`
+
+**Sharpening (fixed ex ante):** `surprise = actual − consensus` is only defined for scheduled macro (exogenous consensus). For unscheduled events the pre-event price is *not* a valid expectation (circular), so `Relevance × Novelty × Ambiguity` replaces surprise. First-order scheduled-macro latency is ~4/10 as trading alpha; the positive expectancy is second-order propagation (H21) and semantic latency (understand/map complex info faster). Data: scheduled-release timestamps (source to be added) + existing book/fill streams.
+
 ---
 
 ## 4. Acceptance / rejection (per hypothesis)
