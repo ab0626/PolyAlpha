@@ -108,9 +108,11 @@ class RawStore:
     def __init__(self, root: str | Path, collector_version: str = "unknown"):
         self.root = Path(root)
         self.collector_version = collector_version
-        self._writer = None
+        # One writer per source: a multi-source feed must not collapse into the
+        # first source's file. Each source keeps its own open file until close.
+        self._writers: dict[str, object] = {}
+        self._paths: dict[str, Path] = {}
         self._day: date | None = None
-        self._index = 0
         self._count = 0
         self._last_path: Path | None = None
 
@@ -122,15 +124,42 @@ class RawStore:
     def _open_filename(self, source: str, index: int) -> str:
         return f"{source.replace('/', '_')}-{index:04d}.jsonl"
 
+    def _next_available_index(self, day: date, source: str) -> int:
+        """Next file index for (day, source), scanning open AND finalized files.
+
+        A fresh process must never reuse an index whose `.jsonl` was already
+        finalized to `.jsonl.gz` (reusing it would overwrite durable data).
+        Scan every form of the source's files and return max + 1.
+        """
+        directory = self.day_dir(day)
+        if not directory.exists():
+            return 0
+        prefix = source.replace("/", "_")
+        max_index = -1
+        for path in directory.iterdir():
+            name = path.name
+            if not name.startswith(prefix + "-"):
+                continue
+            core = name[len(prefix) + 1 :]
+            if core.endswith(".jsonl.gz"):
+                core = core[: -len(".jsonl.gz")]
+            elif core.endswith(".jsonl"):
+                core = core[: -len(".jsonl")]
+            else:
+                continue
+            try:
+                max_index = max(max_index, int(core))
+            except ValueError:
+                continue
+        return max_index + 1
+
     def _open_writer(self, day: date, source: str) -> None:
         directory = self.day_dir(day)
         directory.mkdir(parents=True, exist_ok=True)
-        while True:
-            candidate = directory / self._open_filename(source, self._index)
-            if not candidate.exists():
-                break
-            self._index += 1
-        self._writer = open(candidate, "a", encoding="utf-8", newline="\n")
+        index = self._next_available_index(day, source)
+        candidate = directory / self._open_filename(source, index)
+        self._writers[source] = open(candidate, "a", encoding="utf-8", newline="\n")
+        self._paths[source] = candidate
         self._day = day
         self._last_path = candidate
 
@@ -163,11 +192,10 @@ class RawStore:
         self._fsync_dir(path.parent)
 
     def close(self) -> None:
-        """Flush, close, and crash-safe finalize the current file."""
-        if self._writer is not None:
-            self._writer.close()
-            self._writer = None
-            path = self._last_path
+        """Flush, close, and crash-safe finalize every open file."""
+        for source in list(self._writers):
+            self._writers.pop(source).close()
+            path = self._paths.pop(source, None)
             if path is not None and path.exists():
                 self._finalize(path)
         self._day = None
@@ -199,7 +227,7 @@ class RawStore:
         now = date.today()
         if self._day != now:
             self.close()
-        if self._writer is None:
+        if source not in self._writers:
             self._open_writer(now, source)
 
         received = received_at_ns if received_at_ns is not None else time.time_ns()
@@ -261,8 +289,8 @@ class RawStore:
             sha256=digest,
         )
         line = dict(canonical_json=canonical, sha256=digest)
-        self._writer.write(json.dumps(line, sort_keys=True, separators=(",", ":")) + "\n")
-        self._writer.flush()
+        self._writers[source].write(json.dumps(line, sort_keys=True, separators=(",", ":")) + "\n")
+        self._writers[source].flush()
         self._count += 1
         return record
 

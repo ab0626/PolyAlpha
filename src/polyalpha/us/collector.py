@@ -88,7 +88,11 @@ class UsRawCollector:
         orderPriceMinTickSize is the Retail tick source (0.01/0.005/0.0025/...);
         never inferred. It is recorded per slug so books parse on the true grid.
         """
-        raw_payload, received = self.client.markets({"limit": limit, "offset": offset})
+        # closed=false: collect OPEN markets only. The default sort returns
+        # already-resolved/expired markets, which carry no forward price path.
+        raw_payload, received = self.client.markets(
+            {"limit": limit, "offset": offset, "closed": "false"}
+        )
         self._capture(SOURCE_US_RETAIL_MARKETS, "discovery", raw_payload, None)
         markets = raw_payload.get("markets", [])
         for market in markets:
@@ -131,6 +135,10 @@ class UsRawCollector:
                 )
 
     def collect_events(self, params: dict | None = None) -> list[dict]:
+        params = dict(params or {})
+        # Restrict to open events so parent-event clustering matches the open
+        # markets discovered above (the default sort returns expired events).
+        params.setdefault("closed", "false")
         raw_payload, received = self.client.events(params)
         self._capture(SOURCE_US_RETAIL_EVENTS, "events", raw_payload, None)
         events = raw_payload.get("events", [])
