@@ -9,6 +9,12 @@ marginal-risk work (`src/polyalpha/marginal_risk.py`). It fixes, before any
 outcome-conditioned analysis, the hypotheses, data requirements, decision rules,
 and gates for the next stage of the research program.
 
+**v3.1 venue decision (2026-09-21):** the operator is US-based and the system is
+US-only. Families **A7 (informed wallet flow)** and **A9 (external fair-value
+anchors)** are therefore **dropped** (`NOT_RUN`): A7 needs public wallet identity
+(absent on the CFTC venue) and A9 needs cross-venue data. They remain documented
+below for completeness but are not collectable on the production venue.
+
 ---
 
 ## 0. Alpha decomposition
@@ -51,9 +57,9 @@ gated on data first, then on evidence.
 | A4 Cross-market consistency | both executable sides / related-market linkage | **PARTIAL** |
 | A5 Combinatorial arbitrage | on-chain book + market dependency graph | **NEEDS_DATA** |
 | A6 Microstructure (signed flow) | on-chain `OrderFilled` events | **NEEDS_DATA** |
-| A7 Informed wallet flow | wallet identities + on-chain trades | **NEEDS_DATA** |
+| A7 Informed wallet flow | ~~wallet identities~~ | **NOT_RUN** (no public identity on US) |
 | A8 Execution / adverse selection | signed fills + maker/taker attribution | **NEEDS_DATA** |
-| A9 External fair-value anchors | cross-venue data (Deribit options, etc.) | **NEEDS_DATA** |
+| A9 External fair-value anchors | ~~cross-venue data~~ | **NOT_RUN** (US-only) |
 
 **Hard rule (Dubach 2026):** signed flow, maker/taker, adverse-selection, and
 Kyle-lambda estimates must be sourced from on-chain `OrderFilled` events, NOT
@@ -151,7 +157,7 @@ frequency.`
 predict Δp once on-chain flow is controlled. `H0: feed-flow coefficient = 0.`
 This is a mandatory pre-test: if it fails, no feed-based flow feature is trusted.
 
-### A7 — Informed wallet flow (NEEDS_DATA)
+### A7 — Informed wallet flow (NOT_RUN — no public identity on US; dropped)
 
 **H12 (persistent skill).** A minority of wallets is persistently skilled
 (Gomez-Cram: ~3%). `H0: skill is not persistent across periods.`
@@ -173,7 +179,7 @@ directional accuracy (Della Vedova 2026). `H0: directional accuracy dominates.`
 **H16 (adverse selection).** Post-trade markout is negative on average and
 asymmetric (worse for aggressive orders). `H0: mean markout = 0.`
 
-### A9 — External fair-value anchors (NEEDS_DATA)
+### A9 — External fair-value anchors (NOT_RUN — requires cross-venue; dropped)
 
 **H17 (cross-market wedge).** The Polymarket-vs-Deribit implied wedge predicts
 Polymarket price convergence (Fabi 2026). `H0: wedge is uninformative of

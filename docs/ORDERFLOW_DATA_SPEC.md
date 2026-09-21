@@ -7,6 +7,11 @@ selection) in `docs/RESEARCH_AGENDA_V3.md`.
 **Status:** SPEC (not yet implemented). Written before any outcome-conditioned
 analysis.
 
+**Decision (2026-09-21):** US-only. C1/C3 (International on-chain + wallet join)
+are **dropped**; the International-only family A7 (informed wallet flow) is
+therefore `NOT_RUN`. Only **P1** (C2, the US authenticated trade WS) is in scope,
+unblocking A6/A8 on the production venue.
+
 ---
 
 ## 1. The venue fork (read this first)
