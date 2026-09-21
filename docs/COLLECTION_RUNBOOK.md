@@ -480,3 +480,31 @@ Order matters — each depends on the previous:
 If the reconciliation match rate drops persistently, treat the reconstructed
 books as suspect and rely on REST snapshots until the collector bug is fixed
 and the affected raw→normalized segment is regenerated.
+
+---
+
+## 9. Class A change log (post-REAL_DATA_START_US)
+
+Collector-correctness fixes applied while the evidence regime was live. Each is
+documented per the Class A process: issue, regression test, `collector_sha256`
+changed, `research_logic_sha256` unchanged.
+
+### 2026-09-21 — multi-source raw store + collection universe
+
+- **Issue 1 (data integrity):** `RawStore.append` wrote every source into the
+  first-opened file and reused index 0 across restarts, so a clean restart
+  could overwrite a finalized `.jsonl.gz`. Fixed with per-source writers and
+  index scanning that never reuses a finalized file. Regression:
+  `tests/test_rawstore_multisource.py`. Commit `d15cd11`.
+- **Issue 2 (universe):** `discover_markets`/`collect_events` used no `closed`
+  filter, so the default sort returned already-resolved markets (every book
+  `MARKET_STATE_EXPIRED`). Fixed to `closed=false` (open markets/events only).
+  Regression: `tests/test_us_collector_universe.py`. Commit `d15cd11`.
+- **Verification:** `scripts/freeze_baseline.py verify` passes —
+  `research_logic_sha256` unchanged (`df71b8f3…`); only collector-domain files
+  changed. Historical raw is preserved (records carry correct `source`); the
+  pre-fix window held no forward price path, so forward evidence effectively
+  restarts from the open-market fix.
+- **Pending re-pin:** the collector version string and the supervisor's
+  `COLLECTION_IMPL_COMMIT` should be re-pinned to `35bc148` (and the marker's
+  `collector_sha256` re-derived) as a deliberate follow-up.
