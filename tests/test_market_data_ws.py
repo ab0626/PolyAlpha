@@ -80,7 +80,7 @@ def test_stream_heartbeat():
 
 def test_resolvable_horizons_respects_feed():
     assert resolvable_horizons("REST_2S") == [2000, 5000, 10000, 30000]
-    assert resolvable_horizons("WS_L2") == [250, 500, 1000, 2000, 5000, 10000, 30000]
-    # 100ms is never resolvable from REST_2S or the 250ms WS feeds.
+    # WS_L2 measured ~100ms cadence (smoke test), so 100ms+ is resolvable.
+    assert resolvable_horizons("WS_L2") == [100, 250, 500, 1000, 2000, 5000, 10000, 30000]
+    assert 100 in resolvable_horizons("WS_L2")
     assert 100 not in resolvable_horizons("REST_2S")
-    assert 100 not in resolvable_horizons("WS_L2")

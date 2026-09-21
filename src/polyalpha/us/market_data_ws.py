@@ -239,11 +239,17 @@ class MarketDataWsCollector:
         return cls(UsRetailAuth(access_key, secret), raw, **kwargs)
 
 
-FEED_RESOLUTION = {"REST_2S": 2000, "WS_BBO": 250, "WS_L2": 250, "TRADE_WS": 0}
+# Empirical, from scripts/smoke_market_data_ws.py (2026-09-21): WS_L2 median
+# interarrival ~101ms, p95 218ms, p99 309ms. WS_BBO is the same feed (unmeasured;
+# assumed comparable). Update these if the feed changes.
+FEED_RESOLUTION = {"REST_2S": 2000, "WS_BBO": 100, "WS_L2": 100, "TRADE_WS": 0}
 
 
 def resolvable_horizons(feed_label: str) -> list[int]:
-    """Horizons (ms) a feed can actually resolve; others must be UNRESOLVABLE."""
+    """Horizons (ms) a feed can resolve, from measured (not declared) cadence.
+
+    Others must be marked UNRESOLVABLE, never zero or missing-alpha.
+    """
     res = FEED_RESOLUTION.get(feed_label)
     if res is None:
         return []
