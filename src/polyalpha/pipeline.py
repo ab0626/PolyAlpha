@@ -45,7 +45,8 @@ class ClaimExtraction:
     probability_impact: Decimal  # estimated delta: positive = increases YES probability
     impact_confidence: Decimal  # confidence in the impact estimate 0-1
     category: str  # politics, crypto, sports, etc.
-    content_hash: str  # deduplication key
+    content_hash: str  # exact text+source key (NOT semantic)
+    claim_id: str | None = None  # source-independent semantic claim key
 
     def __post_init__(self):
         utc(self.published_at)
@@ -99,8 +100,13 @@ class ClaimDeduplicator:
         self.seen: dict[str, datetime] = {}
 
     def is_duplicate(self, claim: ClaimExtraction) -> bool:
-        """Check if claim is a near-duplicate within the time window."""
-        h = claim.content_hash
+        """Check if claim is a near-duplicate within the time window.
+
+        Dedupes on the *semantic* claim_id when present (so Reuters and CNBC
+        carrying the same shock collapse to one observation), falling back to
+        the exact text+source content_hash.
+        """
+        h = claim.claim_id or claim.content_hash
         if h in self.seen:
             existing = self.seen[h]
             delta = (claim.retrieved_at - existing).total_seconds()
@@ -119,6 +125,20 @@ def compute_content_hash(text: str, source_url: str) -> str:
     """Compute deterministic content hash for deduplication."""
     content = f"{text.strip().lower()}|{source_url.strip().lower()}"
     return hashlib.sha256(content.encode()).hexdigest()
+
+
+def compute_claim_id(entities: tuple[ExtractedEntity, ...], claim_text: str) -> str:
+    """Source-independent semantic claim key.
+
+    The same underlying shock reported by two outlets should share a claim_id,
+    unlike content_hash (which keys on text + source URL). Canonicalizes to
+    (sorted entity names + whitespace-normalized text). Full cross-phrasing
+    similarity (Reuters vs CNBC wording) requires an embedding model, noted as
+    future work.
+    """
+    names = ",".join(sorted(e.name.strip().lower() for e in entities))
+    text = " ".join(claim_text.strip().lower().split())
+    return hashlib.sha256(f"{names}|{text}".encode("utf-8")).hexdigest()
 
 
 @dataclass

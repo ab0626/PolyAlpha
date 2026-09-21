@@ -1,9 +1,10 @@
-"""Geographic and platform compliance checking.
+"""Geographic and platform compliance checking — Polymarket INTERNATIONAL.
 
-Section 38: Checks whether platform access/trading is permitted
-in the user's jurisdiction using official platform information.
+Models the International venue (docs.polymarket.com), where US persons cannot
+trade. For the Polymarket US venue (CFTC-regulated, US-eligible), use
+``polyalpha.us.compliance``. The executable-vs-research venue split is hard-coded
+in ``polyalpha.venue``.
 
-The research system may continue collecting publicly available data where lawful.
 This module does NOT implement methods to bypass geographic restrictions.
 """
 
