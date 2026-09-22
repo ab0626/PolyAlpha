@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Preregistered NFP #1 analysis (read-only, consumes only frozen outputs).
 
-Produces exactly the predefined views in docs/NFP_ANALYSIS_TEMPLATE.md. No new
-formulas, thresholds, or views. Unsupported quantities render INSUFFICIENT_DATA.
-Conclusion is INSTRUMENT_VALIDATION_* — never "strategy passed".
+Every parameter is pinned in config/analysis_template.json; CLI overrides are
+rejected so "frozen inspection = frozen code + frozen parameters". Produces
+exactly the predefined views in docs/NFP_ANALYSIS_TEMPLATE.md. Conclusion is
+INSTRUMENT_VALIDATION_* — never "strategy passed".
 """
 
 import argparse
@@ -67,28 +68,39 @@ def _load_fills(raw_dir: str) -> dict[str, list]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Preregistered NFP #1 analysis")
     parser.add_argument("--manifest", default=str(ROOT / "config" / "analysis_template.json"))
-    parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
-    parser.add_argument("--book-raw", default="data/us/retail/raw")
-    parser.add_argument("--trade-raw", default="data/us/trade/raw")
-    parser.add_argument("--coverage-report", default="data/us/reports/release-coverage.json")
-    parser.add_argument("--event-id", default="nfp-2026-10-02")
-    parser.add_argument("--pre-seconds", type=int, default=600)
-    parser.add_argument("--stable-seconds", type=int, default=1800)
-    args = parser.parse_args()
+    # Any other override is rejected: frozen inspection = frozen code + params.
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        print(json.dumps({"status": "FROZEN_INSPECTION_REJECTED_OVERRIDE", "override": unknown}))
+        return 2
 
     manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+
+    # All analysis parameters come from the manifest (pinned, not CLI).
+    event_id = manifest["event_id"]
+    pre_seconds = manifest["pre_seconds"]
+    stable_seconds = manifest["stable_seconds"]
+    book_raw = manifest["book_raw"]
+    trade_raw = manifest["trade_raw"]
+    coverage_report = manifest["coverage_report"]
+    feed_label = manifest["feed_label"]
+    schedule_path = manifest["schedule_path"]
 
     # Self-hash: prove the inspection template has not drifted.
     own_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     drifted = own_sha != manifest.get("analysis_template_sha256")
 
-    source = load_gov_releases(args.schedule)
-    rel = source.by_id(args.event_id)
+    source = load_gov_releases(schedule_path)
+    rel = source.by_id(event_id)
     if rel is None:
         print(json.dumps({"status": "UNKNOWN_EVENT"}))
         return 1
 
     sid = shock_id(rel.event_id, rel.scheduled_at)
+    # scheduled_t0 semantics: we have NOT ingested the release contents, so
+    # first_received_at / first_processed_at are UNRESOLVABLE. They are set to
+    # scheduled_at only as a placeholder so the frozen reaction function can
+    # compute scheduled_t0_to_quote. Zero internal latency is NOT assumed.
     shock = EventShock(
         shock_id=sid, event_id=rel.event_id, category=rel.category,
         source="official", source_authority=1.0, primary_source=True,
@@ -97,17 +109,17 @@ def main() -> int:
     )
 
     coverage = {}
-    if Path(args.coverage_report).exists():
-        coverage = json.loads(Path(args.coverage_report).read_text(encoding="utf-8"))
+    if Path(coverage_report).exists():
+        coverage = json.loads(Path(coverage_report).read_text(encoding="utf-8"))
 
-    quotes_by_slug = _load_quotes(args.book_raw)
-    fills_by_slug = _load_fills(args.trade_raw)
+    quotes_by_slug = _load_quotes(book_raw)
+    fills_by_slug = _load_fills(trade_raw)
 
     slugs = sorted({m["market_slug"] for m in coverage.get("per_market", [])
-                    if m.get("release_id") == args.event_id})
+                    if m.get("release_id") == event_id})
     start = rel.scheduled_at.replace(tzinfo=rel.scheduled_at.tzinfo)
-    window_start = start - timedelta(seconds=args.pre_seconds)
-    window_end = start + timedelta(seconds=args.stable_seconds)
+    window_start = start - timedelta(seconds=pre_seconds)
+    window_end = start + timedelta(seconds=stable_seconds)
 
     reactions = {}
     for slug in slugs:
@@ -118,23 +130,35 @@ def main() -> int:
             continue
         reactions[slug] = measure_shock_reaction(
             shock, f"us:{slug}", quotes, fills,
-            stable_seconds=args.stable_seconds, feed_label="REST_2S",
+            stable_seconds=stable_seconds, feed_label=feed_label,
         ).summary()
+        # Label honestly: W is scheduled_t0_to_quote, not processing_to_quote.
+        reactions[slug]["scheduled_t0_semantics"] = True
 
-    provenance = raw_provenance(args.book_raw, window_start, window_end, tuple(f"us:{s}" for s in slugs))
+    # Separate provenance per feed: book bytes, trade bytes, coverage snapshot.
+    book_prov = raw_provenance(book_raw, window_start, window_end, tuple(f"us:{s}" for s in slugs))
+    trade_prov = raw_provenance(trade_raw, window_start, window_end, tuple(f"us:{s}" for s in slugs))
+    coverage_sha = hashlib.sha256(Path(coverage_report).read_bytes()).hexdigest() if Path(coverage_report).exists() else None
 
     report = {
         "manifest": manifest,
         "analysis_template_sha256": own_sha,
         "template_drifted": drifted,
-        "event_id": args.event_id,
+        "event_id": event_id,
         "scheduled_at": rel.scheduled_at.isoformat(),
+        "scheduled_t0_semantics": {
+            "first_received_at": "UNRESOLVABLE (release contents not ingested)",
+            "first_processed_at": "UNRESOLVABLE (release contents not ingested)",
+            "W_quote_meaning": "scheduled_t0_to_quote",
+        },
         "instrument_validation": {
             "coverage_ok": coverage.get("next_release_coverage_ok"),
             "required_markets_missing": coverage.get("required_markets_missing"),
         },
         "reactions": reactions,
-        "raw_provenance": provenance,
+        "book_raw_provenance": book_prov,
+        "trade_raw_provenance": trade_prov,
+        "coverage_provenance": {"sha256": coverage_sha, "checked_at": coverage.get("checked_at")},
         "propagation": {"Z_lag": "INSUFFICIENT_DATA"},
         "conclusion": "INSTRUMENT_VALIDATION_ONLY",
     }

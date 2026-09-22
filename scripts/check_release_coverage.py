@@ -41,9 +41,10 @@ def _slug_of(source: str, payload: dict) -> str | None:
     return None
 
 
-def _slugs_and_first(raw_dir: str, source: str) -> tuple[set[str], dict[str, str]]:
+def _slugs_and_span(raw_dir: str, source: str) -> tuple[set[str], dict[str, datetime], dict[str, datetime]]:
     slugs: set[str] = set()
     first: dict[str, datetime] = {}
+    last: dict[str, datetime] = {}
     for r in RawStore(raw_dir).replay():
         if r.source != source:
             continue
@@ -54,7 +55,9 @@ def _slugs_and_first(raw_dir: str, source: str) -> tuple[set[str], dict[str, str
         ts = _ts(r.received_at_ns)
         if slug not in first or ts < first[slug]:
             first[slug] = ts
-    return slugs, {s: t.isoformat() for s, t in first.items()}
+        if slug not in last or ts > last[slug]:
+            last[slug] = ts
+    return slugs, first, last
 
 
 def main() -> int:
@@ -77,25 +80,39 @@ def main() -> int:
         print(json.dumps({"status": "NO_UPCOMING_RELEASES"}))
         return 0
 
-    rest_slugs, rest_first = _slugs_and_first(args.book_raw, "polymarket_us_retail_book")
-    l2_slugs, l2_first = _slugs_and_first(args.l2_raw, "polymarket_us_retail_market_data")
+    rest_slugs, rest_first, rest_last = _slugs_and_span(args.book_raw, "polymarket_us_retail_book")
+    l2_slugs, l2_first, l2_last = _slugs_and_span(args.l2_raw, "polymarket_us_retail_market_data")
 
     # Trade coverage is the *subscription* invariant, not sparse observation:
     # use the persisted trade universe, falling back to observed trade slugs.
-    trade_slugs, trade_first = _slugs_and_first(args.trade_raw, "polymarket_us_retail_trade")
+    trade_slugs, trade_first, trade_last = _slugs_and_span(args.trade_raw, "polymarket_us_retail_trade")
     trade_universe_path = Path(args.trade_universe)
     if trade_universe_path.exists():
         data = json.loads(trade_universe_path.read_text(encoding="utf-8"))
         trade_slugs = set(data.get("slugs", []) or list(trade_slugs))
 
-    report = compute_coverage(required, rest_slugs, l2_slugs, trade_slugs)
+    # Trade collector liveness: the universe file is rewritten at each run's
+    # startup, so its mtime proxies "is the trade collector still alive".
+    trade_collector_age = None
+    if trade_universe_path.exists():
+        mtime = datetime.fromtimestamp(trade_universe_path.stat().st_mtime, UTC)
+        trade_collector_age = (datetime.now(UTC) - mtime).total_seconds()
 
-    # Attach first-observation times per market for provenance.
+    report = compute_coverage(
+        required, rest_slugs, l2_slugs, trade_slugs,
+        rest_last=rest_last, l2_last=l2_last,
+        trade_collector_age_seconds=trade_collector_age,
+    )
+    report["trade_collector_age_seconds"] = round(trade_collector_age, 1) if trade_collector_age is not None else None
+
+    # Attach first/last observation times per market for provenance.
     for m in report["per_market"]:
         slug = m["market_slug"]
-        m["first_rest_observation"] = rest_first.get(slug)
-        m["first_ws_observation"] = l2_first.get(slug)
-        m["first_trade_observation"] = trade_first.get(slug)
+        m["first_rest_observation"] = rest_first.get(slug).isoformat() if rest_first.get(slug) else None
+        m["last_rest_observation"] = rest_last.get(slug).isoformat() if rest_last.get(slug) else None
+        m["first_l2_observation"] = l2_first.get(slug).isoformat() if l2_first.get(slug) else None
+        m["last_l2_observation"] = l2_last.get(slug).isoformat() if l2_last.get(slug) else None
+        m["first_trade_observation"] = trade_first.get(slug).isoformat() if trade_first.get(slug) else None
 
     persist_mapping(required, args.mapping)
 

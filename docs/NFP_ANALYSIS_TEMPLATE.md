@@ -34,3 +34,18 @@ render as `INSUFFICIENT_DATA` / `UNRESOLVABLE` — they never disappear.
 script sha256, the frozen methodology/info-propagation hashes, the collection
 implementation commit, expected outputs, and created_at. The report embeds the
 manifest so the inspection's drift is provable.
+
+The manifest also PINS every invocation parameter (event_id, pre_seconds,
+stable_seconds, book_raw, trade_raw, coverage_report, feed_label, schedule_path,
+scheduled_t0_semantics). The script rejects any CLI override, so the frozen
+inspection is frozen code + frozen parameters, not just frozen code.
+
+## Version history (preregistration maintenance)
+
+- **v1 (pre-event, 2026-09-22):** added freshness-aware coverage; separate
+  book/trade/coverage provenance; manifest-pinned invocation parameters; and
+  corrected scheduled-t0 semantics — `first_received_at`/`first_processed_at`
+  are UNRESOLVABLE (release contents not ingested), so `W_quote` is
+  `scheduled_t0_to_quote`, not `processing_to_quote`. Zero internal latency is
+  NOT assumed. This is legitimate pre-outcome correction, not post-hoc
+  adjustment.

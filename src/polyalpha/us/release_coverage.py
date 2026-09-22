@@ -213,21 +213,47 @@ def compute_coverage(
     rest_slugs: set[str],
     l2_slugs: set[str],
     trade_slugs: set[str],
+    rest_last: dict[str, datetime] | None = None,
+    l2_last: dict[str, datetime] | None = None,
+    trade_collector_age_seconds: float | None = None,
+    now: datetime | None = None,
+    rest_max_age_seconds: float = 300.0,
+    l2_max_age_seconds: float = 90.0,
+    trade_max_age_seconds: float = 300.0,
 ) -> dict[str, Any]:
-    """Coverage invariant: Coverage(r, c) = 1[c in REST AND L2 AND trades]."""
+    """Coverage = membership AND freshness.
+
+    Coverage(c, t) = Subscribed(c) AND Age_last_observation(c) < tau. A market
+    seen yesterday does not count as covered today. Sparse trades are not
+    required: trade coverage is the subscription invariant + collector liveness.
+    """
+    now = now or datetime.now(UTC)
+
+    def _age(last: dict[str, datetime] | None, slug: str) -> float | None:
+        t = last.get(slug) if last else None
+        return (now - t).total_seconds() if t is not None else None
 
     per_market = []
     missing = 0
     for rm in required:
-        cov = {
-            "REST": rm.market_slug in rest_slugs,
-            "L2": rm.market_slug in l2_slugs,
-            "trade": rm.market_slug in trade_slugs,
-        }
+        slug = rm.market_slug
+        rest_age = _age(rest_last, slug)
+        l2_age = _age(l2_last, slug)
+        rest_ok = slug in rest_slugs and (rest_age is None or rest_age < rest_max_age_seconds)
+        l2_ok = slug in l2_slugs and (l2_age is None or l2_age < l2_max_age_seconds)
+        trade_ok = slug in trade_slugs and (
+            trade_collector_age_seconds is None
+            or trade_collector_age_seconds < trade_max_age_seconds
+        )
+        cov = {"REST": rest_ok, "L2": l2_ok, "trade": trade_ok}
         ok = all(cov.values())
         if not ok:
             missing += 1
-        per_market.append({**rm.as_dict(), "coverage": cov, "coverage_ok": ok})
+        per_market.append({
+            **rm.as_dict(), "coverage": cov, "coverage_ok": ok,
+            "rest_age_seconds": round(rest_age, 1) if rest_age is not None else None,
+            "l2_age_seconds": round(l2_age, 1) if l2_age is not None else None,
+        })
 
     by_release: dict[str, list[dict]] = {}
     for m in per_market:

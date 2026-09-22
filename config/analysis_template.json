@@ -1,7 +1,9 @@
 {
-  "analysis_template_sha256": "910b349c771100661284bcf45fbc375e51fb1394f4f4b9efce263b1cfc60b719",
-  "analysis_template_version": "v0",
+  "analysis_template_sha256": "26bf96d7647331ac2b50efc0aad1432f17ef9bca8b70307ce4849ba67af17fd5",
+  "analysis_template_version": "v1",
+  "book_raw": "data/us/retail/raw",
   "collection_impl_commit": "d5a951c6209997b9cad671b35d8fb56da5610567",
+  "coverage_report": "data/us/reports/release-coverage.json",
   "created_at": "2026-09-22T05:05:29.663542+00:00",
   "event_id": "nfp-2026-10-02",
   "expected_outputs": [
@@ -13,6 +15,12 @@
     "W_fill",
     "Z_lag"
   ],
+  "feed_label": "REST_2S",
   "frozen_methodology_sha256": "df71b8f387e146681cea47639f6d61f79f82dff29012913c8124346d4afb598e",
-  "info_propagation_sha256": "51c3701808cae0ead28c80fef08313556fe21db8f9e850fcefe8fe2627ad31f0"
+  "info_propagation_sha256": "51c3701808cae0ead28c80fef08313556fe21db8f9e850fcefe8fe2627ad31f0",
+  "pre_seconds": 600,
+  "schedule_path": "config/gov_releases.json",
+  "scheduled_t0_semantics": true,
+  "stable_seconds": 1800,
+  "trade_raw": "data/us/trade/raw"
 }
