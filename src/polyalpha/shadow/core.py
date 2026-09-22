@@ -272,9 +272,23 @@ class ExternalCollector:
         self.providers = providers
         self.raw = raw
         self.watermark_path = Path(watermark_path)
+        self.seen_path = Path(watermark_path).with_name(Path(watermark_path).stem + ".seen.json")
         self.source = source
         self.session_id = session_id or f"shadow-{int(time.time())}"
-        self._seen: dict[str, list[int]] = {}  # observation_id -> [first_ns, last_ns, count]
+        # observation_id -> [first_ns, last_ns, count]; persisted for restart-safety.
+        self._seen: dict[str, list[int]] = self._load_seen()
+
+    def _load_seen(self) -> dict[str, list[int]]:
+        if not self.seen_path.exists():
+            return {}
+        try:
+            return json.loads(self.seen_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    def _save_seen(self) -> None:
+        self.seen_path.parent.mkdir(parents=True, exist_ok=True)
+        self.seen_path.write_text(json.dumps(self._seen), encoding="utf-8")
 
     def _watermarks(self) -> dict[str, str]:
         if not self.watermark_path.exists():
@@ -316,20 +330,23 @@ class ExternalCollector:
             max_published = since
             for obs in items:
                 now_ns = time.time_ns()
-                self.raw.append(
-                    self.source, provider.name, obs.as_dict(),
-                    wire=json.dumps(obs.as_dict(), sort_keys=True, default=str),
-                    received_at_ns=now_ns, received_monotonic_ns=time.monotonic_ns(),
-                    exchange_timestamp_ms=(
-                        int(obs.provider_published_at.timestamp() * 1000)
-                        if obs.provider_published_at else None
-                    ),
-                )
-                if obs.provider_published_at is not None:
-                    metrics.provider_minus_receipt_ms.append(
-                        max(0, int((datetime.fromtimestamp(now_ns / 1e9, UTC) - obs.provider_published_at).total_seconds() * 1000))
+                is_new = obs.observation_id not in self._seen
+                if is_new:
+                    # Raw is appended ONLY for new observations: re-polling an
+                    # unchanged datum must not grow the raw store unboundedly.
+                    self.raw.append(
+                        self.source, provider.name, obs.as_dict(),
+                        wire=json.dumps(obs.as_dict(), sort_keys=True, default=str),
+                        received_at_ns=now_ns, received_monotonic_ns=time.monotonic_ns(),
+                        exchange_timestamp_ms=(
+                            int(obs.provider_published_at.timestamp() * 1000)
+                            if obs.provider_published_at else None
+                        ),
                     )
-                if obs.observation_id not in self._seen:
+                    if obs.provider_published_at is not None:
+                        metrics.provider_minus_receipt_ms.append(
+                            max(0, int((datetime.fromtimestamp(now_ns / 1e9, UTC) - obs.provider_published_at).total_seconds() * 1000))
+                        )
                     self._seen[obs.observation_id] = [now_ns, now_ns, 1]
                     new += 1
                 else:
@@ -349,5 +366,6 @@ class ExternalCollector:
                 "metrics": metrics.summary(),
             }
 
+        self._save_seen()
         self._save_watermarks(watermarks)
         return result

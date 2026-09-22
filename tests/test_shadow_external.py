@@ -66,24 +66,48 @@ class _Fake:
         return self.items
 
 
-def test_collector_dedups_same_revision(tmp_path):
-    raw = RawStore(tmp_path / "raw", "v1")
-    v = ScalarValue(value=2.8)
-    o = ExternalObservation(
-        observation_id=_mk(provider="fake", ext="cpi", event=T, v=2.8),
-        provider="fake", source_class=SourceClass.MACRO, external_id="cpi",
-        value=v, publisher_or_authority=None, event_time=T,
+def _observation(ext="cpi", v=2.8):
+    val = ScalarValue(value=v)
+    return ExternalObservation(
+        observation_id=_mk(provider="fake", ext=ext, event=T, v=v),
+        provider="fake", source_class=SourceClass.MACRO, external_id=ext,
+        value=val, publisher_or_authority=None, event_time=T,
         provider_published_at=T, provider_updated_at=None, source_claimed_publish_at=T,
         request_started_wall_ns=0, received_wall_ns=0, received_monotonic_ns=0,
         region=None, source_url=None, raw_payload_sha256="", content_sha256="",
         collector_session_id="s", fetch_sequence=0, transport="REST",
         freshness_class=Freshness.HISTORICAL, coverage_class=Coverage.FULL,
-        provider_revision=None, value_hash=value_hash(v),
+        provider_revision=None, value_hash=value_hash(val),
     )
+
+
+def test_collector_dedups_same_revision(tmp_path):
+    raw = RawStore(tmp_path / "raw", "v1")
+    o = _observation()
     collector = ExternalCollector([_Fake([o, o])], raw, tmp_path / "wm.json")
     stats = collector.collect()
     assert stats["providers"]["fake"]["new"] == 1  # duplicate revision deduped
     assert stats["providers"]["fake"]["seen"] == 1
+
+
+def test_collector_does_not_reappend_unchanged(tmp_path):
+    raw = RawStore(tmp_path / "raw", "v1")
+    o = _observation()
+    collector = ExternalCollector([_Fake([o])], raw, tmp_path / "wm.json")
+    assert collector.collect()["providers"]["fake"]["new"] == 1
+    # Re-poll the same unchanged datum: zero new, and the raw store stays at 1.
+    assert collector.collect()["providers"]["fake"]["new"] == 0
+    assert len(list(RawStore(tmp_path / "raw").replay())) == 1
+
+
+def test_collector_seen_persists_across_restart(tmp_path):
+    raw = RawStore(tmp_path / "raw", "v1")
+    o = _observation()
+    ExternalCollector([_Fake([o])], raw, tmp_path / "wm.json").collect()
+    # Restart (fresh collector) over the same store + watermark: seen persists.
+    c2 = ExternalCollector([_Fake([o])], raw, tmp_path / "wm.json")
+    assert c2.collect()["providers"]["fake"]["new"] == 0
+    assert len(list(RawStore(tmp_path / "raw").replay())) == 1
 
 
 def test_rss_parse_rss2():
