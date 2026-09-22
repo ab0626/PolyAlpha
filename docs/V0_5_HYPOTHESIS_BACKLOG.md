@@ -192,6 +192,26 @@ Rule: the six-source shadow bus stays untouched; these are candidates, not a
 build queue. Preserve the "add data only when provenance + legality + clock
 semantics support the hypothesis" principle.
 
+## Return attribution (preregistered inspection)
+
+- Freeze the PnL decomposition BEFORE evidence exists (same discipline as the
+  NFP inspection), so attribution is never invented after seeing which line won.
+- Decomposition:
+      Total PnL = prediction alpha + spread capture + arb + inventory + noise
+  - prediction alpha: Edge_model - Price (expected_value.py)
+  - spread capture: maker/taker attribution already in the fill stream
+    (maker = earned spread, taker = paid spread) -> tests "prediction
+    contributes surprisingly little"
+  - arb: graph-consistent relative-value trades (A4/A5)
+  - inventory: mark-to-market + carry (risk.py)
+  - noise: residual
+- Open question to preregister: is graph.py ALPHA-generating (relative-value
+  trades with positive EV) or RISK-reducing (lower variance, no EV change)?
+  They are different businesses.
+- Ranking question (post-evidence, not now): which family earned the most OOS
+  PnL after costs? Not "which is most interesting / sophisticated".
+- Status: SPEC (preregister before the forward holdout is evaluated).
+
 ## Rule
 
 Backlog entries are hypotheses to reproduce, not conclusions. They do not change
