@@ -99,6 +99,26 @@ effect, min effective-N, FDR, and cluster rules.
   assumptions are uncomfortable when the information event time is often known.
 - Status: NOT_RUN (v0.5 candidate). Does NOT modify frozen A6/A8.
 
+## H-v5-3: Bookmaker-divergence anchor (A9/A4)
+
+- Source: cross-venue relative value (Polymarket vs sportsbook implied odds).
+- Hypothesis: Residual = P_polymarket - P_bookmaker mean-reverts; persistent
+  divergence is a relative-value signal.
+- H0: E[dP | residual] = 0 (divergence is uninformative).
+- Blocked on: a legal/public bookmaker odds source (access + licensing caveats).
+  Same add-data discipline: provenance + legality + clock semantics first.
+- Status: NOT_RUN (v0.5 candidate). Observation-only.
+
+## H-v5-4: Time-to-expiry regime effect (A2)
+
+- Source: inventory/attention pressure near resolution.
+- Hypothesis: pricing inefficiency (spread, mispricing frequency) increases as
+  TTR -> 0; inventory pressure concentrates near resolution.
+- H0: no TTR dependence of inefficiency measures.
+- Data: already collected (TTR + spread + depth + fills). Preregister a
+  cluster-aware TTR-stratified test.
+- Status: NOT_RUN (v0.5 candidate).
+
 ## Politician Disclosure (delayed public-disclosure source)
 
 - Source: STOCK Act political-disclosure filings (House Clerk / Senate eFD as
