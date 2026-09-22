@@ -86,16 +86,27 @@ effect, min effective-N, FDR, and cluster rules.
   Qualifying transactions > $1,000 are reported within 30 days of notice, no
   later than 45 days after the transaction — fundamentally too lagged for
   same-minute execution. Disclosures are legal, public, lagged filings.
-- Chain (research only):
-      POLITICIAN_DISCLOSURE -> sector/policy exposure -> future policy-market research
 - Record fields: filer, owner (SELF/SPOUSE/DEPENDENT/JOINT/UNKNOWN), asset,
   transaction type, transaction date, filing date, disclosure lag days, amount
   range, source document, primary-source provenance.
-- Future hypothesis (preregister in v0.5):
-      H: publicly disclosed sector exposure -> subsequent policy-contract repricing
-  Explicitly NOT: politician trade => inside information.
-- Freshness class: DELAYED (45-day lag) / HISTORICAL. Observation-only.
-- Status: NOT_RUN (v0.5 candidate). Disconnected from v0.4; no code, no signal.
+- Freshness class: DELAYED (45-day lag) / HISTORICAL.
+- Status: BLOCKED_PENDING_LEGAL_REVIEW (spec only; no ingestion until resolved).
+- Three explicit blockers:
+  1. LEGAL gate: House Clerk and Senate Ethics both state it is unlawful to
+     obtain/use disclosure reports for "any commercial purpose" (except
+     news/communications media); Senate adds civil-penalty exposure. Whether a
+     trading-adjacent research pipeline is prohibited commercial use is a legal
+     interpretation we must NOT make ourselves. Do not ingest until resolved.
+  2. CLOCK gate: t0 is interval-censored, not point-observed:
+         t_last-poll-without-filing < t_filing-public <= t_first-poll-with-filing
+     Store [t_last-not-seen, t_first-seen]; never pretend t0 = t_first-seen.
+  3. HYPOTHESIS gate: the economically meaningful public event is the DISCLOSURE,
+     not the weeks-old underlying transaction. Future test:
+         H0: E[dp | new public disclosure] = 0
+     vs. a preregistered alternative of systematic post-disclosure
+     reaction/underreaction. Not "old transaction -> future prediction".
+     If prices moved BEFORE the disclosure became public, that is separate
+     evidence about already-available information, not the disclosure signal.
 
 ## Rule
 
