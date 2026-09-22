@@ -47,6 +47,8 @@ def main() -> int:
     parser.add_argument("--report-dir", default=str(DEFAULT_REPORT_DIR))
     parser.add_argument("--interval", type=float, default=2.0,
                         help="Seconds between collection cycles")
+    parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
+    parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and stop")
     args = parser.parse_args()
 
@@ -93,8 +95,22 @@ def main() -> int:
     try:
         markets = collector.discover_markets(limit=args.limit)
         markets_seen.update(m["slug"] for m in markets if m.get("slug"))
-        print(f"DISCOVERED: {len(markets)} markets")
-        slugs = [m["slug"] for m in markets if m.get("slug")]
+        activity_slugs = [m["slug"] for m in markets if m.get("slug")]
+
+        from polyalpha.us.release_coverage import merged_required_slugs
+
+        def search_fn(term: str):
+            raw, _ = client.search({"query": term, "status": "active", "limit": 20})
+            return raw.get("events", [])
+
+        required_slugs = merged_required_slugs(args.schedule, search_fn, args.mapping)
+        slugs = sorted(set(activity_slugs) | required_slugs)
+        # Register release-required slugs (not discovered via discover_markets)
+        # so collect_books fetches them; collect_books skips unregistered slugs.
+        for slug in required_slugs:
+            if identifier_registry.by_slug(slug) is None:
+                identifier_registry.register(f"us:{slug}", slug)
+        print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} (required={len(required_slugs)})")
 
         deadline = time.monotonic() + args.duration
         while time.monotonic() < deadline:
