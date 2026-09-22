@@ -39,6 +39,7 @@ def main() -> int:
                         help="Active markets to subscribe to")
     parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
+    parser.add_argument("--strata", default=str(ROOT / "config" / "collection_strata.json"))
     parser.add_argument("--env", default=str(ROOT / ".env"))
     args = parser.parse_args()
 
@@ -50,7 +51,7 @@ def main() -> int:
 
     client = PublicUsClient(timeout=20, attempts=3)
     _activity, _required, required_slugs, universe = collector_universe(
-        client, args.schedule, args.mapping, limit=args.limit
+        client, args.schedule, args.mapping, limit=args.limit, strata_path=args.strata
     )
     print(f"universe={len(universe)} (required={len(required_slugs)})", flush=True)
 

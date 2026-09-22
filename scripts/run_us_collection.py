@@ -49,6 +49,8 @@ def main() -> int:
                         help="Seconds between collection cycles")
     parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
+    parser.add_argument("--strata", default=str(ROOT / "config" / "collection_strata.json"))
+    parser.add_argument("--membership", default="data/us/stratified_membership.jsonl")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and stop")
     args = parser.parse_args()
 
@@ -104,13 +106,25 @@ def main() -> int:
             return raw.get("events", [])
 
         required_slugs = merged_required_slugs(args.schedule, search_fn, args.mapping)
-        slugs = sorted(set(activity_slugs) | required_slugs)
-        # Register release-required slugs (not discovered via discover_markets)
-        # so collect_books fetches them; collect_books skips unregistered slugs.
-        for slug in required_slugs:
+
+        # Stratified category sample (frozen rule), membership persisted point-in-time.
+        from polyalpha.us.release_coverage import persist_stratified_membership, stratified_universe
+
+        stratified_slugs: set[str] = set()
+        if args.strata:
+            strata_cfg = json.loads(Path(args.strata).read_text(encoding="utf-8"))
+            sampled = stratified_universe(client, strata_cfg)
+            stratified_slugs = {slug for slug, _ in sampled}
+            persist_stratified_membership(sampled, args.membership)
+
+        slugs = sorted(set(activity_slugs) | required_slugs | stratified_slugs)
+        # Register release-required + stratified slugs (not discovered via
+        # discover_markets) so collect_books fetches them.
+        for slug in required_slugs | stratified_slugs:
             if identifier_registry.by_slug(slug) is None:
                 identifier_registry.register(f"us:{slug}", slug)
-        print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} (required={len(required_slugs)})")
+        print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} "
+              f"(required={len(required_slugs)}, stratified={len(stratified_slugs)})")
 
         deadline = time.monotonic() + args.duration
         while time.monotonic() < deadline:

@@ -105,17 +105,87 @@ def merged_required_slugs(
     return slugs
 
 
+def stratum_for(slug: str, category: str | None, strata: dict) -> str:
+    """Map a market to a frozen category stratum (venue category, else slug prefix)."""
+    if category:
+        for name, cfg in strata.items():
+            if category in cfg.get("categories", []):
+                return name
+    for name, cfg in strata.items():
+        if any(slug.startswith(p) for p in cfg.get("slug_prefixes", [])):
+            return name
+    return "other"
+
+
+def stratified_universe(client, strata_cfg: dict, limit: int = 500) -> list[tuple[str, str]]:
+    """Sample ``count_per_stratum`` markets per frozen category stratum.
+
+    Returns (slug, stratum) pairs. Deterministic (sort by the frozen key, take
+    top N) and data-quality-gated (active/accepting/min_volume) before sampling.
+    """
+    sampling = strata_cfg.get("sampling", {})
+    strata = strata_cfg.get("category_strata", {})
+    body, _ = client.markets({"limit": limit, "closed": "false"})
+    by_stratum: dict[str, list[tuple[str, float]]] = {}
+    for m in body.get("markets", []):
+        slug = m.get("slug")
+        if not slug:
+            continue
+        if sampling.get("min_active") and not m.get("active", True):
+            continue
+        if sampling.get("min_accepting_orders") and not m.get("accepting_orders", True):
+            continue
+        try:
+            vol = float(m.get("volume") or 0)
+        except (TypeError, ValueError):
+            vol = 0.0
+        if vol < sampling.get("min_volume", 0):
+            continue
+        stratum = stratum_for(slug, m.get("category"), strata)
+        by_stratum.setdefault(stratum, []).append((slug, vol))
+
+    sampled: list[tuple[str, str]] = []
+    count = sampling.get("count_per_stratum", 10)
+    desc = sampling.get("descending", True)
+    for stratum in sorted(by_stratum):
+        items = sorted(by_stratum[stratum], key=lambda x: x[1], reverse=desc)
+        for slug, _ in items[:count]:
+            sampled.append((slug, stratum))
+    return sampled
+
+
+def persist_stratified_membership(
+    sampled: list[tuple[str, str]], path: str | Path, receipt_time: datetime | None = None
+) -> None:
+    """Persist point-in-time stratified membership (slug, stratum, sampled_at)."""
+    receipt_time = receipt_time or datetime.now(UTC)
+    lines = [
+        json.dumps({"market_slug": slug, "stratum": stratum,
+                    "sampled_at": receipt_time.isoformat()}, sort_keys=True)
+        for slug, stratum in sampled
+    ]
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if lines:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+
+
 def collector_universe(
     client,
     schedule_path: str | Path,
     mapping_path: str | Path,
     limit: int = 50,
     now: datetime | None = None,
+    strata_path: str | Path | None = None,
+    membership_path: str | Path = "data/us/stratified_membership.jsonl",
 ) -> tuple[list[str], list[RequiredMarket], list[str], list[str]]:
-    """Canonical collector universe: U_activity  U  U_release_required.
+    """Canonical collector universe: U_activity  U  U_required  U  U_stratified.
 
     Returns (activity_slugs, required_markets, required_slugs, universe).
-    Required contracts can never be displaced by activity ranking.
+    Required and stratified contracts can never be displaced by activity
+    ranking. Stratified sampling is frozen in ``strata_path`` and its membership
+    is persisted point-in-time.
     """
     body, _ = client.markets({"limit": limit, "closed": "false"})
     activity = [m["slug"] for m in body.get("markets", []) if m.get("slug")]
@@ -126,7 +196,15 @@ def collector_universe(
 
     required = release_required_universe(schedule_path, search_fn, now=now)
     required_slugs = merged_required_slugs(schedule_path, search_fn, mapping_path, now=now)
-    universe = sorted(set(activity) | set(required_slugs))
+
+    stratified_slugs: set[str] = set()
+    if strata_path:
+        cfg = json.loads(Path(strata_path).read_text(encoding="utf-8"))
+        sampled = stratified_universe(client, cfg)
+        stratified_slugs = {slug for slug, _ in sampled}
+        persist_stratified_membership(sampled, membership_path)
+
+    universe = sorted(set(activity) | set(required_slugs) | stratified_slugs)
     return activity, required, sorted(required_slugs), universe
 
 

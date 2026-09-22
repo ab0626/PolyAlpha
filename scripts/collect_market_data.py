@@ -48,6 +48,7 @@ async def main() -> int:
     parser.add_argument("--raw-dir", default="data/us/market_data/raw")
     parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
+    parser.add_argument("--strata", default=str(ROOT / "config" / "collection_strata.json"))
     parser.add_argument("--limit", type=int, default=50)
     parser.add_argument("--duration", type=float, default=900.0)
     parser.add_argument("--status", default="data/us/logs/market-data-status.json")
@@ -57,7 +58,7 @@ async def main() -> int:
     _load_env(Path(args.env))
     client = PublicUsClient(timeout=20, attempts=3)
     activity, required, required_slugs, universe = collector_universe(
-        client, args.schedule, args.mapping, limit=args.limit
+        client, args.schedule, args.mapping, limit=args.limit, strata_path=args.strata
     )
     required_collecting = sorted(set(required_slugs) & set(universe))
     required_missing = sorted(set(required_slugs) - set(universe))

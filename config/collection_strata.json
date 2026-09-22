@@ -1,0 +1,20 @@
+{
+  "schema": "collection-strata-v0",
+  "frozen_note": "Category taxonomy and sampling rule pinned BEFORE inspecting category outcomes. Collection expansion is NOT a trading preference. Change only via a new baseline.",
+  "category_strata": {
+    "sports":   {"categories": ["sports"],   "slug_prefixes": ["aec-", "tec-"]},
+    "politics": {"categories": ["politics"], "slug_prefixes": ["paccc-", "lawec-"]},
+    "crypto":   {"categories": ["crypto"],   "slug_prefixes": ["cpc-"]},
+    "macro":    {"categories": ["macro"],    "slug_prefixes": ["cpic-", "rdc-", "cbpac-", "nfpc-", "urc-"]},
+    "energy":   {"categories": ["energy", "commodity"], "slug_prefixes": []},
+    "other":    {"categories": ["culture"],  "slug_prefixes": []}
+  },
+  "sampling": {
+    "count_per_stratum": 10,
+    "min_active": true,
+    "min_accepting_orders": true,
+    "min_volume": 0,
+    "sort_key": "volume",
+    "descending": true
+  }
+}
