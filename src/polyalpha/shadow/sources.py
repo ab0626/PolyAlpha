@@ -281,7 +281,11 @@ class SecProvider:
             for i, acc in enumerate(accs):
                 form = forms[i] if i < len(forms) else None
                 fdate = dates[i] if i < len(dates) else None
-                value = FilingValue(accession=acc, form=form, cik=cik, filing_date=_iso(fdate))
+                ft = _iso(fdate)
+                # Incremental: only filings strictly newer than the watermark.
+                if since is not None and ft is not None and ft <= since:
+                    continue
+                value = FilingValue(accession=acc, form=form, cik=cik, filing_date=ft)
                 out.append(_obs(
                     self.name, self.source_class, self.freshness_class, self.coverage_class,
                     external_id=f"{cik}:{acc}", value=value, event_time=_iso(fdate),
