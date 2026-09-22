@@ -5,6 +5,28 @@ literature and external research. None is wired into code, and none is evidence.
 Each becomes actionable only after a v0.5 preregistration with H0, test, min
 effect, min effective-N, FDR, and cluster rules.
 
+## v0.5 External Research Principles (frozen before outcomes)
+
+- Family-level error budget: let F = {F1,...,FK}. Preregister a hierarchical
+  error budget alpha_family -> alpha_within-family (or hierarchical FDR), and
+  declare the hierarchy before inspecting outcomes. Family selection itself is
+  a multiple-testing step — protecting only the within-family level turns a
+  broad shadow archive into a multiple-hypothesis generator.
+- Interval-censored clocks: every source carries an uncertainty interval
+  [t_i-, t_i+] (source timestamp precision, polling interval, publication
+  delay, API latency, bucket size, revision behavior). Precedence "A before B"
+  holds only when t_A+ < t_B-; overlapping intervals mean ordering UNRESOLVED,
+  never "A led B".
+- Add-data rule: add a source only when provenance + legality + clock semantics
+  are good enough to support the hypothesis — NOT because an API exists.
+- Attention data defaults to state (X_t = attention/regime), not a predictive
+  trigger (Signal_t); a predictive use needs its own preregistered test.
+- Page-diff ingestion is FALLBACK_PAGE_MONITOR: raw HTML hash changes are too
+  noisy; a substantive-change classifier must gate anything downstream.
+- Stop condition: keep the current six-source shadow bus. The rest of the
+  public internet is a catalog of possible future instruments, not a backlog of
+  collectors to build now.
+
 ## H-v5-1: Liquidation cascade → BTC 5-minute Up/Down market
 
 - Source: Polymarket microstructure (observed in the Moon Dev bot ecosystem:
