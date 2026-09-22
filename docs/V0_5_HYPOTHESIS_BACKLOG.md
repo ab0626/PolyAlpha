@@ -30,6 +30,43 @@ effect, min effective-N, FDR, and cluster rules.
   test; sports is where we measure execution, not where we assume calibration
   edge.
 
+## Aggregate Flow Toxicity & Information Mediation
+
+- Source: HFT order-flow toxicity (VPIN/PIN/Kyle) reframed for prediction markets.
+- Core problem: **infer the information content and adverse-selection risk of
+  anonymous aggregate flow** — NOT "identify informed traders" (per-user skill
+  is blocked on US: no public account/wallet identity).
+- Primary outcome (observable, not a latent state): realized adverse-selection
+  markout in log-odds, net of spread:
+
+      M_j(h) = s_j [ l(p_{t+h}) - l(p_t) ],  l = logit
+
+  Positive M_j = aggressor traded into subsequent repricing = passive
+  counterparty adversely selected. Toxicity T_h = E[M(h) | X_t].
+- Honest flow metric (not "VPIN", not "probability of informed trading"):
+
+      Q_k = sum_j s_j q_j,  I_k = |Q_k| / sum_j q_j,  VI_t = (1/N) sum I_k
+
+  I_k = 0.90 means "flow is one-sided", not "90% informed". Interpretation is
+  earned empirically.
+- Three toxicity types: (1) trade toxicity = realized markout; (2) book
+  toxicity = OFI / queue / cancel imbalance / depth shock (note: event-level
+  OFI needs add/cancel events — PARTIALLY_GATED; snapshot queue imbalance is
+  available); (3) information-conditioned toxicity = T_h | EventShock vs
+  T_h | NoShock (needs no new data — EventShock + flow + price already frozen).
+- Conditioning state X_t: { OFI, signed trade imbalance, queue imbalance, λ,
+  spread, depth, trade intensity, recent markout, TTR τ, probability p (in
+  log-odds), event state }.
+- Two separate hypotheses, never conflated:
+      H_cost  : X_t -> future adverse selection
+      H_alpha : X_t -> future price direction (net of cost, OOS)
+- Benchmark hierarchy (no ML first), add only if ΔOOS(M_i, M_{i-1}) > 0:
+      M0 spread/depth, M1 +OFI, M2 +signed imbalance, M3 +λ, M4 +VI, M5 +event/TTR/price-state.
+- Priority order for construction: markout > OFI > queue/depth/cancel >
+  trade-flow imbalance > Kyle λ > VPIN > PIN. PIN last: its latent/Poisson
+  assumptions are uncomfortable when the information event time is often known.
+- Status: NOT_RUN (v0.5 candidate). Does NOT modify frozen A6/A8.
+
 ## Rule
 
 Backlog entries are hypotheses to reproduce, not conclusions. They do not change
