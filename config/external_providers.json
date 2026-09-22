@@ -1,10 +1,10 @@
 {
   "providers": [
-    {"kind": "fred", "series_ids": []},
-    {"kind": "eia", "routes": []},
+    {"kind": "fred", "series_ids": ["CPIAUCSL", "UNRATE", "DGS10", "DFF"]},
+    {"kind": "eia", "routes": ["petroleum/stoc/wstk", "natural-gas/stor/wkly", "petroleum/pri/gnd"]},
     {"kind": "nws", "state_codes": []},
-    {"kind": "sec", "ciks": []},
-    {"kind": "rss", "name": "fed", "source_class": "GOVERNMENT", "urls": []},
-    {"kind": "gdelt", "query": ""}
+    {"kind": "sec", "ciks": ["0000320193", "0000789019", "0001018724"]},
+    {"kind": "rss", "name": "fed", "source_class": "GOVERNMENT", "urls": ["https://www.federalreserve.gov/feeds/press_all.xml"]},
+    {"kind": "gdelt", "query": "inflation OR \"federal reserve\" OR gasoline OR oil"}
   ]
 }

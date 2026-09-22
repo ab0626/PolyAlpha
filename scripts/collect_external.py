@@ -11,11 +11,22 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+
+def _load_env(path: Path) -> None:
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key, value)
 
 from polyalpha.rawstore import RawStore  # noqa: E402
 from polyalpha.shadow import ExternalCollector, SourceClass  # noqa: E402
@@ -34,8 +45,10 @@ def main() -> int:
     parser.add_argument("--providers", default=str(ROOT / "config" / "external_providers.json"))
     parser.add_argument("--raw-dir", default="data/shadow/raw")
     parser.add_argument("--watermark", default="data/shadow/watermarks.json")
+    parser.add_argument("--env", default=str(ROOT / ".env"))
     args = parser.parse_args()
 
+    _load_env(Path(args.env))
     cfg = json.loads(Path(args.providers).read_text(encoding="utf-8"))
     providers = []
     for p in cfg.get("providers", []):

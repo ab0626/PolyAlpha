@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
@@ -35,14 +37,19 @@ _UA = {"User-Agent": "polyalpha-research/0.1"}
 def _iso(value: str | None) -> datetime | None:
     if not value:
         return None
+    dt = None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         pass
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC)
-    except ValueError:
-        return None
+    if dt is None:
+        try:
+            dt = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
 
 
 def _parse_rss_date(value: str | None) -> datetime | None:
@@ -97,10 +104,19 @@ def _parse_rss(xml_bytes: bytes) -> list[tuple[str, str | None, str | None, str 
     return items
 
 
-def _get_json(url: str, timeout: float = 20.0) -> dict:
-    req = urllib.request.Request(url, headers=_UA)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+def _get_json(url: str, timeout: float = 20.0, retries: int = 3) -> dict:
+    delay = 2.0
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=_UA)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            if error.code == 429 and attempt < retries - 1:
+                time.sleep(delay)
+                delay *= 2.0
+                continue
+            raise
 
 
 def _env(name: str) -> str:
@@ -319,7 +335,7 @@ class GdeltProvider:
 
     def fetch(self, since: datetime | None) -> list[ExternalObservation]:
         url = (
-            f"https://api.gdeltproject.org/api/v2/doc/doc?query={self.query}"
+            f"https://api.gdeltproject.org/api/v2/doc/doc?query={urllib.parse.quote(self.query)}"
             f"&mode=artlist&maxrecords=250&format=json&timespan={self.minutes_back}m"
         )
         data = _get_json(url)
