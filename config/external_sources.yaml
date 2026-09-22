@@ -1,0 +1,64 @@
+# shadow-external-v0 source catalog + storage policy.
+# Observation-only. No secrets here — keys come from environment variables.
+
+schema_version: shadow-external-v0
+
+providers:
+  - name: fred
+    source_class: MACRO
+    freshness: HISTORICAL
+    coverage: FULL
+    auth: FRED_API_KEY          # free key, env var
+    retention_raw: indefinite
+    retention_derived: indefinite
+    notes: vintage-aware (realtime_start/end preserved, not inferred)
+  - name: eia
+    source_class: ENERGY
+    freshness: HISTORICAL
+    coverage: FULL
+    auth: EIA_API_KEY           # free key (registration), env var
+    retention_raw: indefinite
+    retention_derived: indefinite
+    notes: petroleum / natural gas / electricity series
+  - name: nws
+    source_class: WEATHER
+    freshness: NEAR_REAL_TIME
+    coverage: FULL
+    auth: NONE                  # free/open
+    retention_raw: indefinite
+    retention_derived: indefinite
+    notes: alerts/effective/expires preserved
+  - name: sec_edgar
+    source_class: REGULATORY
+    freshness: NEAR_REAL_TIME
+    coverage: FULL
+    auth: NONE                  # data.sec.gov requires no auth
+    retention_raw: indefinite
+    retention_derived: indefinite
+    notes: accession/form/cik/filing_date; no interpretation
+  - name: fed
+    source_class: GOVERNMENT
+    freshness: NEAR_REAL_TIME
+    coverage: FULL
+    auth: NONE                  # official RSS feeds
+    retention_raw: indefinite
+    retention_derived: indefinite
+    notes: press releases / monetary policy / speeches via RSS
+  - name: gdelt
+    source_class: NEWS
+    freshness: DELAYED
+    coverage: FULL
+    auth: NONE                  # free
+    retention_raw: indefinite_compressed
+    retention_derived: indefinite
+    notes: ~15m delay; breadth/backfill only, not a latency clock
+
+# Storage policy for future high-rate feeds.
+storage_policy:
+  high_frequency_raw: configurable_window   # raw JSONL rotates
+  high_frequency_derived: "1s/1m bars"      # compressed rollups
+  preserve_on_expiry: [segment_hash, start, end, row_count, schema, downsample_rule]
+
+# v0.4 isolation invariant.
+isolation:
+  reads_by_v0_4: 0

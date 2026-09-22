@@ -1,0 +1,10 @@
+{
+  "providers": [
+    {"kind": "fred", "series_ids": []},
+    {"kind": "eia", "routes": []},
+    {"kind": "nws", "state_codes": []},
+    {"kind": "sec", "ciks": []},
+    {"kind": "rss", "name": "fed", "source_class": "GOVERNMENT", "urls": []},
+    {"kind": "gdelt", "query": ""}
+  ]
+}
