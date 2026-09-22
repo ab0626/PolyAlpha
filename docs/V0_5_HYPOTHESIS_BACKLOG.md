@@ -77,6 +77,26 @@ effect, min effective-N, FDR, and cluster rules.
   assumptions are uncomfortable when the information event time is often known.
 - Status: NOT_RUN (v0.5 candidate). Does NOT modify frozen A6/A8.
 
+## Politician Disclosure (delayed public-disclosure source)
+
+- Source: STOCK Act political-disclosure filings (House Clerk / Senate eFD as
+  authoritative primaries; Capitol Trades / Quiver Quantitative / Quantgress /
+  Congress Trading Monitor as enrichment/normalization only).
+- Framing: a DELAYED public-disclosure research source, NOT an "insider signal".
+  Qualifying transactions > $1,000 are reported within 30 days of notice, no
+  later than 45 days after the transaction — fundamentally too lagged for
+  same-minute execution. Disclosures are legal, public, lagged filings.
+- Chain (research only):
+      POLITICIAN_DISCLOSURE -> sector/policy exposure -> future policy-market research
+- Record fields: filer, owner (SELF/SPOUSE/DEPENDENT/JOINT/UNKNOWN), asset,
+  transaction type, transaction date, filing date, disclosure lag days, amount
+  range, source document, primary-source provenance.
+- Future hypothesis (preregister in v0.5):
+      H: publicly disclosed sector exposure -> subsequent policy-contract repricing
+  Explicitly NOT: politician trade => inside information.
+- Freshness class: DELAYED (45-day lag) / HISTORICAL. Observation-only.
+- Status: NOT_RUN (v0.5 candidate). Disconnected from v0.4; no code, no signal.
+
 ## Rule
 
 Backlog entries are hypotheses to reproduce, not conclusions. They do not change
