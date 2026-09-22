@@ -7,6 +7,7 @@ freshness/coverage.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
@@ -21,6 +22,7 @@ from .core import (
     AlertValue,
     Coverage,
     ExternalObservation,
+    FetchedObservation,
     FilingValue,
     Freshness,
     ScalarValue,
@@ -104,13 +106,15 @@ def _parse_rss(xml_bytes: bytes) -> list[tuple[str, str | None, str | None, str 
     return items
 
 
-def _get_json(url: str, timeout: float = 20.0, retries: int = 3) -> dict:
+def _get_json(url: str, timeout: float = 20.0, retries: int = 3) -> tuple[bytes, dict]:
+    """Return (raw response bytes, parsed dict) so raw bytes are never lost."""
     delay = 2.0
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=_UA)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+                raw = resp.read()
+                return raw, json.loads(raw.decode("utf-8"))
         except urllib.error.HTTPError as error:
             if error.code == 429 and attempt < retries - 1:
                 time.sleep(delay)
@@ -131,17 +135,20 @@ def _obs(
     external_id: str, value, event_time: datetime | None, published: datetime | None,
     publisher: str | None, url: str | None, region: str | None, revision: str | None,
     claimed: datetime | None = None, transport: str = "REST",
+    raw_bytes: bytes | None = None,
 ) -> ExternalObservation:
     vh = value_hash(value)
     rk = revision_key(provider, external_id, event_time, revision, vh)
     oid = observation_id(SCHEMA_VERSION, rk)
+    raw_sha = hashlib.sha256(raw_bytes).hexdigest() if raw_bytes else ""
+    content_sha = hashlib.sha256(f"{external_id}|{vh}".encode("utf-8")).hexdigest()
     return ExternalObservation(
         observation_id=oid, provider=provider, source_class=source_class,
         external_id=external_id, value=value, publisher_or_authority=publisher,
         event_time=event_time, provider_published_at=published, provider_updated_at=None,
         source_claimed_publish_at=claimed if claimed is not None else published,
         request_started_wall_ns=0, received_wall_ns=0, received_monotonic_ns=0,
-        region=region, source_url=url, raw_payload_sha256="", content_sha256="",
+        region=region, source_url=url, raw_payload_sha256=raw_sha, content_sha256=content_sha,
         collector_session_id="", fetch_sequence=0, transport=transport,
         freshness_class=freshness, coverage_class=coverage,
         provider_revision=revision, value_hash=vh,
@@ -160,31 +167,34 @@ class FredProvider:
         self.series_ids = series_ids
         self.vintage_start = vintage_start
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]:
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]:
         key = _env("FRED_API_KEY")
-        out: list[ExternalObservation] = []
+        out: list[FetchedObservation] = []
         for sid in self.series_ids:
             url = f"https://api.stlouisfed.org/fred/series/observations?series_id={sid}&api_key={key}&file_type=json"
             if self.vintage_start:
                 url += f"&realtime_start={self.vintage_start}"
-            data = _get_json(url)
+            resp_bytes, data = _get_json(url)
             for row in data.get("observations", []):
-                raw = row.get("value", ".")
-                if raw in (".", "", None):
+                raw_val = row.get("value", ".")
+                if raw_val in (".", "", None):
                     continue
                 try:
-                    v = float(raw)
+                    v = float(raw_val)
                 except ValueError:
                     continue
                 period = row.get("date")
                 vintage = row.get("realtime_end")
                 value = ScalarValue(value=v, frequency=row.get("frequency_short"),
                                     period=period, as_of=_iso(vintage), revision=vintage)
-                out.append(_obs(
-                    self.name, self.source_class, self.freshness_class, self.coverage_class,
-                    external_id=f"{sid}:{period}", value=value, event_time=_iso(period),
-                    published=_iso(vintage), publisher="FRED", url=url, region="US",
-                    revision=vintage, claimed=_iso(vintage),
+                out.append(FetchedObservation(
+                    resp_bytes,
+                    _obs(
+                        self.name, self.source_class, self.freshness_class, self.coverage_class,
+                        external_id=f"{sid}:{period}", value=value, event_time=_iso(period),
+                        published=_iso(vintage), publisher="FRED", url=url, region="US",
+                        revision=vintage, claimed=_iso(vintage), raw_bytes=resp_bytes,
+                    ),
                 ))
         return out
 
@@ -200,12 +210,12 @@ class EiaProvider:
     def __init__(self, routes: list[str]):
         self.routes = routes
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]:
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]:
         key = _env("EIA_API_KEY")
-        out: list[ExternalObservation] = []
+        out: list[FetchedObservation] = []
         for route in self.routes:
             url = f"https://api.eia.gov/v2/{route}/data/?api_key={key}&data[0]=value"
-            data = _get_json(url)
+            resp_bytes, data = _get_json(url)
             series_id = data.get("response", {}).get("id", route)
             for row in data.get("response", {}).get("data", []):
                 period = row.get("period")
@@ -214,10 +224,14 @@ class EiaProvider:
                 except (TypeError, ValueError):
                     continue
                 value = ScalarValue(value=v, units=row.get("units"), period=period)
-                out.append(_obs(
-                    self.name, self.source_class, self.freshness_class, self.coverage_class,
-                    external_id=f"{series_id}:{period}", value=value, event_time=_iso(period),
-                    published=None, publisher="EIA", url=url, region="US", revision=None,
+                out.append(FetchedObservation(
+                    resp_bytes,
+                    _obs(
+                        self.name, self.source_class, self.freshness_class, self.coverage_class,
+                        external_id=f"{series_id}:{period}", value=value, event_time=_iso(period),
+                        published=None, publisher="EIA", url=url, region="US", revision=None,
+                        raw_bytes=resp_bytes,
+                    ),
                 ))
         return out
 
@@ -233,12 +247,12 @@ class NwsProvider:
     def __init__(self, state_codes: list[str] | None = None):
         self.state_codes = state_codes
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]:
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]:
         urls = [f"https://api.weather.gov/alerts/active/area/{s}" for s in (self.state_codes or [])]
         urls = urls or ["https://api.weather.gov/alerts/active"]
-        out: list[ExternalObservation] = []
+        out: list[FetchedObservation] = []
         for url in urls:
-            data = _get_json(url)
+            resp_bytes, data = _get_json(url)
             for feat in data.get("features", []):
                 props = feat.get("properties", {}) or {}
                 eid = props.get("id") or feat.get("id")
@@ -249,11 +263,14 @@ class NwsProvider:
                     urgency=props.get("urgency"), effective=_iso(props.get("effective")),
                     expires=_iso(props.get("expires")),
                 )
-                out.append(_obs(
-                    self.name, self.source_class, self.freshness_class, self.coverage_class,
-                    external_id=eid, value=value, event_time=_iso(props.get("effective")),
-                    published=_iso(props.get("sent")), publisher=props.get("senderName"),
-                    url=url, region=props.get("areaDesc"), revision=None,
+                out.append(FetchedObservation(
+                    resp_bytes,
+                    _obs(
+                        self.name, self.source_class, self.freshness_class, self.coverage_class,
+                        external_id=eid, value=value, event_time=_iso(props.get("effective")),
+                        published=_iso(props.get("sent")), publisher=props.get("senderName"),
+                        url=url, region=props.get("areaDesc"), revision=None, raw_bytes=resp_bytes,
+                    ),
                 ))
         return out
 
@@ -269,11 +286,11 @@ class SecProvider:
     def __init__(self, ciks: list[str]):
         self.ciks = ciks
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]:
-        out: list[ExternalObservation] = []
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]:
+        out: list[FetchedObservation] = []
         for cik in self.ciks:
             url = f"https://data.sec.gov/submissions/CIK{cik.zfill(10)}.json"
-            data = _get_json(url)
+            resp_bytes, data = _get_json(url)
             recent = data.get("filings", {}).get("recent", {})
             accs = recent.get("accessionNumber", [])
             forms = recent.get("form", [])
@@ -286,10 +303,14 @@ class SecProvider:
                 if since is not None and ft is not None and ft <= since:
                     continue
                 value = FilingValue(accession=acc, form=form, cik=cik, filing_date=ft)
-                out.append(_obs(
-                    self.name, self.source_class, self.freshness_class, self.coverage_class,
-                    external_id=f"{cik}:{acc}", value=value, event_time=_iso(fdate),
-                    published=_iso(fdate), publisher="SEC", url=url, region="US", revision=None,
+                out.append(FetchedObservation(
+                    resp_bytes,
+                    _obs(
+                        self.name, self.source_class, self.freshness_class, self.coverage_class,
+                        external_id=f"{cik}:{acc}", value=value, event_time=_iso(fdate),
+                        published=_iso(fdate), publisher="SEC", url=url, region="US", revision=None,
+                        raw_bytes=resp_bytes,
+                    ),
                 ))
         return out
 
@@ -304,8 +325,8 @@ class RssProvider:
         self.coverage_class = Coverage.FULL
         self.feed_urls = feed_urls
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]:
-        out: list[ExternalObservation] = []
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]:
+        out: list[FetchedObservation] = []
         for url in self.feed_urls:
             try:
                 req = urllib.request.Request(url, headers=_UA)
@@ -317,10 +338,14 @@ class RssProvider:
                 if since is not None and published is not None and published <= since:
                     continue
                 value = TextValue(headline=title, summary=summary, language=None)
-                out.append(_obs(
-                    self.name, self.source_class, self.freshness_class, self.coverage_class,
-                    external_id=eid, value=value, event_time=published, published=published,
-                    publisher=None, url=link, region=None, revision=None, claimed=claimed,
+                out.append(FetchedObservation(
+                    body,
+                    _obs(
+                        self.name, self.source_class, self.freshness_class, self.coverage_class,
+                        external_id=eid, value=value, event_time=published, published=published,
+                        publisher=None, url=link, region=None, revision=None, claimed=claimed,
+                        raw_bytes=body,
+                    ),
                 ))
         return out
 
@@ -337,22 +362,26 @@ class GdeltProvider:
         self.query = query
         self.minutes_back = minutes_back
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]:
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]:
         url = (
             f"https://api.gdeltproject.org/api/v2/doc/doc?query={urllib.parse.quote(self.query)}"
             f"&mode=artlist&maxrecords=250&format=json&timespan={self.minutes_back}m"
         )
-        data = _get_json(url)
-        out: list[ExternalObservation] = []
+        resp_bytes, data = _get_json(url)
+        out: list[FetchedObservation] = []
         for art in data.get("articles", []):
             u = art.get("url")
             if not u:
                 continue
             value = TextValue(headline=art.get("title"), summary=None, language=art.get("language"))
             published = _iso(art.get("seendate")) or _iso(art.get("date"))
-            out.append(_obs(
-                self.name, self.source_class, self.freshness_class, self.coverage_class,
-                external_id=u, value=value, event_time=published, published=published,
-                publisher=art.get("domain"), url=u, region=None, revision=None,
+            out.append(FetchedObservation(
+                resp_bytes,
+                _obs(
+                    self.name, self.source_class, self.freshness_class, self.coverage_class,
+                    external_id=u, value=value, event_time=published, published=published,
+                    publisher=art.get("domain"), url=u, region=None, revision=None,
+                    raw_bytes=resp_bytes,
+                ),
             ))
         return out

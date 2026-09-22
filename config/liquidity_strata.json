@@ -1,13 +1,13 @@
 {
   "schema": "liquidity-strata-v0",
-  "frozen_note": "Taxonomy and thresholds pinned BEFORE inspecting category-level outcomes. Change only via a new baseline; never silently.",
+  "frozen_note": "Canonical taxonomy SHARED with config/collection_strata.json (identical category_strata). Pinned BEFORE inspecting outcomes; change only via a new baseline.",
   "category_strata": {
-    "sports":    {"categories": ["sports"],                 "slug_prefixes": ["aec-", "tec-"]},
-    "macro":     {"categories": ["macro", "economics"],     "slug_prefixes": ["nfpc-", "urc-", "cpic-", "rdc-", "cbpac-"]},
-    "politics":  {"categories": ["politics"],               "slug_prefixes": []},
-    "crypto":    {"categories": ["crypto", "cryptocurrency"], "slug_prefixes": []},
-    "weather":   {"categories": ["weather"],                "slug_prefixes": []},
-    "other":     {"categories": [],                         "slug_prefixes": []}
+    "sports":   {"categories": ["sports"],   "slug_prefixes": ["aec-", "tec-"]},
+    "politics": {"categories": ["politics"], "slug_prefixes": ["paccc-", "lawec-"]},
+    "crypto":   {"categories": ["crypto"],   "slug_prefixes": ["cpc-"]},
+    "macro":    {"categories": ["macro"],    "slug_prefixes": ["cpic-", "rdc-", "cbpac-", "nfpc-", "urc-"]},
+    "energy":   {"categories": ["energy", "commodity"], "slug_prefixes": []},
+    "other":    {"categories": ["culture"],  "slug_prefixes": []}
   },
   "liquidity_thresholds": {
     "min_depth_1c_shares": 100,

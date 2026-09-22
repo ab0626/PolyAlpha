@@ -82,15 +82,29 @@ def _run_loop(name: str, loop: dict, base_dir: Path, status_dir: Path) -> None:
     while True:
         try:
             stats = collector.collect()
-            status = {
-                "loop": name,
-                "ts": datetime.now(UTC).isoformat(),
-                "last_success": datetime.now(UTC).isoformat(),
-                "new": {k: v.get("new") for k, v in stats["providers"].items()},
-                "errors": {k: v.get("error") for k, v in stats["providers"].items() if v.get("error")},
+            provider_errors = {
+                k: v.get("error") for k, v in stats["providers"].items() if v.get("error")
             }
-            failures = 0
-            interval = loop["interval"]
+            if loop.get("adaptive") and provider_errors:
+                # Provider errors (e.g. GDELT 429) are captured inside collect();
+                # they must still drive backoff, not the success path.
+                failures += 1
+                interval = min(loop["interval"] * (2 ** failures) + random.uniform(0, 5), 3600)
+                status = {
+                    "loop": name, "ts": datetime.now(UTC).isoformat(),
+                    "last_error": provider_errors,
+                    "degraded": failures >= 5,
+                }
+            else:
+                failures = 0
+                interval = loop["interval"]
+                status = {
+                    "loop": name,
+                    "ts": datetime.now(UTC).isoformat(),
+                    "last_success": datetime.now(UTC).isoformat(),
+                    "new": {k: v.get("new") for k, v in stats["providers"].items()},
+                    "errors": provider_errors,
+                }
         except Exception as error:  # noqa: BLE001
             status = {"loop": name, "ts": datetime.now(UTC).isoformat(),
                       "last_error": str(error)}

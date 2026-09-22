@@ -15,7 +15,7 @@ The repository now contains the ordered core requested in the specification:
 
 ## Verified locally
 
-69 tests plus five numerical subtests pass. Live REST, bounded WebSocket, lifecycle refresh, v2 trade collection, two-cycle paper operation, synthetic replay, and synthetic calibration CLI execution have been exercised. See README for bounded sample counts and assumptions. Docker collection and a disposable PostgreSQL integration test also pass. No live empirical profitability has been assessed.
+1,925 tests (1 skipped) plus five numerical subtests pass. Live REST, bounded WebSocket, lifecycle refresh, v2 trade collection, two-cycle paper operation, synthetic replay, and synthetic calibration CLI execution have been exercised. See README for bounded sample counts and assumptions. Docker collection and a disposable PostgreSQL integration test also pass. No live empirical profitability has been assessed.
 
 ## Remaining verification and research work
 

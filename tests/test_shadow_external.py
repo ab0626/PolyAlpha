@@ -13,6 +13,7 @@ from polyalpha.shadow import (
     Coverage,
     ExternalCollector,
     ExternalObservation,
+    FetchedObservation,
     Freshness,
     ScalarValue,
     SourceClass,
@@ -60,7 +61,7 @@ class _Fake:
     coverage_class = Coverage.FULL
 
     def __init__(self, items):
-        self.items = items
+        self.items = [FetchedObservation(b"raw-wire", o) for o in items]
 
     def fetch(self, since):
         return self.items
@@ -108,6 +109,28 @@ def test_collector_seen_persists_across_restart(tmp_path):
     c2 = ExternalCollector([_Fake([o])], raw, tmp_path / "wm.json")
     assert c2.collect()["providers"]["fake"]["new"] == 0
     assert len(list(RawStore(tmp_path / "raw").replay())) == 1
+
+
+def test_collector_preserves_raw_wire_bytes(tmp_path):
+    import base64
+
+    raw = RawStore(tmp_path / "raw", "v1")
+    o = _observation()
+    ExternalCollector([_Fake([o])], raw, tmp_path / "wm.json").collect()
+    rec = list(RawStore(tmp_path / "raw").replay())[0]
+    assert rec.wire_was_bytes is True  # raw bytes stored, not the normalized dict
+    assert base64.b64decode(rec.wire) == b"raw-wire"
+
+
+def test_obs_computes_raw_payload_sha256():
+    import hashlib
+
+    from polyalpha.shadow.sources import _obs
+
+    obs = _obs("p", SourceClass.MACRO, Freshness.HISTORICAL, Coverage.FULL,
+               "eid", ScalarValue(value=1.0), T, T, None, None, None, None,
+               raw_bytes=b"raw")
+    assert obs.raw_payload_sha256 == hashlib.sha256(b"raw").hexdigest()
 
 
 def test_rss_parse_rss2():

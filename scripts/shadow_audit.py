@@ -99,10 +99,33 @@ def main() -> int:
         })
 
     total_bytes = sum(r.get("raw_bytes", 0) for r in merged.values())
+
+    # Growth rate from the previous persisted snapshot (a true rate, not
+    # cumulative bytes mislabeled as per-day).
+    snapshot_path = Path(args.base_dir) / "audit-snapshot.json"
+    prev = {}
+    if snapshot_path.exists():
+        try:
+            prev = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            prev = {}
+
+    now = datetime.now(UTC)
+    growth_mb_per_day = None
+    if prev.get("ts") and prev.get("total_raw_bytes") is not None:
+        dt = (now - datetime.fromisoformat(prev["ts"])).total_seconds() / 86400
+        if dt > 0:
+            growth_mb_per_day = round((total_bytes - prev["total_raw_bytes"]) / 1024 / 1024 / dt, 2)
+
+    snapshot_path.write_text(json.dumps(
+        {"ts": now.isoformat(), "total_raw_bytes": total_bytes}, sort_keys=True
+    ), encoding="utf-8")
+
     print(json.dumps({
         "providers": merged,
         "total_raw_bytes": total_bytes,
-        "estimated_growth_mb_per_day": round(total_bytes / 1024 / 1024, 2),
+        "total_raw_mb": round(total_bytes / 1024 / 1024, 2),
+        "growth_mb_per_day": growth_mb_per_day,
     }, indent=2, sort_keys=True))
     return 0
 

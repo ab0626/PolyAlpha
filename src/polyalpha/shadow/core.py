@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -204,15 +204,23 @@ class ExternalObservation:
         }
 
 
+@dataclass(frozen=True)
+class FetchedObservation:
+    """A provider's raw response bytes plus the normalized observation."""
+
+    raw_bytes: bytes
+    observation: ExternalObservation
+
+
 class ExternalProvider(Protocol):
-    """A source adapter. ``fetch(since)`` returns normalized items."""
+    """A source adapter. ``fetch(since)`` returns raw bytes + observations."""
 
     name: str
     source_class: SourceClass
     freshness_class: Freshness
     coverage_class: Coverage
 
-    def fetch(self, since: datetime | None) -> list[ExternalObservation]: ...
+    def fetch(self, since: datetime | None) -> list[FetchedObservation]: ...
 
 
 @dataclass
@@ -313,22 +321,31 @@ class ExternalCollector:
                 freshness_class=provider.freshness_class.value,
                 coverage_class=provider.coverage_class.value,
             )
-            started = time.monotonic_ns()
+            started_wall_ns = time.time_ns()
+            started_mono_ns = time.monotonic_ns()
             try:
-                items = provider.fetch(since)
+                fetched = provider.fetch(since)
             except Exception as error:  # noqa: BLE001
                 result["providers"][provider.name] = {
                     "error": type(error).__name__, "new": 0, "metrics": metrics.summary(),
                 }
                 continue
-            elapsed_ms = int((time.monotonic_ns() - started) / 1e6)
+            elapsed_ms = int((time.monotonic_ns() - started_mono_ns) / 1e6)
             metrics.requests = 1
             metrics.responses = 1
             metrics.api_rtt_ms.append(elapsed_ms)
 
             new = 0
             max_published = since
-            for obs in items:
+            for item in fetched:
+                # Preserve the ACTUAL raw response bytes (wire), and stamp the
+                # clocks the provider could not know (request start + receipt).
+                obs = replace(
+                    item.observation,
+                    request_started_wall_ns=started_wall_ns,
+                    received_wall_ns=time.time_ns(),
+                    received_monotonic_ns=time.monotonic_ns(),
+                )
                 now_ns = time.time_ns()
                 is_new = obs.observation_id not in self._seen
                 if is_new:
@@ -336,7 +353,7 @@ class ExternalCollector:
                     # unchanged datum must not grow the raw store unboundedly.
                     self.raw.append(
                         self.source, provider.name, obs.as_dict(),
-                        wire=json.dumps(obs.as_dict(), sort_keys=True, default=str),
+                        wire=item.raw_bytes,
                         received_at_ns=now_ns, received_monotonic_ns=time.monotonic_ns(),
                         exchange_timestamp_ms=(
                             int(obs.provider_published_at.timestamp() * 1000)

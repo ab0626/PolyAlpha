@@ -16,10 +16,12 @@ A production-oriented quantitative prediction-market trading system under empiri
 | Venue | Polymarket US (executable target); Kalshi (sibling); International (research-data only) |
 | Alpha status | UNKNOWN |
 | Executable modes | RESEARCH / PAPER / SHADOW / LIVE_READY (no live adapter wired) |
-| Tests | 1,891 passed, 1 skipped, 5 numerical subtests |
+| Tests | 1,925 passed, 1 skipped, 5 numerical subtests |
 | Live data streams | books (2s snapshots) + fills (explicit maker/taker) |
 | Evidence gate | ~5/30 days, 0/200 settled, 4/200 independent clusters |
 | Known gaps | no validated edge; A6/A8 need fill accumulation; A7/A9 dropped (US-only); sub-second reaction horizons pending finer timestamp precision |
+
+Additional operational subsystems (see docs/): **shadow-external-v0** (observation-only external-information bus: FRED, EIA, NWS, SEC EDGAR, Fed RSS, GDELT; separate raw lineage, v0.4 cannot read it), the **category-stratified collection universe** (`config/collection_strata.json`), the **preregistered NFP #1 inspection** (`docs/NFP_ANALYSIS_TEMPLATE.md` + `config/analysis_template.json`), and the **v0.5 hypothesis backlog** (`docs/V0_5_HYPOTHESIS_BACKLOG.md`). None alters the frozen methodology.
 
 ## Quick start
 
@@ -174,7 +176,7 @@ polybot/
 
 ## What has been verified
 
-- 1,891 tests pass (1 skipped), including five numerical subtests. They cover parser failures, outcome mapping, timestamps, append-only enforcement, future-data exclusion, cursor handling, fees, both requested VWAP examples, partial fills, liquidity depletion, duplicate-fill rejection, cash/basis conservation, settlement, cluster limits, loss breakers, delayed exits, stream invalidation, calibration leakage controls, payout units, resolution changes, configuration, order-book features, uncertainty estimation, expected value decomposition, Kelly sizing, anomaly detection, quality scoring, performance metrics, information pipeline, market making, walk-forward evaluation, strategy comparison, bias detection, experiment tracking, calibration/feature drift detection, market snapshots, trading signals, model ensembles, correlation analysis, event clustering, tail risk metrics, temperature scaling, correlation-adjusted risk, property-based numerical tests (fee symmetry, Kelly bounds, drawdown invariants), microstructure model, market prior model, fundamental model (Bayesian external-data), feature importance (permutation), alpha decay analysis, resolution quality scoring with temporal decay, edge realization metrics, geographic compliance, and comprehensive integration tests.
+- 1,925 tests pass (1 skipped), including five numerical subtests. They cover parser failures, outcome mapping, timestamps, append-only enforcement, future-data exclusion, cursor handling, fees, both requested VWAP examples, partial fills, liquidity depletion, duplicate-fill rejection, cash/basis conservation, settlement, cluster limits, loss breakers, delayed exits, stream invalidation, calibration leakage controls, payout units, resolution changes, configuration, order-book features, uncertainty estimation, expected value decomposition, Kelly sizing, anomaly detection, quality scoring, performance metrics, information pipeline, market making, walk-forward evaluation, strategy comparison, bias detection, experiment tracking, calibration/feature drift detection, market snapshots, trading signals, model ensembles, correlation analysis, event clustering, tail risk metrics, temperature scaling, correlation-adjusted risk, property-based numerical tests (fee symmetry, Kelly bounds, drawdown invariants), microstructure model, market prior model, fundamental model (Bayesian external-data), feature importance (permutation), alpha decay analysis, resolution quality scoring with temporal decay, edge realization metrics, geographic compliance, and comprehensive integration tests.
 - Live Gamma/CLOB collection stored 100 markets and 200 REST books with zero REST errors. The one-page universe was explicitly marked truncated.
 - A bounded public WebSocket session persisted 292 raw stream events and 384 additional reconstructed snapshots without a reported stream gap. This does not establish absence of undetectable transport loss.
 - A separate two-cycle live paper smoke test collected four books and refreshed two markets per cycle; it produced zero fills with the empty review map.

@@ -88,7 +88,7 @@ def main() -> int:
 
     per: dict[str, dict] = defaultdict(lambda: {
         "spreads": [], "depth_1c": [], "depth_5c": [], "impacts": [],
-        "quotes": 0, "first": None, "last": None,
+        "quotes": 0, "market_first": {}, "market_last": {},
         "trades": 0, "last_trade": None, "slugs": set(),
     })
 
@@ -114,8 +114,10 @@ def main() -> int:
             p["impacts"].append(float(m[3]))
         p["quotes"] += 1
         ts = datetime.fromtimestamp(r.received_at_ns / 1e9, UTC)
-        p["first"] = ts if p["first"] is None else min(p["first"], ts)
-        p["last"] = ts if p["last"] is None else max(p["last"], ts)
+        if slug not in p["market_first"] or ts < p["market_first"][slug]:
+            p["market_first"][slug] = ts
+        if slug not in p["market_last"] or ts > p["market_last"][slug]:
+            p["market_last"][slug] = ts
 
     for r in RawStore(args.trade_raw).replay():
         if r.source != "polymarket_us_retail_trade":
@@ -140,7 +142,12 @@ def main() -> int:
     out = {}
     for name in sorted(per):
         p = per[name]
-        hours = (p["last"] - p["first"]).total_seconds() / 3600 if p["first"] and p["last"] else 0.0
+        # Market-hours must SUM across markets: 10 markets x 24h = 240h, not 24h.
+        hours = sum(
+            (p["market_last"][s] - p["market_first"][s]).total_seconds() / 3600
+            for s in p["slugs"]
+            if s in p["market_first"] and s in p["market_last"]
+        )
         out[name] = {
             "median_spread": round(statistics.median(p["spreads"]), 4) if p["spreads"] else None,
             "depth_1c_median": round(statistics.median(p["depth_1c"]), 1) if p["depth_1c"] else None,
