@@ -33,11 +33,19 @@ effect, min effective-N, FDR, and cluster rules.
 ## Aggregate Flow Toxicity & Information Mediation
 
 - Source: HFT order-flow toxicity (VPIN/PIN/Kyle) reframed for prediction markets.
-- Core problem: **infer the information content and adverse-selection risk of
-  anonymous aggregate flow** — NOT "identify informed traders" (per-user skill
-  is blocked on US: no public account/wallet identity).
-- Primary outcome (observable, not a latent state): realized adverse-selection
-  markout in log-odds, net of spread:
+- Canonical questions (not "who is informed"):
+      (1) Which observable flow states consistently precede correct repricing?
+      (2) When is incoming flow likely to adversely select us?
+- Vocabulary: "informed flow" is an unobservable causal claim; use
+  "adversely selecting flow" / "high-information-content flow" — the observable
+  is trade -> subsequent favorable repricing. Luck vs information vs speed vs
+  modeling are not distinguishable; we don't need to distinguish them.
+- Identity: NOT necessary for toxicity modeling (the equity tape is mostly
+  anonymous / partially attributed — MPID labels the member, not the beneficial
+  owner). A flow-source label can carry info where legitimately available, but
+  is not required. On US, no public account/wallet identity -> aggregate only.
+- Primary outcome (observable): realized adverse-selection markout, net of
+  spread:
 
       M_j(h) = s_j [ l(p_{t+h}) - l(p_t) ],  l = logit
 
@@ -53,7 +61,9 @@ effect, min effective-N, FDR, and cluster rules.
   toxicity = OFI / queue / cancel imbalance / depth shock (note: event-level
   OFI needs add/cancel events — PARTIALLY_GATED; snapshot queue imbalance is
   available); (3) information-conditioned toxicity = T_h | EventShock vs
-  T_h | NoShock (needs no new data — EventShock + flow + price already frozen).
+  T_h | NoShock (needs no new data). Prediction-market advantage: we have both
+  halves of ExternalInformation -> Flow -> Price, so E[M_h | Shock, OFI] vs
+  E[M_h | NoShock, OFI] is estimable.
 - Conditioning state X_t: { OFI, signed trade imbalance, queue imbalance, λ,
   spread, depth, trade intensity, recent markout, TTR τ, probability p (in
   log-odds), event state }.
