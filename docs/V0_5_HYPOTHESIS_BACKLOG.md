@@ -130,6 +130,48 @@ effect, min effective-N, FDR, and cluster rules.
      If prices moved BEFORE the disclosure became public, that is separate
      evidence about already-available information, not the disclosure signal.
 
+## Pre-trade state vector (v0.5 spec, not code)
+
+- These are NOT trade controls; they are state variables that change
+  P(Y | I_t), the stale-quote probability, and the cost/risk of executing.
+- X_t = {
+    Market: p, spread, depth, OFI, volatility, markout;
+    Cross-market: related contracts, external anchors;
+    Information: latest events, source disagreement, freshness;
+    Calendar: TTR, time-to-next-scheduled-event;
+    Resolution: rule clarity, authoritative source, settlement risk;
+    Portfolio: market/event/cluster/category exposure, drawdown, capital lockup;
+    Infrastructure: feed health, clock health, API latency;
+  }
+- Decision rule:
+    Trade  iff  Edge_conservative > Cost_execution + Cost_adverse_selection
+                  + Risk_resolution + Risk_portfolio
+  subject to all data being sufficiently fresh. Edge_conservative is the
+  forward-validated edge, never the in-sample estimate.
+- Resolution risk: Edge_economic != Edge_settlement-adjusted (ambiguity, source
+  reliability, settlement delay, dispute risk). The resolution-definition hash
+  is a binary "did the rule change" check; the risk quantity is a separate gap.
+- Anchor residual (Residual_t = dlogit(P_PM) - f(dX_external)) must use
+  interval-censored clock semantics, or it measures our latency as market lag.
+
+## Future external-source catalog (not built)
+
+Add only when a preregistered v0.5 family or an available US contract needs it:
+
+- Real-time anchors: Alpaca IEX (real-time, one exchange — PARTIAL_EXCHANGE),
+  crypto spot/books, stock/ETF proxies.
+- Contract-specific primaries: Congress.gov (bills/actions/amendments),
+  OpenFEC (campaign finance, usage-restricted), openFDA (drug/device/
+  enforcement), USDA NASS Quick Stats (crops/livestock/prices).
+- Physical-world: USGS earthquake GeoJSON (per-minute), hurricanes/drought/fire,
+  transportation, power-grid.
+- Fiscal: Treasury Fiscal Data (debt, auctions).
+- Event calendars: earnings, votes, game starts, scheduled releases.
+
+Rule: the six-source shadow bus stays untouched; these are candidates, not a
+build queue. Preserve the "add data only when provenance + legality + clock
+semantics support the hypothesis" principle.
+
 ## Rule
 
 Backlog entries are hypotheses to reproduce, not conclusions. They do not change
