@@ -67,6 +67,18 @@ INTERFACE_PATHS = (
     "src/polyalpha/dashboard",
     "src/polyalpha/dashboard.py",
 )
+# Information-propagation methodology (event shocks, reaction curves, cross-market
+# propagation). Frozen: any change forces a new baseline/version, never a silent
+# drift. This is the info-propagation experimental baseline.
+INFO_PROPAGATION_PATHS = (
+    "src/polyalpha/event_shock.py",
+    "src/polyalpha/propagation.py",
+    "src/polyalpha/information.py",
+    "src/polyalpha/gov_releases.py",
+    "src/polyalpha/integration.py",
+    "src/polyalpha/marginal_risk.py",
+    "src/polyalpha/us/families.py",
+)
 
 
 def _config_content_without_self_hash() -> bytes:
@@ -158,6 +170,7 @@ def freeze() -> None:
         "research_logic_sha256": _sha256_of_files(_collect(RESEARCH_PATHS)),
         "collector_sha256": _sha256_of_files(_collect(COLLECTOR_PATHS)),
         "interface_sha256": _sha256_of_files(_collect(INTERFACE_PATHS)),
+        "info_propagation_sha256": _sha256_of_files(_collect(INFO_PROPAGATION_PATHS)),
         "config_sha256": "",
     }
     _write_config(integrity)
@@ -184,6 +197,11 @@ def verify() -> int:
             "research_logic_sha256",
             _sha256_of_files(_collect(RESEARCH_PATHS)),
             "research logic differs from frozen baseline",
+        ),
+        (
+            "info_propagation_sha256",
+            _sha256_of_files(_collect(INFO_PROPAGATION_PATHS)),
+            "information-propagation methodology differs from frozen baseline",
         ),
         ("config_sha256", _config_sha256(), "frozen config file has been modified"),
     ]

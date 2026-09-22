@@ -170,12 +170,14 @@ class MarketDataWsCollector:
         import websockets
 
         deadline = time.monotonic() + duration if duration else None
-        headers = self._handshake_headers()
         subscribe = self._subscribe_message(markets, lite)
         session = 0
 
         while True:
             session += 1
+            # Recompute the signed headers per connection: the signature embeds
+            # a timestamp that must be fresh at handshake time.
+            headers = self._handshake_headers()
             try:
                 async with websockets.connect(
                     self.endpoint, additional_headers=headers

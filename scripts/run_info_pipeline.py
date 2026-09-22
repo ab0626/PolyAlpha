@@ -28,7 +28,7 @@ from polyalpha.event_shock import (  # noqa: E402
     measure_shock_reaction,
 )
 from polyalpha.gov_releases import discover_release_contracts, load_gov_releases  # noqa: E402
-from polyalpha.integration import EvidenceStore, reaction_id, shock_id  # noqa: E402
+from polyalpha.integration import EvidenceStore, raw_provenance, reaction_id, shock_id  # noqa: E402
 from polyalpha.rawstore import RawStore  # noqa: E402
 from polyalpha.us.adapter import amount_to_decimal  # noqa: E402
 from polyalpha.us.fills import parse_us_trade  # noqa: E402
@@ -100,6 +100,7 @@ def main() -> int:
     client = PublicUsClient(timeout=20, attempts=2)
 
     n_shocks = n_reactions = n_edges = 0
+    root_hash = RawStore(args.book_raw).sha256_root()
     for rel in releases:
         sid = shock_id(rel.event_id, rel.scheduled_at)
         slugs = discover_release_contracts(
@@ -114,15 +115,19 @@ def main() -> int:
             first_processed_at=rel.scheduled_at,
             affected_markets=tuple(links),
         )
+        start = rel.scheduled_at - timedelta(seconds=args.pre_seconds)
+        end = rel.scheduled_at + timedelta(seconds=args.stable_seconds)
+        provenance = raw_provenance(
+            args.book_raw, start, end, tuple(link.market_id for link in links), root_hash
+        )
         store.append({
             "id": sid, "kind": "SHOCK", "event_id": rel.event_id,
             "scheduled_at": rel.scheduled_at.isoformat(), "name": rel.name,
             "affected_markets": [link.market_id for link in links],
+            "provenance": provenance,
         })
         n_shocks += 1
 
-        start = rel.scheduled_at - timedelta(seconds=args.pre_seconds)
-        end = rel.scheduled_at + timedelta(seconds=args.stable_seconds)
         for slug, link in zip(slugs, links):
             mid = link.market_id
             rid = reaction_id(sid, mid)
@@ -130,12 +135,14 @@ def main() -> int:
             fills = [f for f in fills_by_slug.get(slug, []) if start <= f.trade_time <= end]
             if not quotes:
                 store.append({"id": rid, "kind": "REACTION", "shock_id": sid,
-                              "market_id": mid, "status": "INSUFFICIENT_DATA"})
+                              "market_id": mid, "status": "INSUFFICIENT_DATA",
+                              "provenance": provenance})
                 continue
             reaction = measure_shock_reaction(shock, mid, quotes, fills,
                                               stable_seconds=args.stable_seconds,
                                               feed_label="REST_2S")
-            store.append({"id": rid, "kind": "REACTION", **reaction.summary()})
+            store.append({"id": rid, "kind": "REACTION", "provenance": provenance,
+                          **reaction.summary()})
             n_reactions += 1
         # Cross-market edges need the event graph + historical samples; not
         # computed until those exist (edge_exec stays UNAVAILABLE).

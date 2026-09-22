@@ -12,9 +12,11 @@ from polyalpha.integration import (
     EvidenceStore,
     compute_propagation_evidence,
     propagation_id,
+    raw_provenance,
     reaction_id,
     shock_id,
 )
+from polyalpha.rawstore import RawStore
 from polyalpha.propagation import PropagationSample
 
 T = datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
@@ -76,3 +78,16 @@ def test_propagation_support_gate_returns_none():
         _samples(n=5), source_delta=0.1, observed_delta=0.03,
     )
     assert ev is None  # < 20 events -> no signal (support gate)
+
+
+def test_raw_provenance_traces_bytes(tmp_path):
+    with RawStore(tmp_path, "v1") as rs:
+        rs.append("src", "c", {"n": 1}, received_at_ns=int(T.timestamp() * 1e9))
+    prov = raw_provenance(
+        tmp_path, T - timedelta(seconds=10), T + timedelta(seconds=10),
+        market_ids=("m1",),
+    )
+    assert prov["raw_store_root_hash"] and len(prov["raw_store_root_hash"]) == 64
+    assert len(prov["segment_sha256"]) == 64
+    assert prov["segment_records"] == 1
+    assert prov["market_ids"] == ["m1"]

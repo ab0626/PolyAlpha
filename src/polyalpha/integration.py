@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .propagation import PropagationSample, fit_propagation, predict_propagation
@@ -146,6 +146,42 @@ def compute_propagation_evidence(
         training_end=fit.training_end.isoformat(),
         observed_at=now,
     )
+
+
+def raw_provenance(
+    raw_dir: str | Path,
+    window_start: datetime,
+    window_end: datetime,
+    market_ids: tuple[str, ...] = (),
+    root_hash: str | None = None,
+) -> dict:
+    """Immutable raw provenance for an evidence record.
+
+    ``raw_store_root_hash`` pins the entire raw store at the time of the
+    reaction; ``segment_sha256`` hashes the canonical envelope hashes of every
+    raw record inside the source window, so any future Z_lag / R(h) / reaction
+    timestamp traces back to the exact bytes that produced it.
+    """
+    from .rawstore import RawStore
+
+    store = RawStore(raw_dir)
+    if root_hash is None:
+        root_hash = store.sha256_root()
+    segment = hashlib.sha256()
+    n = 0
+    for record in store.replay():
+        ts = datetime.fromtimestamp(record.received_at_ns / 1e9, UTC)
+        if window_start <= ts <= window_end:
+            segment.update(record.sha256.encode("utf-8"))
+            n += 1
+    return {
+        "raw_store_root_hash": root_hash,
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
+        "market_ids": list(market_ids),
+        "segment_sha256": segment.hexdigest(),
+        "segment_records": n,
+    }
 
 
 class EvidenceStore:
