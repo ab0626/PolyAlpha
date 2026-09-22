@@ -1,0 +1,18 @@
+{
+  "schema": "liquidity-strata-v0",
+  "frozen_note": "Taxonomy and thresholds pinned BEFORE inspecting category-level outcomes. Change only via a new baseline; never silently.",
+  "category_strata": {
+    "sports":    {"categories": ["sports"],                 "slug_prefixes": ["aec-", "tec-"]},
+    "macro":     {"categories": ["macro", "economics"],     "slug_prefixes": ["nfpc-", "urc-", "cpic-", "rdc-", "cbpac-"]},
+    "politics":  {"categories": ["politics"],               "slug_prefixes": []},
+    "crypto":    {"categories": ["crypto", "cryptocurrency"], "slug_prefixes": []},
+    "weather":   {"categories": ["weather"],                "slug_prefixes": []},
+    "other":     {"categories": [],                         "slug_prefixes": []}
+  },
+  "liquidity_thresholds": {
+    "min_depth_1c_shares": 100,
+    "max_spread": 0.05,
+    "min_active_hours": 1.0
+  },
+  "vwap_q_shares": 100
+}
