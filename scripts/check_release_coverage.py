@@ -91,6 +91,19 @@ def main() -> int:
         data = json.loads(trade_universe_path.read_text(encoding="utf-8"))
         trade_slugs = set(data.get("slugs", []) or list(trade_slugs))
 
+    # Collector-level liveness (not per-market activity):
+    # REST = age of the latest book record across all markets.
+    rest_latest = max(rest_last.values()) if rest_last else None
+    rest_collector_age = (datetime.now(UTC) - rest_latest).total_seconds() if rest_latest else None
+
+    # L2 = market-data status fresh + zero required markets missing.
+    l2_collector_alive = None
+    status_path = Path("data/us/logs/market-data-status.json")
+    if status_path.exists():
+        st = json.loads(status_path.read_text(encoding="utf-8"))
+        st_age = (datetime.now(UTC) - datetime.fromtimestamp(status_path.stat().st_mtime, UTC)).total_seconds()
+        l2_collector_alive = st_age < 60 and st.get("required_markets_missing", 0) == 0
+
     # Trade collector liveness: the universe file is rewritten at each run's
     # startup, so its mtime proxies "is the trade collector still alive".
     trade_collector_age = None
@@ -101,8 +114,11 @@ def main() -> int:
     report = compute_coverage(
         required, rest_slugs, l2_slugs, trade_slugs,
         rest_last=rest_last, l2_last=l2_last,
+        rest_collector_age_seconds=rest_collector_age,
+        l2_collector_alive=l2_collector_alive,
         trade_collector_age_seconds=trade_collector_age,
     )
+    report["rest_collector_age_seconds"] = round(rest_collector_age, 1) if rest_collector_age is not None else None
     report["trade_collector_age_seconds"] = round(trade_collector_age, 1) if trade_collector_age is not None else None
 
     # Attach first/last observation times per market for provenance.

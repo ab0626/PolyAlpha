@@ -215,19 +215,34 @@ def compute_coverage(
     trade_slugs: set[str],
     rest_last: dict[str, datetime] | None = None,
     l2_last: dict[str, datetime] | None = None,
+    rest_collector_age_seconds: float | None = None,
+    l2_collector_alive: bool | None = None,
     trade_collector_age_seconds: float | None = None,
     now: datetime | None = None,
     rest_max_age_seconds: float = 300.0,
-    l2_max_age_seconds: float = 90.0,
-    trade_max_age_seconds: float = 300.0,
+    trade_max_age_seconds: float = 1200.0,
 ) -> dict[str, Any]:
-    """Coverage = membership AND freshness.
+    """Coverage = subscription AND collector liveness.
 
-    Coverage(c, t) = Subscribed(c) AND Age_last_observation(c) < tau. A market
-    seen yesterday does not count as covered today. Sparse trades are not
-    required: trade coverage is the subscription invariant + collector liveness.
+    The freshness gate is at the COLLECTOR level, not per-market activity: a
+    market with an empty book (inactive, far from resolution) has a stale last
+    observation but is still covered as long as its collector is alive and it is
+    subscribed. Per-market age is recorded as informational, not gating.
+    Sparse trades are not required: trade coverage = subscription + liveness.
     """
     now = now or datetime.now(UTC)
+
+    # Backward-compatible: absent liveness params default to "alive" (pure
+    # membership); provided liveness params gate on the collector, not activity.
+    rest_alive = (
+        rest_collector_age_seconds is None
+        or rest_collector_age_seconds < rest_max_age_seconds
+    )
+    l2_alive = l2_collector_alive if l2_collector_alive is not None else True
+    trade_alive = (
+        trade_collector_age_seconds is None
+        or trade_collector_age_seconds < trade_max_age_seconds
+    )
 
     def _age(last: dict[str, datetime] | None, slug: str) -> float | None:
         t = last.get(slug) if last else None
@@ -237,18 +252,15 @@ def compute_coverage(
     missing = 0
     for rm in required:
         slug = rm.market_slug
-        rest_age = _age(rest_last, slug)
-        l2_age = _age(l2_last, slug)
-        rest_ok = slug in rest_slugs and (rest_age is None or rest_age < rest_max_age_seconds)
-        l2_ok = slug in l2_slugs and (l2_age is None or l2_age < l2_max_age_seconds)
-        trade_ok = slug in trade_slugs and (
-            trade_collector_age_seconds is None
-            or trade_collector_age_seconds < trade_max_age_seconds
-        )
+        rest_ok = slug in rest_slugs and rest_alive
+        l2_ok = slug in l2_slugs and l2_alive
+        trade_ok = slug in trade_slugs and trade_alive
         cov = {"REST": rest_ok, "L2": l2_ok, "trade": trade_ok}
         ok = all(cov.values())
         if not ok:
             missing += 1
+        rest_age = _age(rest_last, slug)
+        l2_age = _age(l2_last, slug)
         per_market.append({
             **rm.as_dict(), "coverage": cov, "coverage_ok": ok,
             "rest_age_seconds": round(rest_age, 1) if rest_age is not None else None,
