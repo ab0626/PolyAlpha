@@ -151,11 +151,12 @@ class LivePreTradeGate:
             metadata_age is not None and metadata_age <= self.max_metadata_age_seconds,
             f"metadata age {metadata_age}s exceeds {self.max_metadata_age_seconds}s",
         ))
-        # 9. Resolution definition unchanged.
+        # 9. Resolution definition unchanged (fail-closed: empty/mismatch rejects).
         checks.append(GateCheck(
             "resolution_unchanged",
-            world.get("resolution_definition_hash") is not None,
-            "resolution definition unknown or changed",
+            bool(world.get("resolution_definition_hash"))
+            and world.get("resolution_definition_hash") == intent.resolution_definition_hash,
+            "resolution definition unknown, empty, or changed",
         ))
 
         # TOCTOU drift between signal book and execution book.
@@ -163,8 +164,10 @@ class LivePreTradeGate:
         if drift is not None:
             checks.append(GateCheck(
                 "book_hash_matches",
-                execution_book is not None and (not intent.signal_book_hash or execution_book.get("hash", "") == intent.signal_book_hash),
-                "execution book hash differs from signal book hash",
+                bool(intent.signal_book_hash)
+                and execution_book is not None
+                and execution_book.get("hash", "") == intent.signal_book_hash,
+                "signal book hash empty or execution book hash differs",
             ))
             checks.append(GateCheck(
                 "price_drift_within_tolerance",
@@ -195,20 +198,21 @@ class LivePreTradeGate:
         net_edge_ok = world.get("current_net_edge")
         checks.append(GateCheck(
             "net_edge_above_threshold",
-            net_edge_ok is None or net_edge_ok >= world.get("min_net_edge", D("0")),
-            f"net edge {net_edge_ok} below threshold",
+            net_edge_ok is not None and net_edge_ok >= world.get("min_net_edge", D("0")),
+            f"net edge {net_edge_ok} missing or below threshold",
         ))
-        # 13. Sufficient depth remains.
+        # 13. Sufficient depth remains (fail-closed: missing -> reject).
         checks.append(GateCheck(
             "sufficient_depth",
-            bool(world.get("depth_ok", True)),
-            "insufficient depth",
+            world.get("depth_ok") is True,
+            "depth unknown or insufficient",
         ))
-        # 14. Fee schedule unchanged.
+        # 14. Fee schedule unchanged (fail-closed: empty/mismatch rejects).
         checks.append(GateCheck(
             "fee_schedule_unchanged",
-            world.get("fee_schedule_version") is not None,
-            "fee schedule changed",
+            bool(world.get("fee_schedule_version"))
+            and world.get("fee_schedule_version") == intent.fee_schedule_version,
+            "fee schedule unknown, empty, or changed",
         ))
         # 15. Size satisfies all exposure caps (pre-computed by risk engine).
         checks.append(GateCheck(
@@ -246,11 +250,11 @@ class LivePreTradeGate:
             bool(world.get("reconciliation_healthy")),
             "account/order reconciliation unhealthy",
         ))
-        # 21. No unresolved exchange/account ambiguity.
+        # 21. No unresolved exchange/account ambiguity (fail-closed).
         checks.append(GateCheck(
             "no_account_ambiguity",
-            bool(world.get("no_account_ambiguity", True)),
-            "unresolved exchange/account-state ambiguity",
+            world.get("no_account_ambiguity") is True,
+            "account-state ambiguity unknown or unresolved",
         ))
 
         approved = all(c.passed for c in checks)

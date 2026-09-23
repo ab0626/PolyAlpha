@@ -90,6 +90,8 @@ def _intent(**overrides) -> OrderIntent:
         research_logic_sha256="r" * 64,
         config_sha256="c" * 64,
         signal_book_hash="h_signal",
+        resolution_definition_hash="rd1",
+        fee_schedule_version="f1",
         created_at=NOW,
     )
     base.update(overrides)
@@ -114,6 +116,8 @@ def _world(**overrides) -> dict:
         "kill_switch_active": False,
         "no_account_ambiguity": True,
         "depth_ok": True,
+        "current_net_edge": D("0.08"),
+        "min_net_edge": D("0"),
     }
     base.update(overrides)
     return base

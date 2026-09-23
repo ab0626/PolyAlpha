@@ -147,6 +147,10 @@ class OrderIntent:
     # TOCTOU: hash of the book the signal was generated against
     signal_book_hash: str = ""
 
+    # Execution-time invariants the intent is bound to (fail-closed if empty)
+    resolution_definition_hash: str = ""
+    fee_schedule_version: str = ""
+
     # Idempotency: a monotonic attempt counter scoped to the intent
     execution_attempt_id: str = ""
     state: IntentState = IntentState.CREATED
@@ -270,6 +274,8 @@ def new_intent(
     research_logic_sha256: str,
     config_sha256: str,
     signal_book_hash: str = "",
+    resolution_definition_hash: str = "",
+    fee_schedule_version: str = "",
     created_at: datetime | None = None,
 ) -> OrderIntent:
     """Convenience constructor with a fresh intent_id and attempt id."""
@@ -311,6 +317,8 @@ def new_intent(
         research_logic_sha256=research_logic_sha256,
         config_sha256=config_sha256,
         signal_book_hash=signal_book_hash,
+        resolution_definition_hash=resolution_definition_hash,
+        fee_schedule_version=fee_schedule_version,
     )
     return intent.next_attempt()
 

@@ -24,18 +24,20 @@ class SizingResult:
 def fixed_fractional_sizing(
     equity: Decimal,
     fraction: Decimal = D("0.005"),
-    max_shares: Decimal = D("100000"),
+    max_notional: Decimal = D("100000"),
 ) -> Decimal:
     """Fixed fractional position sizing.
 
-    size = equity * fraction
+    size = equity * fraction is a NOTIONAL (dollar) quantity; ``max_notional``
+    caps that same notional quantity. (Units are dollars throughout — never
+    shares.)
     """
     if not equity.is_finite() or equity <= 0:
         raise ValueError("positive equity required")
     if not fraction.is_finite() or not 0 < fraction <= 1:
         raise ValueError("fraction must be in (0, 1]")
     size = equity * fraction
-    return min(size, max_shares)
+    return min(size, max_notional)
 
 
 def kelly_sizing(

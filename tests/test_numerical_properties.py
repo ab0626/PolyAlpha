@@ -272,7 +272,7 @@ class FixedFractionalTests(unittest.TestCase):
         self.assertEqual(result, D("50"))
 
     def test_max_shares_cap(self):
-        result = fixed_fractional_sizing(D("1000000"), D("0.005"), max_shares=D("100"))
+        result = fixed_fractional_sizing(D("1000000"), D("0.005"), max_notional=D("100"))
         self.assertEqual(result, D("100"))
 
     def test_invalid_equity(self):

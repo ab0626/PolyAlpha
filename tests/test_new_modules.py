@@ -300,7 +300,7 @@ class TestSizing:
     def test_fixed_fractional_max_cap(self):
         from polyalpha.sizing import fixed_fractional_sizing
 
-        result = fixed_fractional_sizing(D("10000"), D("0.005"), max_shares=D("30"))
+        result = fixed_fractional_sizing(D("10000"), D("0.005"), max_notional=D("30"))
         assert result == D("30")
 
     def test_kelly_sizing(self):

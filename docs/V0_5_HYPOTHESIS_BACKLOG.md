@@ -212,6 +212,35 @@ semantics support the hypothesis" principle.
   PnL after costs? Not "which is most interesting / sophisticated".
 - Status: SPEC (preregister before the forward holdout is evaluated).
 
+## Deployment / execution-calibration backlog (after evidence, before real money)
+
+- Capital efficiency: PnL ~ N_opportunities x P(fill) x Size x Edge_realized;
+  price capital lockup via CapitalDays_i = Capital_i x E[HoldingDays_i] and
+  EdgeVelocity_i = ExpectedNetProfit_i / CapitalDays_i. Allocator maximizes EV
+  subject to cash/exposure/capacity/lockup.
+- Execution-calibration (TCA): per candidate record p_decision/p_arrival/VWAP
+  predicted/VWAP realized/fees/fill ratio/latency/markouts + PnL_signal vs
+  PnL_execution; EdgeCaptureRatio = realized / predicted-executable edge.
+- Capacity curve: NetPnL(q), not a yes/no liquidity check; empirical signal-time
+  capacity using observed depth/fills/replenishment.
+- Promotion/demotion lifecycle: RESEARCH -> PAPER -> SHADOW -> TINY_LIVE ->
+  LIVE -> SCALE, with mechanical demotion (calibration/edge-capture/execution/
+  drawdown/regime). Bind drift observations to capital withdrawal.
+- OMS/venue-fill model: VenueFill with client_order_id/venue_order_id/
+  venue_fill_id/fill_qty/fill_price/fill_fee/venue_ts/receipt_ts + restart-safe
+  reconciliation (one order -> many venue fills; not keyed by order_id alone).
+- Fail-closed gates: Missing info => REJECT everywhere (fixed in pre_trade_gate).
+- Strong types: Shares/Notional/Price/Probability instead of naked Decimal
+  (fixed_fractional_sizing already renamed max_shares -> max_notional).
+- Infrastructure: dedicated always-on machine, clock sync, watchdog/alerting,
+  process supervision, secrets outside .env, backup/recovery drills, immutable
+  logs, trading credentials that cannot withdraw.
+- Latency chain: t_receipt -> t_feature -> t_decision -> t_gate -> t_submission
+  -> t_ack -> t_fill (measure the full distribution before "HFT" label).
+
+Status: DEPLOYMENT_BACKLOG (spec only; becomes relevant only when a family
+survives forward validation).
+
 ## Rule
 
 Backlog entries are hypotheses to reproduce, not conclusions. They do not change

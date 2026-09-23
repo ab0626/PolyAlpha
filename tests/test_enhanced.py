@@ -80,7 +80,7 @@ class SizingTests(unittest.TestCase):
         self.assertEqual(size, D("50"))
 
     def test_fixed_fractional_capped(self):
-        size = fixed_fractional_sizing(D("10000"), D("0.005"), max_shares=D("30"))
+        size = fixed_fractional_sizing(D("10000"), D("0.005"), max_notional=D("30"))
         self.assertEqual(size, D("30"))
 
     def test_kelly_sizing(self):
