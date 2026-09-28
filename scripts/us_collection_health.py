@@ -6,6 +6,9 @@ JSON health summary, and exits 0 (healthy) or 1 (unhealthy).
 
 Ground-truth signal: is new raw data arriving?
   - staleness: no raw file modified within --max-stale-minutes => unhealthy
+  - book staleness: no REST book file modified within
+    --max-book-stale-minutes => the depth/price collector is up but not
+    writing books (the overall store can look fresh on events/markets alone)
   - crash-loop: the most recent collector run ended nonzero AND is recent
                 (the supervisor is retrying a failing collector)
 
@@ -39,6 +42,21 @@ def _newest_mtime(root: Path) -> float:
     if not root.exists():
         return newest
     for path in root.rglob("*"):
+        if path.is_file():
+            newest = max(newest, path.stat().st_mtime)
+    return newest
+
+
+def _newest_book_mtime(root: Path) -> float:
+    """Newest REST book file mtime (the depth/price collector's writer).
+
+    The overall store also contains events/markets/settlements, so a fresh
+    overall mtime can hide a book collector that has stopped writing books.
+    """
+    newest = 0.0
+    if not root.exists():
+        return newest
+    for path in root.rglob("polymarket_us_retail_book-*"):
         if path.is_file():
             newest = max(newest, path.stat().st_mtime)
     return newest
@@ -79,6 +97,11 @@ def _run_check(args: argparse.Namespace, was_healthy: bool | None) -> bool:
     stale_seconds = (time.time() - newest) if newest else None
     staleness_ok = stale_seconds is not None and stale_seconds <= max_stale_seconds
 
+    max_book_stale_seconds = args.max_book_stale_minutes * 60
+    newest_book = _newest_book_mtime(raw_dir)
+    book_stale_seconds = (time.time() - newest_book) if newest_book else None
+    book_staleness_ok = book_stale_seconds is not None and book_stale_seconds <= max_book_stale_seconds
+
     supervisor = _last_jsonl(Path(args.supervisor_log))
     last_run = _last_jsonl(Path(args.restart_log))
 
@@ -90,7 +113,7 @@ def _run_check(args: argparse.Namespace, was_healthy: bool | None) -> bool:
     )
     crash_loop = bool(last_exit is not None and last_exit != 0 and last_run_recent)
 
-    healthy = bool(staleness_ok) and not crash_loop
+    healthy = bool(staleness_ok) and bool(book_staleness_ok) and not crash_loop
 
     report = {
         "healthy": healthy,
@@ -99,6 +122,11 @@ def _run_check(args: argparse.Namespace, was_healthy: bool | None) -> bool:
         "stale_seconds": round(stale_seconds, 1) if stale_seconds is not None else None,
         "newest_raw_file_mtime": (
             datetime.fromtimestamp(newest, tz=UTC).isoformat() if newest else None
+        ),
+        "book_staleness_ok": bool(book_staleness_ok),
+        "book_stale_seconds": round(book_stale_seconds, 1) if book_stale_seconds is not None else None,
+        "newest_book_file_mtime": (
+            datetime.fromtimestamp(newest_book, tz=UTC).isoformat() if newest_book else None
         ),
         "supervisor_phase": (supervisor or {}).get("phase"),
         "supervisor_last_started_at": (supervisor or {}).get("at"),
@@ -136,6 +164,9 @@ def main() -> int:
     parser.add_argument("--supervisor-log", default=str(SUPERVISOR_LOG))
     parser.add_argument("--restart-log", default=str(RESTART_LOG))
     parser.add_argument("--max-stale-minutes", type=float, default=15.0)
+    parser.add_argument("--max-book-stale-minutes", type=float, default=30.0,
+                        help="REST book collector is unhealthy if no book file is "
+                             "this many minutes old (default 30)")
     parser.add_argument("--log-file", default=None)
     parser.add_argument("--alert-file", default=None)
     parser.add_argument("--loop-minutes", type=float, default=0.0)

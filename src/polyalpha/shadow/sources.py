@@ -107,16 +107,29 @@ def _parse_rss(xml_bytes: bytes) -> list[tuple[str, str | None, str | None, str 
 
 
 def _get_json(url: str, timeout: float = 20.0, retries: int = 3) -> tuple[bytes, dict]:
-    """Return (raw response bytes, parsed dict) so raw bytes are never lost."""
+    """Return (raw response bytes, parsed dict) so raw bytes are never lost.
+
+    Transient failures (HTTP 429/5xx, or a 200 whose body is not JSON) are
+    retried with exponential backoff. Non-transient failures raise immediately.
+    """
     delay = 2.0
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=_UA)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read()
+            try:
                 return raw, json.loads(raw.decode("utf-8"))
+            except json.JSONDecodeError:
+                # Provider returned a non-JSON body (e.g. a rate-limit HTML page
+                # served with HTTP 200). Treat as transient and retry.
+                if attempt < retries - 1:
+                    time.sleep(delay)
+                    delay *= 2.0
+                    continue
+                raise
         except urllib.error.HTTPError as error:
-            if error.code == 429 and attempt < retries - 1:
+            if (error.code == 429 or 500 <= error.code < 600) and attempt < retries - 1:
                 time.sleep(delay)
                 delay *= 2.0
                 continue

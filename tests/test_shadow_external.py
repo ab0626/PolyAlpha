@@ -150,6 +150,41 @@ def test_fred_missing_credentials(monkeypatch):
         FredProvider(["CPIAUCSL"]).fetch(None)
 
 
+def test_get_json_retries_non_json_body(monkeypatch):
+    import time
+    import urllib.request
+
+    from polyalpha.shadow.sources import _get_json
+
+    monkeypatch.setattr(time, "sleep", lambda *a, **k: None)
+
+    calls = []
+
+    class _Resp:
+        def __init__(self, raw):
+            self._raw = raw
+
+        def read(self):
+            return self._raw
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req)
+        if len(calls) == 1:
+            return _Resp(b"<html>quota exceeded</html>")
+        return _Resp(b'{"ok": true}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    raw, data = _get_json("https://example.test", retries=3)
+    assert data == {"ok": True}
+    assert len(calls) == 2
+
+
 def test_v0_4_does_not_read_shadow_external():
     frozen = [
         "src/polyalpha/event_shock.py",
