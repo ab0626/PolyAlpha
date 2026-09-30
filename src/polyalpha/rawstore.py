@@ -177,16 +177,25 @@ class RawStore:
         """Crash-safe gzip finalization: tmp -> fsync -> atomic rename -> unlink source."""
         gz_tmp = path.with_suffix(".jsonl.gz.tmp")
         gz_final = path.with_suffix(".jsonl.gz")
-        with open(path, "rb") as src, gzip.open(gz_tmp, "wb") as dst:
-            while True:
-                block = src.read(1024 * 1024)
-                if not block:
-                    break
-                dst.write(block)
-            dst.flush()
-            # fsync the raw file descriptor before rename so the gzip bytes
-            # are durable (gzip wraps the fd; fileno() is valid while open).
-            os.fsync(dst.fileobj.fileno())
+        try:
+            with open(path, "rb") as src, gzip.open(gz_tmp, "wb") as dst:
+                while True:
+                    block = src.read(1024 * 1024)
+                    if not block:
+                        break
+                    dst.write(block)
+                dst.flush()
+                # fsync the raw file descriptor before rename so the gzip bytes
+                # are durable (gzip wraps the fd; fileno() is valid while open).
+                os.fsync(dst.fileobj.fileno())
+        except OSError:
+            # Disk full / IO error mid-gzip: drop the partial .tmp so a
+            # truncated archive never shadows the intact source .jsonl.
+            try:
+                gz_tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
         os.replace(gz_tmp, gz_final)
         path.unlink()
         self._fsync_dir(path.parent)
@@ -296,11 +305,27 @@ class RawStore:
 
     # ── Read / replay ───────────────────────────────────────────────────────
 
+    @staticmethod
+    def _is_valid_gzip(path: Path) -> bool:
+        """True if ``path`` is a complete gzip member (not truncated).
+
+        A truncated archive (e.g. disk full mid-finalize) has a valid header but
+        raises EOFError on read; it must never shadow the intact source .jsonl.
+        """
+        try:
+            with gzip.open(path, "rb") as fh:
+                while fh.read(1024 * 1024):
+                    pass
+            return True
+        except (EOFError, OSError):
+            return False
+
     def _day_files(self, directory: Path) -> list[Path]:
         """Return authoritative files for a day, recovering crash-state.
 
         For each stem, `.jsonl.gz` wins over `.jsonl.gz.tmp` (promoted) and
-        over an orphaned `.jsonl` (which was superseded by finalization).
+        over an orphaned `.jsonl` (which was superseded by finalization). A
+        truncated archive is dropped in favor of the intact source .jsonl.
         """
         by_stem: dict[str, dict[str, Path]] = {}
         for path in sorted(directory.iterdir()) if directory.exists() else []:
@@ -319,13 +344,30 @@ class RawStore:
         for stem in sorted(by_stem):
             forms = by_stem[stem]
             if "gz" in forms:
-                result.append(forms["gz"])
+                gz = forms["gz"]
+                if "jsonl" in forms and not self._is_valid_gzip(gz):
+                    # Truncated archive shadows the intact source: drop it.
+                    try:
+                        gz.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                    result.append(forms["jsonl"])
+                else:
+                    result.append(gz)
             elif "tmp" in forms:
                 # Crash between gzip-write and rename: promote the tmp to final.
                 tmp_path = forms["tmp"]
-                final = Path(str(tmp_path)[: -len(".jsonl.gz.tmp")] + ".jsonl.gz")
-                os.replace(tmp_path, final)
-                result.append(final)
+                if "jsonl" in forms and not self._is_valid_gzip(tmp_path):
+                    # Truncated tmp: drop it and use the intact source .jsonl.
+                    try:
+                        tmp_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                    result.append(forms["jsonl"])
+                else:
+                    final = Path(str(tmp_path)[: -len(".jsonl.gz.tmp")] + ".jsonl.gz")
+                    os.replace(tmp_path, final)
+                    result.append(final)
             elif "jsonl" in forms:
                 result.append(forms["jsonl"])
         return result
@@ -351,35 +393,40 @@ class RawStore:
                 # directory scan and this open; skip it (transient race).
                 continue
             with handle:
-                for line in handle:
-                    if not line.strip():
-                        continue
-                    try:
-                        data = json.loads(line)
-                    except json.JSONDecodeError:
-                        # Partial trailing write from a crash; quarantine.
-                        continue
-                    try:
-                        canonical = data["canonical_json"]
-                        base = json.loads(canonical)
-                        payload = base["payload"]
-                        yield RawRecord(
-                            wire=base["wire"],
-                            source=base["source"],
-                            collector_version=base["collector_version"],
-                            connection_id=base["connection_id"],
-                            message_sequence_local=base["message_sequence_local"],
-                            exchange_timestamp_ms=base.get("exchange_timestamp_ms"),
-                            received_at_ns=base["received_at_ns"],
-                            received_monotonic_ns=base["received_monotonic_ns"],
-                            processed_at_ns=base["processed_at_ns"],
-                            processed_monotonic_ns=base["processed_monotonic_ns"],
-                            wire_was_bytes=base.get("wire_was_bytes", False),
-                            payload=payload,
-                            sha256=data.get("sha256", ""),
-                        )
-                    except (KeyError, ValueError):
-                        continue
+                try:
+                    for line in handle:
+                        if not line.strip():
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            # Partial trailing write from a crash; quarantine.
+                            continue
+                        try:
+                            canonical = data["canonical_json"]
+                            base = json.loads(canonical)
+                            payload = base["payload"]
+                            yield RawRecord(
+                                wire=base["wire"],
+                                source=base["source"],
+                                collector_version=base["collector_version"],
+                                connection_id=base["connection_id"],
+                                message_sequence_local=base["message_sequence_local"],
+                                exchange_timestamp_ms=base.get("exchange_timestamp_ms"),
+                                received_at_ns=base["received_at_ns"],
+                                received_monotonic_ns=base["received_monotonic_ns"],
+                                processed_at_ns=base["processed_at_ns"],
+                                processed_monotonic_ns=base["processed_monotonic_ns"],
+                                wire_was_bytes=base.get("wire_was_bytes", False),
+                                payload=payload,
+                                sha256=data.get("sha256", ""),
+                            )
+                        except (KeyError, ValueError):
+                            continue
+                except EOFError:
+                    # Truncated gzip archive (disk full mid-finalize): skip the
+                    # rest of this file; records already yielded are valid.
+                    continue
 
     def count(self, day: date | None = None) -> int:
         return sum(1 for _ in self.replay(day))
@@ -418,21 +465,25 @@ class RawStore:
             except (FileNotFoundError, OSError):
                 continue  # transient finalize/unlink race with a live collector
             with handle:
-                for line in handle:
-                    if not line.strip():
-                        continue
-                    try:
-                        data = json.loads(line)
-                    except json.JSONDecodeError:
-                        result["partial_lines"] += 1
-                        continue
-                    canonical = data.get("canonical_json", "")
-                    stored = data.get("sha256", "")
-                    computed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-                    if computed != stored:
-                        result["hash_mismatches"] += 1
-                    else:
-                        result["valid"] += 1
+                try:
+                    for line in handle:
+                        if not line.strip():
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            result["partial_lines"] += 1
+                            continue
+                        canonical = data.get("canonical_json", "")
+                        stored = data.get("sha256", "")
+                        computed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+                        if computed != stored:
+                            result["hash_mismatches"] += 1
+                        else:
+                            result["valid"] += 1
+                except EOFError:
+                    # Truncated gzip archive; count as corruption, keep scanning.
+                    result["partial_lines"] += 1
         return result
 
 
