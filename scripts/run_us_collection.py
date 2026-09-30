@@ -36,6 +36,22 @@ DEFAULT_REPORT_DIR = ROOT / "data" / "us" / "reports"
 US_BASELINE_VERSION = "v0.4.1-us-research-baseline"
 
 
+def _harvest_event_slugs(events: list[dict]) -> set[str]:
+    """Collect every child-market slug of every parent event.
+
+    The events feed exposes the full open event graph (parent event -> child
+    markets); these markets are not surfaced by the top-N activity discovery.
+    Harvesting them widens the evidence universe to the whole event graph.
+    """
+    out: set[str] = set()
+    for event in events:
+        for market in event.get("markets", []) or []:
+            slug = market.get("slug")
+            if slug:
+                out.add(slug)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sustained US collection (evidence regime)")
     parser.add_argument("--duration", type=float, default=3600.0,
@@ -47,6 +63,9 @@ def main() -> int:
     parser.add_argument("--report-dir", default=str(DEFAULT_REPORT_DIR))
     parser.add_argument("--interval", type=float, default=2.0,
                         help="Seconds between collection cycles")
+    parser.add_argument("--book-budget", type=int, default=400,
+                        help="Markets to book per cycle (round-robin window); bounds "
+                             "cycle time as the tracked universe grows")
     parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
     parser.add_argument("--strata", default=str(ROOT / "config" / "collection_strata.json"))
@@ -121,7 +140,23 @@ def main() -> int:
             stratified_slugs = {slug for slug, _ in sampled}
             persist_stratified_membership(sampled, args.membership)
 
-        slugs = sorted(set(activity_slugs) | required_slugs | stratified_slugs)
+        # Widen the book universe to the full open event graph. The top-N
+        # activity discovery only surfaces the most active markets; the events
+        # feed exposes every parent event and its child markets. Harvest them
+        # (paginated) so the independent-cluster gate accumulates across the
+        # whole event graph, not just the activity window.
+        event_slugs: set[str] = set()
+        for offset in range(0, 600, 100):
+            try:
+                events = collector.collect_events({"limit": 100, "offset": offset})
+                found = _harvest_event_slugs(events)
+                event_slugs |= found
+                if not found:
+                    break
+            except Exception as error:  # noqa: BLE001
+                print(f"events discovery error (offset {offset}): {error}")
+
+        slugs = sorted(set(activity_slugs) | required_slugs | stratified_slugs | event_slugs)
 
         # Persist the full tracked universe point-in-time. Once a market is
         # discovered it stays in the tracked set even after it closes or drops
@@ -156,24 +191,41 @@ def main() -> int:
         book_slugs = sorted(tracked_slugs)
 
         print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} "
-              f"(required={len(required_slugs)}, stratified={len(stratified_slugs)}); "
-              f"tracked={len(tracked_slugs)} book={len(book_slugs)} "
-              f"settlement_poll={len(settlement_slugs)}")
+              f"(required={len(required_slugs)}, stratified={len(stratified_slugs)}, "
+              f"events={len(event_slugs)}); tracked={len(tracked_slugs)} "
+              f"book={len(book_slugs)} settlement_poll={len(settlement_slugs)}")
 
         deadline = time.monotonic() + args.duration
+        book_cursor = 0
+        settle_cursor = 0
         while time.monotonic() < deadline:
             cycles += 1
-            collector.collect_books(book_slugs)
+            # Round-robin a bounded window of the book universe so the cycle
+            # time stays bounded as the universe grows to the full event graph,
+            # while every tracked market still gets sampled over time.
+            if book_slugs:
+                n = len(book_slugs)
+                window = [book_slugs[(book_cursor + i) % n]
+                          for i in range(min(args.book_budget, n))]
+                collector.collect_books(window)
+                book_cursor = (book_cursor + args.book_budget) % n
             try:
-                collector.collect_events({"limit": 100, "offset": (cycles - 1) % 5 * 100})
+                collector.collect_events({"limit": 100, "offset": (cycles - 1) % 6 * 100})
             except Exception as error:  # noqa: BLE001
                 print(f"events error (cycle {cycles}): {error}")
-            # Settlements are rare; poll periodically (every 10 cycles) so the
-            # forward "unique resolved markets" metric has a real source. The
-            # poll set includes closed markets so a resolved market's final
-            # settlement is captured even after it leaves the open universe.
+            # Settlements are rare; poll a bounded round-robin window every 10
+            # cycles so a resolved market's final settlement is still captured
+            # (including markets that left the open universe) without one poll
+            # ever growing to the full universe.
             if cycles % 10 == 0:
-                newly_settled = collector.collect_settlements(settlement_slugs)
+                if settlement_slugs:
+                    n = len(settlement_slugs)
+                    window = [settlement_slugs[(settle_cursor + i) % n]
+                              for i in range(min(args.book_budget, n))]
+                    newly_settled = collector.collect_settlements(window)
+                    settle_cursor = (settle_cursor + args.book_budget) % n
+                else:
+                    newly_settled = set()
                 if newly_settled:
                     persist_slug_membership(newly_settled, settled_path, field="settled_at")
                     settled_slugs |= newly_settled
