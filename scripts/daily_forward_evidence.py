@@ -27,11 +27,13 @@ from polyalpha.us.forward_evidence import build_report_from_raw  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(description="Daily forward-evidence snapshot")
     parser.add_argument("--raw-dir", default="data/us/retail/raw")
+    parser.add_argument("--release-mapping", default="data/us/release_mapping.jsonl",
+                        help="Path to release_mapping.jsonl (macro parent-event grouping)")
     parser.add_argument("--report-dir", default="data/us/reports")
     parser.add_argument("--log-file", default="data/us/logs/forward-evidence.log")
     args = parser.parse_args()
 
-    report = build_report_from_raw(args.raw_dir)
+    report = build_report_from_raw(args.raw_dir, release_mapping_path=args.release_mapping)
     now = datetime.now(UTC)
 
     report_dir = Path(args.report_dir)

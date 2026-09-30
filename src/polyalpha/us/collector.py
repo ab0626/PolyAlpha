@@ -151,16 +151,20 @@ class UsRawCollector:
         self.stats.events += len(events)
         return events
 
-    def collect_settlements(self, slugs: list[str]) -> None:
+    def collect_settlements(self, slugs: list[str]) -> set[str]:
         """Capture /v1/markets/{slug}/settlement for tracked slugs.
 
         Settlements are rare (once per resolution), so this is called
         periodically, not every cycle. The payload is stored wire-exact; the
         parsed finality flag (settlement_preliminary) is the forward-evidence
         source for "unique resolved markets" and time-to-resolution coverage.
+
+        Returns the set of slugs that returned a FINAL settlement, so callers
+        can persist them and stop re-polling already-resolved markets.
         """
         from .adapter import parse_settlement
 
+        settled: set[str] = set()
         for slug in slugs:
             identifier = self.registry.by_slug(slug)
             if identifier is None:
@@ -168,8 +172,10 @@ class UsRawCollector:
             try:
                 raw_payload, received = self.client.market_settlement(slug)
                 self._capture(SOURCE_US_RETAIL_SETTLEMENT, slug, raw_payload, None)
-                parse_settlement(raw_payload, identifier)
-                self.stats.settlements += 1
+                parsed = parse_settlement(raw_payload, identifier)
+                if parsed.get("is_final"):
+                    settled.add(slug)
+                    self.stats.settlements += 1
             except Exception as error:  # noqa: BLE001
                 # A 404/empty settlement for a still-open market is expected
                 # operational telemetry, not an error.
@@ -179,3 +185,4 @@ class UsRawCollector:
                     slug,
                     {"error_type": type(error).__name__, "reason": str(error)},
                 )
+        return settled

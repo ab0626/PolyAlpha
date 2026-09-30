@@ -40,7 +40,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Sustained US collection (evidence regime)")
     parser.add_argument("--duration", type=float, default=3600.0,
                         help="Seconds for sustained collection")
-    parser.add_argument("--limit", type=int, default=50,
+    parser.add_argument("--limit", type=int, default=200,
                         help="Number of markets to discover and track")
     parser.add_argument("--phase-file", default=str(DEFAULT_PHASE_FILE))
     parser.add_argument("--raw-dir", default=str(DEFAULT_RAW_DIR))
@@ -51,6 +51,10 @@ def main() -> int:
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
     parser.add_argument("--strata", default=str(ROOT / "config" / "collection_strata.json"))
     parser.add_argument("--membership", default="data/us/stratified_membership.jsonl")
+    parser.add_argument("--tracked", default="data/us/tracked_membership.jsonl",
+                        help="Persisted full tracked universe (settlement poll set)")
+    parser.add_argument("--settled", default="data/us/settled_membership.jsonl",
+                        help="Persisted slugs whose final settlement was captured")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan and stop")
     args = parser.parse_args()
 
@@ -118,26 +122,62 @@ def main() -> int:
             persist_stratified_membership(sampled, args.membership)
 
         slugs = sorted(set(activity_slugs) | required_slugs | stratified_slugs)
-        # Register release-required + stratified slugs (not discovered via
-        # discover_markets) so collect_books fetches them.
-        for slug in required_slugs | stratified_slugs:
+
+        # Persist the full tracked universe point-in-time. Once a market is
+        # discovered it stays in the tracked set even after it closes or drops
+        # out of the bounded top-N activity window: discover_markets(closed=false)
+        # re-derives a fresh set each run, so both the book path and
+        # /settlement of previously-tracked markets would otherwise be lost.
+        from polyalpha.us.release_coverage import (
+            load_slug_membership,
+            persist_slug_membership,
+        )
+
+        tracked_path = Path(args.tracked)
+        settled_path = Path(args.settled)
+        previously_tracked = load_slug_membership(tracked_path)
+        new_tracked = set(slugs) - previously_tracked
+        persist_slug_membership(new_tracked, tracked_path, field="tracked_at")
+        tracked_slugs = previously_tracked | set(slugs)
+
+        # Register an identifier for every tracked slug (release-required and
+        # stratified slugs are not discovered via discover_markets, and
+        # previously-tracked/closed markets are not rediscovered) so both book
+        # collection and settlement polling can address them.
+        for slug in tracked_slugs:
             if identifier_registry.by_slug(slug) is None:
                 identifier_registry.register(f"us:{slug}", slug)
+
+        settled_slugs = load_slug_membership(settled_path)
+        settlement_slugs = sorted(tracked_slugs - settled_slugs)
+        # Book the full additive tracked universe, not just this run's fresh
+        # discovery, so the evidence universe grows across runs instead of
+        # plateauing at the bounded top-N activity window.
+        book_slugs = sorted(tracked_slugs)
+
         print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} "
-              f"(required={len(required_slugs)}, stratified={len(stratified_slugs)})")
+              f"(required={len(required_slugs)}, stratified={len(stratified_slugs)}); "
+              f"tracked={len(tracked_slugs)} book={len(book_slugs)} "
+              f"settlement_poll={len(settlement_slugs)}")
 
         deadline = time.monotonic() + args.duration
         while time.monotonic() < deadline:
             cycles += 1
-            collector.collect_books(slugs)
+            collector.collect_books(book_slugs)
             try:
-                collector.collect_events({"limit": 25, "offset": (cycles - 1) % 5 * 25})
+                collector.collect_events({"limit": 100, "offset": (cycles - 1) % 5 * 100})
             except Exception as error:  # noqa: BLE001
                 print(f"events error (cycle {cycles}): {error}")
             # Settlements are rare; poll periodically (every 10 cycles) so the
-            # forward "unique resolved markets" metric has a real source.
+            # forward "unique resolved markets" metric has a real source. The
+            # poll set includes closed markets so a resolved market's final
+            # settlement is captured even after it leaves the open universe.
             if cycles % 10 == 0:
-                collector.collect_settlements(slugs)
+                newly_settled = collector.collect_settlements(settlement_slugs)
+                if newly_settled:
+                    persist_slug_membership(newly_settled, settled_path, field="settled_at")
+                    settled_slugs |= newly_settled
+                    settlement_slugs = sorted(tracked_slugs - settled_slugs)
             time.sleep(max(0.0, args.interval))
     finally:
         raw.close()

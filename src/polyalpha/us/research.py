@@ -28,6 +28,7 @@ as the number of distinct parent-event clusters, never raw rows.
 from __future__ import annotations
 
 import hashlib
+import json
 from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
@@ -124,11 +125,57 @@ def _book_bbo(market_data: dict) -> dict:
     }
 
 
+def _load_release_parents(path: str | Path | None) -> dict[str, str]:
+    """Map macro release markets to their release_id (parent event).
+
+    Macro markets (NFP/CPI/FOMC/unemployment buckets) are not children of a
+    retail ``/v1/events`` entry, so the events feed alone leaves them falling
+    back to slug-as-cluster and over-counting each bucket as an independent
+    event. The persisted release mapping (release_mapping.jsonl) records the
+    release_id each bucket belongs to, which is the correct parent grouping.
+    """
+    out: dict[str, str] = {}
+    if path is None:
+        return out
+    path = Path(path)
+    if not path.exists():
+        return out
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        slug = data.get("market_slug")
+        release_id = data.get("release_id")
+        if slug and release_id:
+            out[slug] = str(release_id)
+    return out
+
+
+def _default_release_mapping(raw_dir: str | Path) -> Path | None:
+    """US lineage convention: release_mapping.jsonl sits beside the raw store."""
+    derived = Path(raw_dir).resolve().parents[1] / "release_mapping.jsonl"
+    return derived if derived.exists() else None
+
+
 def build_us_research_dataset(
-    raw_dir: str | Path, max_snapshots_per_market: int | None = None
+    raw_dir: str | Path,
+    max_snapshots_per_market: int | None = None,
+    release_mapping_path: str | Path | None = None,
 ) -> ResearchDataset:
-    """Build the canonical US research dataset from the raw store."""
+    """Build the canonical US research dataset from the raw store.
+
+    Parent-event clustering is drawn from two sources: the retail events feed
+    (sports events) and the persisted release mapping (macro releases), the
+    latter grouped under ``release_id`` so correlated macro buckets are never
+    counted as independent events.
+    """
     raw = RawStore(raw_dir)
+    if release_mapping_path is None:
+        release_mapping_path = _default_release_mapping(raw_dir)
     markets_by_slug: dict[str, dict] = {}
     settlement_by_slug: dict[str, tuple[int | None, int]] = {}
     parent_event_by_slug: dict[str, str] = {}
@@ -156,6 +203,14 @@ def build_us_research_dataset(
                     _binary_label(record.payload.get("settlement")),
                     record.received_at_ns,
                 )
+
+    # Macro release markets have no parent entry in the retail events feed, so
+    # they would otherwise fall back to slug-as-cluster (each CPI/NFP/FOMC
+    # bucket counted as an independent event). The persisted release mapping
+    # supplies the correct parent-event grouping (release_id). Events feed wins
+    # where both are present; the mapping only fills the gaps.
+    for slug, release_id in _load_release_parents(release_mapping_path).items():
+        parent_event_by_slug.setdefault(slug, release_id)
 
     # Pass 2: point-in-time snapshots from book records.
     snapshots: list[MarketSnapshot] = []

@@ -9,7 +9,9 @@ sys.path.insert(0, "src")
 from polyalpha.us.release_coverage import (
     RequiredMarket,
     compute_coverage,
+    load_slug_membership,
     merged_required_slugs,
+    persist_slug_membership,
     stratified_universe,
     stratum_for,
 )
@@ -74,6 +76,23 @@ def test_stratified_universe_deterministic_and_gated():
     assert "cpc-a" in slugs      # top-volume crypto
     assert "cpc-b" not in slugs  # inactive -> excluded by data-quality gate
     assert len(sampled) == 2     # one per stratum (sports + crypto)
+
+
+def test_slug_membership_persistence_roundtrip(tmp_path):
+    path = tmp_path / "tracked.jsonl"
+    persist_slug_membership({"a", "b"}, path, field="tracked_at")
+    persist_slug_membership({"b", "c"}, path, field="tracked_at")
+    # Additive: union of every append, deduplicated by set on load.
+    assert load_slug_membership(path) == {"a", "b", "c"}
+
+
+def test_load_slug_membership_skips_corrupt_and_missing(tmp_path):
+    path = tmp_path / "tracked.jsonl"
+    path.write_text(
+        '{"market_slug": "a"}\nnot-json\n{"other": 1}\n', encoding="utf-8"
+    )
+    assert load_slug_membership(path) == {"a"}
+    assert load_slug_membership(tmp_path / "missing.jsonl") == set()
 
 
 def test_merged_required_slugs_retains_persisted_on_search_failure(tmp_path):

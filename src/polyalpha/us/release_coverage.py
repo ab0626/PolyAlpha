@@ -171,6 +171,51 @@ def persist_stratified_membership(
             fh.write("\n".join(lines) + "\n")
 
 
+def load_slug_membership(path: str | Path) -> set[str]:
+    """Load persisted slug membership (append-only JSONL of ``market_slug``).
+
+    Used for both the tracked universe (every slug that ever entered
+    collection) and the settled universe (slugs whose final settlement was
+    captured). Corrupt lines are skipped; membership is additive.
+    """
+    path = Path(path)
+    if not path.exists():
+        return set()
+    out: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        slug = data.get("market_slug")
+        if slug:
+            out.add(slug)
+    return out
+
+
+def persist_slug_membership(
+    slugs: set[str] | list[str], path: str | Path, field: str = "tracked_at"
+) -> None:
+    """Append point-in-time slug membership records (caller dedups).
+
+    ``field`` distinguishes the record semantics (``tracked_at`` for discovery,
+    ``settled_at`` for a captured final settlement) without changing the loader.
+    """
+    stamp = datetime.now(UTC).isoformat()
+    lines = [
+        json.dumps({"market_slug": slug, field: stamp}, sort_keys=True)
+        for slug in sorted(set(slugs))
+    ]
+    path = Path(path)
+    if lines:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+
+
 def collector_universe(
     client,
     schedule_path: str | Path,

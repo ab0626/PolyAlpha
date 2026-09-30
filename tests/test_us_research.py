@@ -6,6 +6,7 @@ N) computation. All offline, using synthetic raw records written through the
 (real) RawStore.
 """
 
+import json
 import sys
 
 sys.path.insert(0, "src")
@@ -99,3 +100,54 @@ def test_non_binary_settlement_is_not_a_label(tmp_path):
     ds = build_us_research_dataset(tmp_path / "raw")
     assert ds.snapshots[0].final_resolution is None  # split/void is not binary
     assert ds.resolved_observations == 0
+
+
+def test_macro_release_clustering_from_mapping(tmp_path):
+    # Two CPI buckets are one parent event (the release), never two independent
+    # clusters. The macro slugs are absent from the retail events feed, so the
+    # release mapping must supply the parent grouping.
+    slugs = [
+        "cpic-uscpi-yoy-2026-10-14-gt2pt9pct",
+        "cpic-uscpi-yoy-2026-10-14-gt3pt0pct",
+    ]
+    raw = RawStore(tmp_path / "raw", "test")
+    raw.append("polymarket_us_retail_markets", "d",
+               {"markets": [_market(s, "macro", "CPI YoY") for s in slugs]},
+               received_at_ns=1)
+    for i, slug in enumerate(slugs):
+        raw.append("polymarket_us_retail_book", slug, _book(slug), received_at_ns=2 + i)
+    raw.close()
+
+    mapping = tmp_path / "release_mapping.jsonl"
+    mapping.write_text(
+        "".join(
+            json.dumps({"market_slug": s, "release_id": "cpi-2026-10-14"}) + "\n"
+            for s in slugs
+        ),
+        encoding="utf-8",
+    )
+
+    ds = build_us_research_dataset(tmp_path / "raw", release_mapping_path=mapping)
+    assert {s.event_cluster for s in ds.snapshots} == {"cpi-2026-10-14"}
+    assert sampling_hierarchy(ds)["effective_n"] == 1
+
+
+def test_release_mapping_does_not_override_events_feed(tmp_path):
+    # A slug that already has a retail parent event keeps it; the release
+    # mapping only fills gaps (events feed wins on collision).
+    raw = RawStore(tmp_path / "raw", "test")
+    raw.append("polymarket_us_retail_markets", "d",
+               {"markets": [_market("m1", "sports", "Q")]}, received_at_ns=1)
+    raw.append("polymarket_us_retail_events", "events",
+               {"events": [{"id": "e1", "markets": [{"slug": "m1"}]}]}, received_at_ns=2)
+    raw.append("polymarket_us_retail_book", "m1", _book("m1"), received_at_ns=3)
+    raw.close()
+
+    mapping = tmp_path / "release_mapping.jsonl"
+    mapping.write_text(
+        json.dumps({"market_slug": "m1", "release_id": "some-release"}) + "\n",
+        encoding="utf-8",
+    )
+
+    ds = build_us_research_dataset(tmp_path / "raw", release_mapping_path=mapping)
+    assert {s.event_cluster for s in ds.snapshots} == {"e1"}

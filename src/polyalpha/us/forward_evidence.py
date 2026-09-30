@@ -90,8 +90,12 @@ def forward_evidence_report(
     return report
 
 
-def build_report_from_raw(raw_dir: str | Path, as_of: datetime | None = None) -> dict:
-    dataset = build_us_research_dataset(raw_dir)
+def build_report_from_raw(
+    raw_dir: str | Path,
+    as_of: datetime | None = None,
+    release_mapping_path: str | Path | None = None,
+) -> dict:
+    dataset = build_us_research_dataset(raw_dir, release_mapping_path=release_mapping_path)
     return forward_evidence_report(dataset, as_of)
 
 
@@ -100,10 +104,12 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description="Forward-evidence evaluation report")
     parser.add_argument("--raw-dir", default="data/us/retail/raw")
+    parser.add_argument("--release-mapping", default=None,
+                        help="Path to release_mapping.jsonl (macro parent-event grouping)")
     parser.add_argument("--output", default=None, help="Write report JSON here")
     args = parser.parse_args()
 
-    report = build_report_from_raw(args.raw_dir)
+    report = build_report_from_raw(args.raw_dir, release_mapping_path=args.release_mapping)
     text = json.dumps(report, indent=2, sort_keys=True, default=str)
     print(text)
     if args.output:

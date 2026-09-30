@@ -410,6 +410,25 @@ class TestUsRawCollector:
             sources = {r.source for r in raw.replay()}
             assert "polymarket_us_retail_settlement" in sources
 
+    def test_collect_settlements_returns_final_slugs_only(self, tmp_path):
+        from polyalpha.rawstore import RawStore
+
+        class UnresolvedClient:
+            def markets(self, params=None):
+                return {"markets": [_market_raw()]}, NOW
+
+            def market_settlement(self, slug):
+                # 200 with no settlement value -> unresolved, not final.
+                return {"slug": slug}, NOW
+
+        reg = _registry()
+        with RawStore(tmp_path / "us" / "retail" / "raw", collector_version="test") as raw:
+            collector = UsRawCollector(UnresolvedClient(), raw, reg, collector_version="test")
+            collector.discover_markets()
+            settled = collector.collect_settlements(["chiefs-super-bowl-lx"])
+            assert settled == set()
+            assert collector.stats.settlements == 0
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # US PUBLIC REST CLIENT (offline)

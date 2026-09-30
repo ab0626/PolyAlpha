@@ -159,7 +159,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Supervise sustained US REST collection")
     parser.add_argument("--chunk-duration", type=float, default=300.0,
                         help="Seconds per collector run before restart (keeps logs bounded)")
-    parser.add_argument("--limit", type=int, default=50,
+    parser.add_argument("--limit", type=int, default=200,
                         help="Markets to track per collector run")
     parser.add_argument("--interval", type=float, default=2.0,
                         help="Seconds between collection cycles")
