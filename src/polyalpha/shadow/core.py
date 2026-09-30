@@ -337,6 +337,11 @@ class ExternalCollector:
 
             new = 0
             max_published = since
+            # The raw response bytes are stored once per unique payload
+            # (referenced by raw_payload_sha256). Duplicating the full wire on
+            # every observation is O(observations x response_size): a single
+            # full-history FRED/EIA series then produces hundreds of GB.
+            persisted_wire: set[str] = set()
             for item in fetched:
                 # Preserve the ACTUAL raw response bytes (wire), and stamp the
                 # clocks the provider could not know (request start + receipt).
@@ -351,9 +356,17 @@ class ExternalCollector:
                 if is_new:
                     # Raw is appended ONLY for new observations: re-polling an
                     # unchanged datum must not grow the raw store unboundedly.
+                    # Store the full wire once per unique response; later
+                    # observations of the same response carry no wire (they
+                    # reference it by raw_payload_sha256).
+                    if obs.raw_payload_sha256 in persisted_wire:
+                        wire = None
+                    else:
+                        wire = item.raw_bytes
+                        persisted_wire.add(obs.raw_payload_sha256)
                     self.raw.append(
                         self.source, provider.name, obs.as_dict(),
-                        wire=item.raw_bytes,
+                        wire=wire,
                         received_at_ns=now_ns, received_monotonic_ns=time.monotonic_ns(),
                         exchange_timestamp_ms=(
                             int(obs.provider_published_at.timestamp() * 1000)
