@@ -187,25 +187,33 @@ def main() -> int:
         settlement_slugs = sorted(tracked_slugs - settled_slugs)
         # Book the full additive tracked universe, not just this run's fresh
         # discovery, so the evidence universe grows across runs instead of
-        # plateauing at the bounded top-N activity window.
-        book_slugs = sorted(tracked_slugs)
+        # plateauing at the bounded top-N activity window. Release-required
+        # contracts (NFP/CPI/FOMC) are the preregistered experiment's critical
+        # instruments: book them EVERY cycle so their REST receipt stays dense
+        # through the release window. The rest of the (large, event-derived)
+        # universe is round-robined for cluster coverage.
+        priority_slugs = sorted(set(required_slugs) & tracked_slugs)
+        round_robin_slugs = sorted(tracked_slugs - set(required_slugs))
 
         print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} "
               f"(required={len(required_slugs)}, stratified={len(stratified_slugs)}, "
               f"events={len(event_slugs)}); tracked={len(tracked_slugs)} "
-              f"book={len(book_slugs)} settlement_poll={len(settlement_slugs)}")
+              f"priority={len(priority_slugs)} round_robin={len(round_robin_slugs)} "
+              f"settlement_poll={len(settlement_slugs)}")
 
         deadline = time.monotonic() + args.duration
         book_cursor = 0
         settle_cursor = 0
         while time.monotonic() < deadline:
             cycles += 1
-            # Round-robin a bounded window of the book universe so the cycle
-            # time stays bounded as the universe grows to the full event graph,
-            # while every tracked market still gets sampled over time.
-            if book_slugs:
-                n = len(book_slugs)
-                window = [book_slugs[(book_cursor + i) % n]
+            # Priority (release-required) contracts every cycle; a bounded
+            # round-robin window of the rest so cycle time stays bounded as the
+            # universe grows to the full event graph.
+            if priority_slugs:
+                collector.collect_books(priority_slugs)
+            if round_robin_slugs:
+                n = len(round_robin_slugs)
+                window = [round_robin_slugs[(book_cursor + i) % n]
                           for i in range(min(args.book_budget, n))]
                 collector.collect_books(window)
                 book_cursor = (book_cursor + args.book_budget) % n

@@ -16,9 +16,9 @@ A production-oriented quantitative prediction-market trading system under empiri
 | Venue | Polymarket US (executable target); Kalshi (sibling); International (research-data only) |
 | Alpha status | UNKNOWN |
 | Executable modes | RESEARCH / PAPER / SHADOW / LIVE_READY (no live adapter wired) |
-| Tests | 1,925 passed, 1 skipped, 5 numerical subtests |
-| Live data streams | books (2s snapshots) + fills (explicit maker/taker) |
-| Evidence gate | ~5/30 days, 0/200 settled, 4/200 independent clusters |
+| Tests | 1,931 passed, 1 skipped, 5 numerical subtests |
+| Live data streams | REST books (2s cycle) + L2/gRPC market data + trades/fills (maker/taker) + settlements + events |
+| Evidence gate | 14/30 days, 0/200 settled, 322/200 independent clusters (snapshot 2026-09-30) |
 | Known gaps | no validated edge; A6/A8 need fill accumulation; A7/A9 dropped (US-only); sub-second reaction horizons pending finer timestamp precision |
 
 Additional operational subsystems (see docs/): **shadow-external-v0** (observation-only external-information bus: FRED, EIA, NWS, SEC EDGAR, Fed RSS, GDELT; separate raw lineage, v0.4 cannot read it), the **category-stratified collection universe** (`config/collection_strata.json`), the **preregistered NFP #1 inspection** (`docs/NFP_ANALYSIS_TEMPLATE.md` + `config/analysis_template.json`), and the **v0.5 hypothesis backlog** (`docs/V0_5_HYPOTHESIS_BACKLOG.md`). None alters the frozen methodology.

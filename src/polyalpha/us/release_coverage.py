@@ -266,6 +266,7 @@ def compute_coverage(
     now: datetime | None = None,
     rest_max_age_seconds: float = 300.0,
     trade_max_age_seconds: float = 1200.0,
+    rest_per_market_max_age_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Coverage = subscription AND collector liveness.
 
@@ -273,6 +274,11 @@ def compute_coverage(
     market with an empty book (inactive, far from resolution) has a stale last
     observation but is still covered as long as its collector is alive and it is
     subscribed. Per-market age is recorded as informational, not gating.
+
+    ``rest_per_market_max_age_seconds`` optionally tightens REST coverage for
+    release-critical markets: when set, a required market's REST feed counts as
+    covered only if it has a recent per-market receipt (Age(lastREST_m) <= tau),
+    catching a market the collector silently stopped cycling over.
     Sparse trades are not required: trade coverage = subscription + liveness.
     """
     now = now or datetime.now(UTC)
@@ -297,15 +303,23 @@ def compute_coverage(
     missing = 0
     for rm in required:
         slug = rm.market_slug
+        rest_age = _age(rest_last, slug)
+        l2_age = _age(l2_last, slug)
         rest_ok = slug in rest_slugs and rest_alive
+        if rest_per_market_max_age_seconds is not None:
+            # Release-critical: also require a recent per-market REST receipt so
+            # a market the collector stopped cycling over is not "green".
+            rest_ok = (
+                rest_ok
+                and rest_age is not None
+                and rest_age <= rest_per_market_max_age_seconds
+            )
         l2_ok = slug in l2_slugs and l2_alive
         trade_ok = slug in trade_slugs and trade_alive
         cov = {"REST": rest_ok, "L2": l2_ok, "trade": trade_ok}
         ok = all(cov.values())
         if not ok:
             missing += 1
-        rest_age = _age(rest_last, slug)
-        l2_age = _age(l2_last, slug)
         per_market.append({
             **rm.as_dict(), "coverage": cov, "coverage_ok": ok,
             "rest_age_seconds": round(rest_age, 1) if rest_age is not None else None,

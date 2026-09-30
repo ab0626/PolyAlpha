@@ -69,6 +69,9 @@ def main() -> int:
     parser.add_argument("--trade-universe", default="data/us/logs/trade-universe.json")
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
     parser.add_argument("--report", default="data/us/reports/release-coverage.json")
+    parser.add_argument("--rest-max-age", type=float, default=300.0,
+                        help="Release-critical per-market REST freshness (s): a required "
+                             "market is covered only if its last REST receipt is <= this age")
     args = parser.parse_args()
 
     client = PublicUsClient(timeout=20, attempts=2)
@@ -117,6 +120,7 @@ def main() -> int:
         rest_collector_age_seconds=rest_collector_age,
         l2_collector_alive=l2_collector_alive,
         trade_collector_age_seconds=trade_collector_age,
+        rest_per_market_max_age_seconds=args.rest_max_age,
     )
     report["rest_collector_age_seconds"] = round(rest_collector_age, 1) if rest_collector_age is not None else None
     report["trade_collector_age_seconds"] = round(trade_collector_age, 1) if trade_collector_age is not None else None
