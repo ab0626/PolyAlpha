@@ -68,14 +68,19 @@ def _git_head() -> str:
 
 
 def _collector_matches_impl() -> bool:
-    """The on-disk collector must equal the frozen implementation commit's."""
+    """The on-disk collector must equal the frozen implementation commit's.
+
+    Line endings are normalized before comparing: with core.autocrlf on
+    Windows the working tree is CRLF while the git blob is LF, and a CR/LF
+    difference is not a meaningful implementation difference.
+    """
     try:
         frozen = subprocess.check_output(
             ["git", "show", f"{COLLECTION_IMPL_COMMIT}:scripts/run_us_collection.py"],
             cwd=ROOT,
         )
         current = (ROOT / "scripts" / "run_us_collection.py").read_bytes()
-        return frozen == current
+        return frozen.replace(b"\r\n", b"\n") == current.replace(b"\r\n", b"\n")
     except Exception:  # noqa: BLE001
         return False
 
