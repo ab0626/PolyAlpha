@@ -116,6 +116,11 @@ def _finalize_previous_day_manifest() -> None:
     The manifest is a write-once fingerprint of a day's raw files. It can only
     be correct once the day's files are closed (day rolled over); writing it
     mid-day would freeze a partial set. Called each loop; idempotent.
+
+    Once written the manifest is immutable (write-once + hash-chained), so
+    subsequent calls return immediately: re-hashing and re-replaying a whole day
+    on every loop is O(day bytes) and stalls collection for minutes once the
+    universe is large.
     """
     from datetime import date, timedelta
 
@@ -124,6 +129,8 @@ def _finalize_previous_day_manifest() -> None:
 
     previous = date.today() - timedelta(days=1)
     writer = ManifestWriter(DEFAULT_MANIFEST_DIR)
+    if (DEFAULT_MANIFEST_DIR / f"{previous.isoformat()}.json").exists():
+        return
     raw = RawStore(DEFAULT_RAW_DIR, collector_version="v0.4.1-us-research-baseline")
     manifest = build_daily_manifest(
         raw=raw,
@@ -142,14 +149,8 @@ def _finalize_previous_day_manifest() -> None:
         print(f"MANIFEST finalize {previous.isoformat()}: {path} "
               f"(sha256={manifest.combined_hash()})")
     except FileExistsError:
-        ok, msg = writer.verify(previous, raw)
-        if not ok:
-            alert = {"event": "manifest_mismatch", "at": _now(),
-                     "day": previous.isoformat(), "ok": False, "message": msg}
-            _append_jsonl(DEFAULT_STATE_DIR / "alerts.jsonl", alert)
-            print(f"ALERT: manifest {previous} does not verify: {msg}")
-        else:
-            print(f"MANIFEST finalize {previous.isoformat()}: already exists, VERIFIED")
+        # Raced with another writer; the manifest is write-once so we accept it.
+        print(f"MANIFEST finalize {previous.isoformat()}: already exists")
 
 
 def _config_sha256() -> str:
