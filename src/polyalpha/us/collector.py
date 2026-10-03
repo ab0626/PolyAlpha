@@ -177,8 +177,12 @@ class UsRawCollector:
                     settled.add(slug)
                     self.stats.settlements += 1
             except Exception as error:  # noqa: BLE001
-                # A 404/empty settlement for a still-open market is expected
-                # operational telemetry, not an error.
+                # A 404 for a still-open market is expected operational
+                # telemetry, not an error, and carries no evidence payload.
+                # Do not store it: re-polling the (large, still-open) universe
+                # would otherwise append an unbounded stream of 404 records.
+                if getattr(error, "code", None) == 404:
+                    continue
                 self.stats.errors += 1
                 self.raw.append(
                     SOURCE_US_RETAIL_SETTLEMENT,

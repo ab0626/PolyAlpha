@@ -66,6 +66,10 @@ def main() -> int:
     parser.add_argument("--book-budget", type=int, default=400,
                         help="Markets to book per cycle (round-robin window); bounds "
                              "cycle time as the tracked universe grows")
+    parser.add_argument("--settle-budget", type=int, default=200,
+                        help="Markets to settlement-poll per sweep (round-robin window)")
+    parser.add_argument("--settle-interval", type=float, default=60.0,
+                        help="Seconds between settlement sweeps")
     parser.add_argument("--schedule", default=str(ROOT / "config" / "gov_releases.json"))
     parser.add_argument("--mapping", default="data/us/release_mapping.jsonl")
     parser.add_argument("--strata", default=str(ROOT / "config" / "collection_strata.json"))
@@ -184,7 +188,7 @@ def main() -> int:
                 identifier_registry.register(f"us:{slug}", slug)
 
         settled_slugs = load_slug_membership(settled_path)
-        settlement_slugs = sorted(tracked_slugs - settled_slugs)
+
         # Book the full additive tracked universe, not just this run's fresh
         # discovery, so the evidence universe grows across runs instead of
         # plateauing at the bounded top-N activity window. Release-required
@@ -195,15 +199,40 @@ def main() -> int:
         priority_slugs = sorted(set(required_slugs) & tracked_slugs)
         round_robin_slugs = sorted(tracked_slugs - set(required_slugs))
 
+        # Round-robin cursors persist across chunks. Without persistence every
+        # ~5-minute chunk restarts at index 0, so the tail of the (large,
+        # event-derived) universe is never booked and its settlements never
+        # polled. Persisting the cursors makes coverage complete over time.
+        cursor_path = Path(args.settled).with_name("collection_cursors.json")
+
+        def _load_cursors() -> dict:
+            try:
+                data = json.loads(cursor_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                return {"book": 0, "settle": 0}
+            return {"book": int(data.get("book", 0)), "settle": int(data.get("settle", 0))}
+
+        def _save_cursors(state: dict) -> None:
+            cursor_path.parent.mkdir(parents=True, exist_ok=True)
+            cursor_path.write_text(json.dumps(state, sort_keys=True) + "\n", encoding="utf-8")
+
         print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} "
               f"(required={len(required_slugs)}, stratified={len(stratified_slugs)}, "
               f"events={len(event_slugs)}); tracked={len(tracked_slugs)} "
               f"priority={len(priority_slugs)} round_robin={len(round_robin_slugs)} "
-              f"settlement_poll={len(settlement_slugs)}")
+              f"settlement_poll={len(tracked_slugs - settled_slugs)}")
 
         deadline = time.monotonic() + args.duration
-        book_cursor = 0
-        settle_cursor = 0
+        cursors = _load_cursors()
+        n_rr = max(1, len(round_robin_slugs))
+        book_cursor = cursors["book"] % n_rr
+        settle_cursor = cursors["settle"] % n_rr
+        # Settlement sweep fires immediately (capture already-resolved markets,
+        # e.g. a release that just passed) then on a wall-clock cadence. It is
+        # decoupled from the cycle counter: a ~5-minute chunk with ~40s book
+        # cycles never reaches cycle 10, which previously meant settlement
+        # polling silently never ran.
+        next_settle = time.monotonic()
         while time.monotonic() < deadline:
             cycles += 1
             # Priority (release-required) contracts every cycle; a bounded
@@ -212,32 +241,33 @@ def main() -> int:
             if priority_slugs:
                 collector.collect_books(priority_slugs)
             if round_robin_slugs:
-                n = len(round_robin_slugs)
-                window = [round_robin_slugs[(book_cursor + i) % n]
-                          for i in range(min(args.book_budget, n))]
+                window = [round_robin_slugs[(book_cursor + i) % n_rr]
+                          for i in range(min(args.book_budget, n_rr))]
                 collector.collect_books(window)
-                book_cursor = (book_cursor + args.book_budget) % n
+                book_cursor = (book_cursor + args.book_budget) % n_rr
             try:
                 collector.collect_events({"limit": 100, "offset": (cycles - 1) % 6 * 100})
             except Exception as error:  # noqa: BLE001
                 print(f"events error (cycle {cycles}): {error}")
-            # Settlements are rare; poll a bounded round-robin window every 10
-            # cycles so a resolved market's final settlement is still captured
-            # (including markets that left the open universe) without one poll
-            # ever growing to the full universe.
-            if cycles % 10 == 0:
-                if settlement_slugs:
-                    n = len(settlement_slugs)
-                    window = [settlement_slugs[(settle_cursor + i) % n]
-                              for i in range(min(args.book_budget, n))]
-                    newly_settled = collector.collect_settlements(window)
-                    settle_cursor = (settle_cursor + args.book_budget) % n
-                else:
-                    newly_settled = set()
+            if time.monotonic() >= next_settle:
+                # Release-required contracts every sweep (few, and they drive
+                # the settled-markets gate); a bounded round-robin window of
+                # the rest with a persisted cursor so the full universe is
+                # swept over many chunks.
+                pending_macro = [s for s in priority_slugs if s not in settled_slugs]
+                rr_window = [
+                    s for s in (
+                        round_robin_slugs[(settle_cursor + i) % n_rr]
+                        for i in range(min(args.settle_budget, n_rr))
+                    ) if s not in settled_slugs
+                ] if round_robin_slugs else []
+                newly_settled = collector.collect_settlements(pending_macro + rr_window)
+                settle_cursor = (settle_cursor + args.settle_budget) % n_rr
                 if newly_settled:
                     persist_slug_membership(newly_settled, settled_path, field="settled_at")
                     settled_slugs |= newly_settled
-                    settlement_slugs = sorted(tracked_slugs - settled_slugs)
+                _save_cursors({"book": book_cursor, "settle": settle_cursor})
+                next_settle = time.monotonic() + args.settle_interval
             time.sleep(max(0.0, args.interval))
     finally:
         raw.close()
