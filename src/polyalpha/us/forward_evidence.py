@@ -26,6 +26,51 @@ MIN_DAYS = 30
 MIN_SETTLED = 200
 MIN_CLUSTERS = 200
 
+# Known observation gaps in the US retail lineage (e.g. collector outages).
+# Read-only provenance: the report carries them so downstream analysis never
+# treats an unobserved interval as observed. Never used to synthesize data.
+DEFAULT_KNOWN_GAPS = (
+    Path(__file__).resolve().parents[3] / "config" / "us_known_gaps.json"
+)
+
+
+def _load_known_gaps(path: str | Path | None) -> list[dict]:
+    if path is None:
+        return []
+    path = Path(path)
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    gaps = data.get("gaps", []) if isinstance(data, dict) else []
+    return gaps if isinstance(gaps, list) else []
+
+
+def _settlement_completeness(dataset: ResearchDataset) -> dict:
+    """Markets whose end date has passed but which still lack a binary
+    settlement. A high value is a settlement-poll gap (e.g. after an outage);
+    a small residual is expected from non-binary (void/split) resolutions.
+    """
+    ended: set[str] = set()
+    ended_unsettled: set[str] = set()
+    no_enddate: set[str] = set()
+    for s in dataset.snapshots:
+        mid = s.market_id
+        h = s.hours_to_resolution
+        if h is None:
+            no_enddate.add(mid)
+        elif h < 0:
+            ended.add(mid)
+            if s.final_resolution is None:
+                ended_unsettled.add(mid)
+    return {
+        "markets_ended": len(ended),
+        "ended_without_binary_settlement": len(ended_unsettled),
+        "markets_without_enddate_metadata": len(no_enddate),
+    }
+
 
 def evaluation_boundary(as_of: datetime | None = None) -> dict:
     now = as_of or datetime.now(UTC)
@@ -38,13 +83,16 @@ def evaluation_boundary(as_of: datetime | None = None) -> dict:
 
 
 def forward_evidence_report(
-    dataset: ResearchDataset, as_of: datetime | None = None
+    dataset: ResearchDataset,
+    as_of: datetime | None = None,
+    known_gaps: list[dict] | None = None,
 ) -> dict:
     """Produce the forward-evidence report (or PENDING_EVIDENCE status)."""
     boundary = evaluation_boundary(as_of)
     hierarchy = sampling_hierarchy(dataset)
     settled = hierarchy["resolved_markets"]
     clusters = hierarchy["effective_n"]
+    completeness = _settlement_completeness(dataset)
 
     gates = {
         "days": {
@@ -72,6 +120,8 @@ def forward_evidence_report(
         "evaluation_boundary_met": met,
         "gates": gates,
         "sampling_hierarchy": hierarchy,
+        "settlement_completeness": completeness,
+        "data_gaps": known_gaps or [],
     }
 
     if not met:
@@ -96,11 +146,15 @@ def build_report_from_raw(
     as_of: datetime | None = None,
     release_mapping_path: str | Path | None = None,
     progress: Callable[[int, int, int], None] | None = None,
+    gaps_config: str | Path | None = None,
 ) -> dict:
+    if gaps_config is None:
+        gaps_config = DEFAULT_KNOWN_GAPS
+    known_gaps = _load_known_gaps(gaps_config)
     dataset = build_us_research_dataset(
         raw_dir, release_mapping_path=release_mapping_path, progress=progress
     )
-    return forward_evidence_report(dataset, as_of)
+    return forward_evidence_report(dataset, as_of, known_gaps=known_gaps)
 
 
 def main() -> int:
