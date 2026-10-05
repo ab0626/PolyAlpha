@@ -258,6 +258,11 @@ The first forward-evidence report fires only when **all** of:
    hierarchy.
 3. **Calendar:** ≥ 30 days elapsed since `REAL_DATA_START_US`
    (2026-09-16).
+4. **Observed coverage (added 2026-10-05, before the boundary was crossed):**
+   ≥ 80% of the nominal forward window must have observations — time inside a
+   recorded outage (`config/us_known_gaps.json`) does not count as forward
+   evidence. This closes the gap where the calendar gate could pass despite
+   unobserved intervals.
 
 The evaluation report must record this document's commit hash, the SPLIT_DATE,
 the effective N per family, and the decision for each hypothesis.

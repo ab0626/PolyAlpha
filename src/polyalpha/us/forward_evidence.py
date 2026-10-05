@@ -25,6 +25,10 @@ REAL_DATA_START_US = datetime(2026, 9, 16, 2, 49, 12, tzinfo=UTC)
 MIN_DAYS = 30
 MIN_SETTLED = 200
 MIN_CLUSTERS = 200
+# Minimum fraction of the nominal forward window that must have observations
+# (i.e. not fall inside a known outage) before family evaluation. Added as an
+# evidence-quality gate before the boundary was crossed; see docs/RESEARCH_AGENDA.md.
+MIN_COVERAGE = 0.8
 
 # Known observation gaps in the US retail lineage (e.g. collector outages).
 # Read-only provenance: the report carries them so downstream analysis never
@@ -72,6 +76,37 @@ def _settlement_completeness(dataset: ResearchDataset) -> dict:
     }
 
 
+def _parse_gap_ts(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _observed_coverage(as_of: datetime, known_gaps: list[dict]) -> float:
+    """Fraction of the nominal forward window that actually has observations.
+
+    The nominal window is [REAL_DATA_START_US, as_of]; each known gap's overlap
+    with that window counts as unobserved. 1.0 means no recorded outages.
+    """
+    elapsed = (as_of - REAL_DATA_START_US).total_seconds()
+    if elapsed <= 0:
+        return 1.0
+    gap_seconds = 0.0
+    for gap in known_gaps:
+        start = _parse_gap_ts(gap.get("start"))
+        end = _parse_gap_ts(gap.get("end"))
+        if start is None or end is None:
+            continue
+        lo = max(start, REAL_DATA_START_US)
+        hi = min(end, as_of)
+        if hi > lo:
+            gap_seconds += (hi - lo).total_seconds()
+    return max(0.0, 1.0 - gap_seconds / elapsed)
+
+
 def evaluation_boundary(as_of: datetime | None = None) -> dict:
     now = as_of or datetime.now(UTC)
     days = (now - REAL_DATA_START_US).days
@@ -88,11 +123,13 @@ def forward_evidence_report(
     known_gaps: list[dict] | None = None,
 ) -> dict:
     """Produce the forward-evidence report (or PENDING_EVIDENCE status)."""
-    boundary = evaluation_boundary(as_of)
+    now = as_of or datetime.now(UTC)
+    boundary = evaluation_boundary(now)
     hierarchy = sampling_hierarchy(dataset)
     settled = hierarchy["resolved_markets"]
     clusters = hierarchy["effective_n"]
     completeness = _settlement_completeness(dataset)
+    coverage = _observed_coverage(now, known_gaps or [])
 
     gates = {
         "days": {
@@ -110,11 +147,16 @@ def forward_evidence_report(
             "value": clusters,
             "required": MIN_CLUSTERS,
         },
+        "observed_coverage": {
+            "met": coverage >= MIN_COVERAGE,
+            "value": round(coverage, 4),
+            "required": MIN_COVERAGE,
+        },
     }
     met = all(g["met"] for g in gates.values())
 
     report: dict = {
-        "as_of": (as_of or datetime.now(UTC)).isoformat(),
+        "as_of": now.isoformat(),
         "real_data_start_us": REAL_DATA_START_US.isoformat(),
         "split_date": default_split_date().isoformat(),
         "evaluation_boundary_met": met,
