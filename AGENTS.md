@@ -68,3 +68,7 @@ evaluated: >=30 days since REAL_DATA_START_US (2026-09-16), >=200 settled market
   (2) rawstore `_finalize` left truncated `.gz` on disk-full, which then shadowed the
   intact `.jsonl` and crashed replay. `_day_files`/`replay`/`scan` now tolerate it.
 - System `python` (3.9) has a broken `web3`/`eth_typing` install — always use `.venv`.
+- The host is a laptop (on AC). Sleep/hibernate/lid-close are set to never/do-nothing
+  so idle does not halt collection (the ~35h data gaps were the laptop sleeping after
+  1h idle). Keep it plugged in: DC "never sleep" drains the battery to a hard
+  shutdown. A reboot still needs a login to restart the launchers (no auto-login).
