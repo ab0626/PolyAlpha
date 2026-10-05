@@ -118,7 +118,9 @@ def _collect(paths: tuple[str, ...]) -> list[Path]:
     return files
 
 
-def _git_commit() -> str:
+def _git_commit(commit: str | None = None) -> str:
+    if commit:
+        return commit
     return (
         subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT)
         .decode()
@@ -160,13 +162,13 @@ def _write_config(integrity: dict[str, str]) -> None:
     CONFIG.write_text(new_text, encoding="utf-8")
 
 
-def freeze() -> None:
+def freeze(tag: str = "v0.3.0-research-baseline", commit: str | None = None) -> None:
     # Write all integrity fields with config_sha256 blank first, because the
     # config hash must cover the written values (git_commit etc.), not the
     # stale values already on disk from a previous freeze.
     integrity = {
-        "git_commit": _git_commit(),
-        "git_tag": "v0.3.0-research-baseline",
+        "git_commit": _git_commit(commit),
+        "git_tag": tag,
         "research_logic_sha256": _sha256_of_files(_collect(RESEARCH_PATHS)),
         "collector_sha256": _sha256_of_files(_collect(COLLECTOR_PATHS)),
         "interface_sha256": _sha256_of_files(_collect(INTERFACE_PATHS)),
@@ -242,9 +244,13 @@ def verify() -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Freeze/verify research baseline")
     parser.add_argument("action", choices=["freeze", "verify"])
+    parser.add_argument("--tag", default="v0.3.0-research-baseline",
+                        help="Baseline identity tag to record (freeze only)")
+    parser.add_argument("--commit", default=None,
+                        help="Anchor commit for git_commit (freeze only; default HEAD)")
     args = parser.parse_args()
     if args.action == "freeze":
-        freeze()
+        freeze(tag=args.tag, commit=args.commit)
     else:
         sys.exit(verify())
 
