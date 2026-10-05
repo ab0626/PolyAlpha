@@ -26,7 +26,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,research,stream,postgres]"
+          pip install -e ".[dev,research,stream,postgres,yaml,execution]"
 
       - name: Lint (production code + scripts)
         run: ruff check src scripts
