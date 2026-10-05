@@ -13,6 +13,7 @@ runs nothing (MODEL PERFORMANCE: LOCKED, ALPHA: UNKNOWN).
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -94,8 +95,11 @@ def build_report_from_raw(
     raw_dir: str | Path,
     as_of: datetime | None = None,
     release_mapping_path: str | Path | None = None,
+    progress: Callable[[int, int, int], None] | None = None,
 ) -> dict:
-    dataset = build_us_research_dataset(raw_dir, release_mapping_path=release_mapping_path)
+    dataset = build_us_research_dataset(
+        raw_dir, release_mapping_path=release_mapping_path, progress=progress
+    )
     return forward_evidence_report(dataset, as_of)
 
 

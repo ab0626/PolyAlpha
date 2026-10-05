@@ -30,6 +30,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -165,6 +166,7 @@ def build_us_research_dataset(
     raw_dir: str | Path,
     max_snapshots_per_market: int | None = None,
     release_mapping_path: str | Path | None = None,
+    progress: Callable[[int, int, int], None] | None = None,
 ) -> ResearchDataset:
     """Build the canonical US research dataset from the raw store.
 
@@ -181,7 +183,9 @@ def build_us_research_dataset(
     parent_event_by_slug: dict[str, str] = {}
 
     # Pass 1: metadata, parent-event clustering, and settlement labels.
-    for record in raw.replay():
+    for record in raw.replay(
+        progress=(lambda done, total: progress(0, done, total)) if progress else None
+    ):
         if record.source == SOURCE_MARKETS:
             for market in record.payload.get("markets", []):
                 slug = market.get("slug")
@@ -215,7 +219,9 @@ def build_us_research_dataset(
     # Pass 2: point-in-time snapshots from book records.
     snapshots: list[MarketSnapshot] = []
     counts: dict[str, int] = defaultdict(int)
-    for record in raw.replay():
+    for record in raw.replay(
+        progress=(lambda done, total: progress(1, done, total)) if progress else None
+    ):
         if record.source != SOURCE_BOOK:
             continue
         market_data = record.payload.get("marketData", record.payload) or {}

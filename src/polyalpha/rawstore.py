@@ -50,7 +50,7 @@ import hashlib
 import json
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -372,9 +372,18 @@ class RawStore:
                 result.append(forms["jsonl"])
         return result
 
-    def replay(self, day: date | None = None) -> Iterator[RawRecord]:
+    def replay(
+        self,
+        day: date | None = None,
+        progress: Callable[[int, int], None] | None = None,
+    ) -> Iterator[RawRecord]:
         """Yield every valid raw record, in order. Partial trailing lines are
-        detected and skipped; use `scan()` to enumerate corruption."""
+        detected and skipped; use `scan()` to enumerate corruption.
+
+        ``progress`` (optional) is called before each file as ``(done, total)``
+        so long-running replays can report progress without changing replay
+        semantics.
+        """
         if day is not None:
             files = self._day_files(self.day_dir(day))
         else:
@@ -382,7 +391,10 @@ class RawStore:
             for directory in sorted(p for p in self.root.rglob("*") if p.is_dir()):
                 files.extend(self._day_files(directory))
             files = sorted(set(files))
-        for f in files:
+        total = len(files)
+        for i, f in enumerate(files):
+            if progress is not None:
+                progress(i, total)
             try:
                 if f.suffix == ".gz":
                     handle = gzip.open(f, "rt", encoding="utf-8")

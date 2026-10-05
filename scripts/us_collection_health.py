@@ -26,6 +26,7 @@ Usage:
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from datetime import UTC, datetime
@@ -35,6 +36,47 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "us" / "retail" / "raw"
 SUPERVISOR_LOG = ROOT / "data" / "us" / "supervisor-log.jsonl"
 RESTART_LOG = ROOT / "data" / "us" / "restart-log.jsonl"
+
+# Tracks when the system entered the current unhealthy spell, so the recovery
+# toast can report total downtime. Module-level: this is a single-process
+# watchdog, so it is safe across loop iterations.
+_unhealthy_since: float | None = None
+
+
+def _toast(title: str, message: str, kind: str = "warning") -> None:
+    """Show a Windows desktop toast via a transient NotifyIcon balloon.
+
+    Non-blocking: the PowerShell process is detached and self-terminates after
+    keeping the balloon visible. Fails silently on non-Windows or headless
+    sessions, so the check never breaks because a notification cannot show.
+    """
+    if sys.platform != "win32":
+        return
+    if kind == "info":
+        icon, tip = "Information", "Info"
+    else:
+        icon, tip = "Warning", "Warning"
+    # Balloon tips are single-line: keep the text short and quote-free.
+    safe_title = title.replace("'", "`'")
+    safe_message = message.replace("'", "`'")
+    script = (
+        "Add-Type -AssemblyName System.Windows.Forms; "
+        "Add-Type -AssemblyName System.Drawing; "
+        "$n = New-Object System.Windows.Forms.NotifyIcon; "
+        f"$n.Icon = [System.Drawing.SystemIcons]::{icon}; "
+        "$n.Visible = $true; "
+        f"$n.ShowBalloonTip(10000, '{safe_title}', '{safe_message}', "
+        f"[System.Windows.Forms.ToolTipIcon]::{tip}); "
+        "Start-Sleep -Seconds 12; $n.Dispose()"
+    )
+    try:
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-Command", script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:  # noqa: BLE001 — notification is best-effort
+        pass
 
 
 def _newest_mtime(root: Path) -> float:
@@ -154,6 +196,28 @@ def _run_check(args: argparse.Namespace, was_healthy: bool | None) -> bool:
         with open(alert_path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(alert, sort_keys=True) + "\n")
 
+    # Desktop toast on transitions only (once on DOWN, once on RECOVERED), so a
+    # multi-hour outage is visible at the machine without re-alerting on every
+    # check while it stays down.
+    global _unhealthy_since
+    if args.toast:
+        if not healthy and (was_healthy is None or was_healthy):
+            _unhealthy_since = time.time()
+            _toast(
+                "PolyAlpha collector DOWN",
+                f"US retail collector unhealthy (crash_loop={crash_loop}, "
+                f"stale={stale_seconds}s, book_stale={book_stale_seconds}s)",
+                kind="warning",
+            )
+        elif healthy and was_healthy is False:
+            down_seconds = time.time() - (_unhealthy_since or time.time())
+            _toast(
+                "PolyAlpha collector recovered",
+                f"US retail collector healthy again (down ~{down_seconds / 60.0:.0f} min)",
+                kind="info",
+            )
+            _unhealthy_since = None
+
     print(json.dumps(report, indent=2, sort_keys=True))
     return healthy
 
@@ -169,6 +233,9 @@ def main() -> int:
                              "this many minutes old (default 30)")
     parser.add_argument("--log-file", default=None)
     parser.add_argument("--alert-file", default=None)
+    parser.add_argument("--toast", action="store_true",
+                        help="Show a Windows desktop toast on transition to "
+                             "unhealthy and again on recovery (best-effort)")
     parser.add_argument("--loop-minutes", type=float, default=0.0)
     args = parser.parse_args()
 
