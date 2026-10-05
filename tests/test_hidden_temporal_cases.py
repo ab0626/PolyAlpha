@@ -6,7 +6,7 @@ feature timestamp exactly equal/1us after, resolution before observation,
 out-of-order snapshots, duplicate timestamps.
 """
 
-from datetime import datetime, timedelta, timezone, tzinfo
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest

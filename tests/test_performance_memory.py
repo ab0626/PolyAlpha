@@ -18,14 +18,17 @@ import json
 import random
 import sys
 import time
-from collections import deque
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
 
 try:
-    from polyalpha.correlation import RollingCorrelationTracker, compute_correlation, rolling_correlation
+    from polyalpha.correlation import (
+        RollingCorrelationTracker,
+        compute_correlation,
+        rolling_correlation,
+    )
     from polyalpha.domain import Book, Level
     from polyalpha.execution import FeeSchedule, Order, walk
     from polyalpha.features.orderbook import BookFeatureState, extract_all_features
@@ -445,7 +448,6 @@ def _fact(evt="e1"):
 
 
 from polyalpha.external import ExternalFact
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEDUPLICATION HASH BOUNDED SIZE

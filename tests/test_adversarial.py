@@ -10,12 +10,11 @@ Three test classes:
 3. Research-integrity: verify alpha disappears when signal is destroyed
 """
 
-import math
 import random
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from polyalpha.research_dataset import MarketSnapshot, ResearchDataset, FeatureProvenance
+from polyalpha.research_dataset import MarketSnapshot
 
 D = Decimal
 
@@ -273,8 +272,9 @@ class TestMetamorphicInvariants:
         assert total <= max_notional * 2, "Position should respect risk cap"
 
     def test_vwap_monotonicity_asks(self):
-        from polyalpha.domain import Book, Level
         from datetime import timezone
+
+        from polyalpha.domain import Book, Level
         ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
         book = Book(
             token_id="t1", condition_id="c1",

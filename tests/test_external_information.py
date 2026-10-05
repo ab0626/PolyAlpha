@@ -18,10 +18,10 @@ from decimal import Decimal
 import pytest
 
 try:
-    from polyalpha.external import ExternalFact, FixtureSource
-    from polyalpha.features.external import extract_external_features
     # Trigger the lazy import of polyalpha.domain.utc to check Python version
     from polyalpha.domain import utc
+    from polyalpha.external import ExternalFact, FixtureSource
+    from polyalpha.features.external import extract_external_features
 except (ImportError, TypeError) as e:
     pytest.skip(f"polyalpha requires Python 3.12+: {e}", allow_module_level=True)
 

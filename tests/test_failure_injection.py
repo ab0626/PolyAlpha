@@ -17,14 +17,12 @@ Ten test classes covering:
 10. Partial write → transaction integrity
 """
 
-import json
 import os
 import sqlite3
 import tempfile
 import threading
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 

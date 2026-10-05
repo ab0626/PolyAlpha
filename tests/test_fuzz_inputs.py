@@ -13,18 +13,16 @@ Categories:
 """
 
 import json
-import math
-import random
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 import pytest
 
+from polyalpha.calibration import metrics as calibration_metrics
 from polyalpha.domain import Book, Level, Market
-from polyalpha.execution import FeeSchedule, Order, walk
+from polyalpha.execution import FeeSchedule, Order
 from polyalpha.parsing import parse_book, parse_market
-from polyalpha.calibration import Observation, metrics as calibration_metrics
-from polyalpha.performance import brier_score, performance, drawdown_series
+from polyalpha.performance import brier_score, drawdown_series, performance
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)

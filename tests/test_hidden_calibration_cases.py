@@ -5,7 +5,6 @@ perfect/inverted predictions, boundary probabilities, small/empty sample,
 NaN values, out-of-range probabilities. Verify reject/clip/warn behavior.
 """
 
-import math
 from datetime import datetime, timedelta, timezone
 
 import pytest

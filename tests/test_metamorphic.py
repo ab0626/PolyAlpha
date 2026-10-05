@@ -14,20 +14,17 @@ Metamorphic relations:
 - Label permutation: model Brier → market Brier
 """
 
-import math
 import random
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
-
 from polyalpha.domain import Book, Level
 from polyalpha.execution import FeeSchedule, Order, walk
-from polyalpha.portfolio import Portfolio
-from polyalpha.performance import brier_score
 from polyalpha.forecasting import Forecast, net_edge
+from polyalpha.performance import brier_score
+from polyalpha.portfolio import Portfolio
 from polyalpha.risk import Limits, Risk
-from polyalpha.signals import Signal, SignalEvaluation, evaluate_entry, rank_signals
+from polyalpha.signals import evaluate_entry
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)

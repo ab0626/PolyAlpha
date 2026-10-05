@@ -10,8 +10,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from polyalpha.calibration import InsufficientData, Observation
-from polyalpha.walk_forward import WalkForwardResult, walk_forward_backtest
+from polyalpha.calibration import Observation
+from polyalpha.walk_forward import walk_forward_backtest
 
 TZ = timezone.utc
 TS = datetime(2025, 1, 1, tzinfo=TZ)

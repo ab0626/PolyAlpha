@@ -12,8 +12,8 @@ import pytest
 
 from polyalpha.domain import Book, Level
 from polyalpha.ensemble import EnsembleModel
-from polyalpha.forecasting import Baseline, Forecast, ensemble, net_edge
-from polyalpha.execution import FeeSchedule, Fill, Order
+from polyalpha.execution import FeeSchedule, Fill
+from polyalpha.forecasting import Baseline, Forecast, net_edge
 
 D = Decimal
 TZ = timezone.utc
@@ -217,7 +217,6 @@ class TestEnsembleZeroModels:
 
 class TestEnsembleOneModel:
     def test_ensemble_single_component(self):
-        from polyalpha.forecasting import ProbabilityModel
         class StubModel:
             def predict(self, market_id, book, at):
                 return Forecast(

@@ -9,7 +9,6 @@ when the same seed and configuration are used. This includes:
 - Two runs with same config produce same manifest
 """
 
-import hashlib
 import json
 import random
 import tempfile
@@ -17,15 +16,12 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
-
-from polyalpha.experiments import ExperimentRecord, ExperimentTracker
+from polyalpha.experiments import ExperimentTracker
+from polyalpha.performance import drawdown_series
 from polyalpha.research_dataset import (
     MarketSnapshot,
-    ResearchDataset,
     build_dataset_from_snapshots,
 )
-from polyalpha.performance import brier_score, drawdown_series
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)

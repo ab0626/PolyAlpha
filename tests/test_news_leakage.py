@@ -8,8 +8,6 @@ prediction cannot influence it. Hard failure tests.
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
-
 from polyalpha.external import ExternalFact, FixtureSource
 from polyalpha.features.external import extract_external_features
 from polyalpha.pipeline import (

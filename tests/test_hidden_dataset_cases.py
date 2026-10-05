@@ -11,11 +11,9 @@ from decimal import Decimal
 
 import pytest
 
-from polyalpha.dataset_audit import DatasetAuditReport, DatasetAuditor
+from polyalpha.dataset_audit import DatasetAuditor
 from polyalpha.research_dataset import (
-    FeatureProvenance,
     MarketSnapshot,
-    ResearchDataset,
     build_dataset_from_snapshots,
 )
 

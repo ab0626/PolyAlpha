@@ -158,7 +158,7 @@ class TestResearchDataset:
         assert s.snapshot_id.startswith("m1:")
 
     def test_provenance_invariant_violation(self):
-        from polyalpha.research_dataset import MarketSnapshot, FeatureProvenance
+        from polyalpha.research_dataset import FeatureProvenance, MarketSnapshot
         with pytest.raises(ValueError, match="INVARIANT"):
             MarketSnapshot(
                 observation_timestamp=_ts(2025, 1, 1),
@@ -452,9 +452,10 @@ class TestDisagreementAnalysis:
 
 class TestTimeToResolution:
     def test_has_buckets(self):
-        from polyalpha.time_to_resolution import analyze_time_to_resolution
-        from polyalpha.research_dataset import MarketSnapshot, ResearchDataset
         import random as _rng
+
+        from polyalpha.research_dataset import MarketSnapshot, ResearchDataset
+        from polyalpha.time_to_resolution import analyze_time_to_resolution
         rng = _rng.Random(42)
         snaps = []
         for i in range(20):
@@ -500,7 +501,7 @@ class TestEnsembleConsensus:
 
 class TestEdgeDecomposition:
     def test_track_and_realize(self):
-        from polyalpha.edge_decomposition import track_edge, realize_edge
+        from polyalpha.edge_decomposition import realize_edge, track_edge
         from polyalpha.research_dataset import MarketSnapshot
         snap = MarketSnapshot(
             observation_timestamp=_ts(), market_id="m1", event_id="e1",
@@ -644,21 +645,21 @@ class TestCounterfactual:
 
 class TestHoldout:
     def test_lock_and_check(self, tmp_path):
-        from polyalpha.holdout import lock_holdout, check_holdout_lock
+        from polyalpha.holdout import check_holdout_lock, lock_holdout
         state = lock_holdout(str(tmp_path))
         assert state["locked"] is True
         status = check_holdout_lock(str(tmp_path))
         assert status["locked"] is True
 
     def test_unlock(self, tmp_path):
-        from polyalpha.holdout import lock_holdout, unlock_holdout, check_holdout_lock
+        from polyalpha.holdout import check_holdout_lock, lock_holdout, unlock_holdout
         lock_holdout(str(tmp_path))
         unlock_holdout(str(tmp_path), reason="testing")
         status = check_holdout_lock(str(tmp_path))
         assert status["locked"] is False
 
     def test_record_evaluation(self, tmp_path):
-        from polyalpha.holdout import lock_holdout, unlock_holdout, record_holdout_evaluation
+        from polyalpha.holdout import lock_holdout, record_holdout_evaluation, unlock_holdout
         lock_holdout(str(tmp_path))
         with pytest.raises(RuntimeError, match="HOLDOUT LOCKED"):
             record_holdout_evaluation(str(tmp_path))
@@ -667,7 +668,7 @@ class TestHoldout:
         assert state["evaluation_count"] == 1
 
     def test_multiple_evaluations_warn(self, tmp_path):
-        from polyalpha.holdout import lock_holdout, unlock_holdout, record_holdout_evaluation
+        from polyalpha.holdout import lock_holdout, record_holdout_evaluation, unlock_holdout
         lock_holdout(str(tmp_path))
         unlock_holdout(str(tmp_path), reason="testing")
         for _ in range(4):

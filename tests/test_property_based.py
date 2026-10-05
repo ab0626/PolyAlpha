@@ -17,20 +17,17 @@ Invariant categories:
 - Cost ordering: higher costs must not yield better deterministic PnL
 """
 
-import math
 import random
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
-
+from polyalpha.calibration import Isotonic, Observation
 from polyalpha.domain import Book, Level
-from polyalpha.execution import FeeSchedule, Fill, Order, walk
-from polyalpha.portfolio import Portfolio
-from polyalpha.performance import brier_score, drawdown_series
-from polyalpha.calibration import Observation, Isotonic, metrics as calibration_metrics
-from polyalpha.risk import Limits, Risk
+from polyalpha.execution import FeeSchedule, Order, walk
 from polyalpha.forecasting import Forecast, net_edge
+from polyalpha.performance import brier_score, drawdown_series
+from polyalpha.portfolio import Portfolio
+from polyalpha.risk import Limits, Risk
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)

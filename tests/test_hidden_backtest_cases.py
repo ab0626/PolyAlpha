@@ -8,13 +8,12 @@ fees/slippage consume entire edge, partial fill, stale signal/book.
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import MagicMock
 
 import pytest
 
 from polyalpha.execution import FeeSchedule, Fill, Order, Simulator, walk
 from polyalpha.portfolio import Portfolio, Position
-from polyalpha.risk import Limits, Risk
+from polyalpha.risk import Risk
 
 D = Decimal
 TZ = timezone.utc

@@ -20,8 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from polyalpha.rawstore import RawStore  # noqa: E402
 from polyalpha.notify import ThrottledToaster  # noqa: E402
+from polyalpha.rawstore import RawStore  # noqa: E402
 
 SOURCE_BOOK = "polymarket_us_retail_book"
 SOURCE_SETTLEMENT = "polymarket_us_retail_settlement"

@@ -11,7 +11,7 @@ from decimal import Decimal
 
 import pytest
 
-from polyalpha.relative_value import CONSTRAINT_TYPES, Constraint, violations
+from polyalpha.relative_value import Constraint, violations
 
 D = Decimal
 TZ = timezone.utc

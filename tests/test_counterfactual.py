@@ -9,12 +9,10 @@ that the pipeline correctly:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
-import pytest
-
-from polyalpha.counterfactual import CounterfactualResult, analyze_counterfactuals
+from polyalpha.counterfactual import analyze_counterfactuals
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)

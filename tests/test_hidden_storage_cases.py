@@ -5,14 +5,11 @@ questions, very long market question, emoji, non-ASCII event names,
 empty/large batch insert.
 """
 
-import json
-import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pytest
 
-from polyalpha.storage import Record, Store
+from polyalpha.storage import Store
 
 TZ = timezone.utc
 TS = datetime(2025, 6, 1, tzinfo=TZ)

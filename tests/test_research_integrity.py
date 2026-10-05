@@ -16,20 +16,13 @@ Test categories:
 - Execution delay: PnL degrades
 """
 
-import math
 import random
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
-
-from polyalpha.domain import Book, Level
-from polyalpha.execution import FeeSchedule, Order, walk
-from polyalpha.performance import brier_score, performance
-from polyalpha.forecasting import Forecast, net_edge
-from polyalpha.portfolio import Portfolio
-from polyalpha.research_dataset import MarketSnapshot, ResearchDataset, build_dataset_from_snapshots
-from polyalpha.calibration import Observation, Isotonic, metrics as calibration_metrics
+from polyalpha.calibration import Observation
+from polyalpha.performance import brier_score
+from polyalpha.research_dataset import MarketSnapshot, build_dataset_from_snapshots
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)
@@ -424,7 +417,6 @@ class TestCostDoublingReducesPnl:
     def test_doubling_fees_worsens_cost_ladder(self):
         rng = _rng(89)
         from polyalpha.cost_ladder import _simulate_pnl
-        from polyalpha.research_dataset import MarketSnapshot
 
         snaps = _snapshots(50, seed=89)
         lv_base = _simulate_pnl(snaps, "C_fees", fee_rate=0.02, seed=42)

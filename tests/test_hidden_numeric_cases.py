@@ -4,14 +4,13 @@ Decimal precision, float/Decimal mixing, boundary prices, quantities,
 fee rates, NaN/Inf, negative sizes, malformed strings, rounding boundaries.
 """
 
-import math
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal, getcontext
+from datetime import datetime, timezone
+from decimal import Decimal
 
 import pytest
 
-from polyalpha.domain import Book, Level, number, utc
-from polyalpha.execution import FeeSchedule, Fill, Order, walk
+from polyalpha.domain import Book, Level, number
+from polyalpha.execution import FeeSchedule, Order, walk
 
 D = Decimal
 TS = datetime(2025, 6, 1, tzinfo=timezone.utc)

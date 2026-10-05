@@ -1,0 +1,38 @@
+name: CI
+
+# Non-methodological integrity gate: commit -> automatic verification.
+# Deliberately does NOT touch research logic or the frozen baselines; it only
+# proves the tree is green and the freeze lineage is intact.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history + tags so freeze_baseline.py verify can resolve the
+          # frozen commit hashes (shallow clones would fail the git_commit check).
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,research,stream,postgres]"
+
+      - name: Lint (production code + scripts)
+        run: ruff check src scripts
+
+      - name: Freeze baseline verify
+        run: python scripts/freeze_baseline.py verify
+
+      - name: Tests
+        run: pytest -q

@@ -16,8 +16,8 @@ from polyalpha.integration import (
     reaction_id,
     shock_id,
 )
-from polyalpha.rawstore import RawStore
 from polyalpha.propagation import PropagationSample
+from polyalpha.rawstore import RawStore
 
 T = datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
 
