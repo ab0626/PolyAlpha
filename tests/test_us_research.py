@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, "src")
 
 from polyalpha.rawstore import RawStore
+from polyalpha.us.forward_evidence import _observed_coverage
 from polyalpha.us.research import build_us_research_dataset, sampling_hierarchy
 
 
@@ -151,3 +152,23 @@ def test_release_mapping_does_not_override_events_feed(tmp_path):
 
     ds = build_us_research_dataset(tmp_path / "raw", release_mapping_path=mapping)
     assert {s.event_cluster for s in ds.snapshots} == {"e1"}
+
+
+def test_observed_coverage_unions_overlapping_gaps():
+    from datetime import UTC, datetime
+
+    as_of = datetime(2026, 10, 6, tzinfo=UTC)
+    # Two 4-day gaps that overlap by 2 days: union is 6 days, not 8.
+    gaps = [
+        {"start": "2026-09-17T00:00:00+00:00", "end": "2026-09-21T00:00:00+00:00"},
+        {"start": "2026-09-19T00:00:00+00:00", "end": "2026-09-23T00:00:00+00:00"},
+    ]
+    cov = _observed_coverage(as_of, gaps)
+    # Nominal window: 2026-09-16T02:49:12 -> 2026-10-06T00:00 ≈ 20.88 days.
+    # Union gap: 2026-09-17 -> 2026-09-23 = 6 days.
+    expected = 1.0 - (6 * 86400) / ((as_of - datetime(2026, 9, 16, 2, 49, 12, tzinfo=UTC)).total_seconds())
+    assert abs(cov - expected) < 1e-9, (cov, expected)
+    # Sanity: the union must be smaller than the naive double-counted sum.
+    naive = 1.0 - (8 * 86400) / ((as_of - datetime(2026, 9, 16, 2, 49, 12, tzinfo=UTC)).total_seconds())
+    assert cov > naive
+    assert _observed_coverage(as_of, []) == 1.0

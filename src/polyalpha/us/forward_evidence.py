@@ -88,22 +88,36 @@ def _parse_gap_ts(value: object) -> datetime | None:
 def _observed_coverage(as_of: datetime, known_gaps: list[dict]) -> float:
     """Fraction of the nominal forward window that actually has observations.
 
-    The nominal window is [REAL_DATA_START_US, as_of]; each known gap's overlap
-    with that window counts as unobserved. 1.0 means no recorded outages.
+    The nominal window is [REAL_DATA_START_US, as_of]; the UNION of each known
+    gap's overlap with that window counts as unobserved (overlapping gaps are
+    merged, never double-counted). 1.0 means no recorded outages.
     """
     elapsed = (as_of - REAL_DATA_START_US).total_seconds()
     if elapsed <= 0:
         return 1.0
-    gap_seconds = 0.0
+    intervals: list[tuple[float, float]] = []
     for gap in known_gaps:
         start = _parse_gap_ts(gap.get("start"))
         end = _parse_gap_ts(gap.get("end"))
         if start is None or end is None:
             continue
-        lo = max(start, REAL_DATA_START_US)
-        hi = min(end, as_of)
+        lo = max(start, REAL_DATA_START_US).timestamp()
+        hi = min(end, as_of).timestamp()
         if hi > lo:
-            gap_seconds += (hi - lo).total_seconds()
+            intervals.append((lo, hi))
+    if not intervals:
+        return 1.0
+
+    # Merge overlapping intervals so a second record spanning part of a prior
+    # one never double-counts the shared seconds.
+    intervals.sort()
+    merged: list[tuple[float, float]] = []
+    for lo, hi in intervals:
+        if not merged or lo > merged[-1][1]:
+            merged.append((lo, hi))
+        else:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], hi))
+    gap_seconds = sum(hi - lo for lo, hi in merged)
     return max(0.0, 1.0 - gap_seconds / elapsed)
 
 
