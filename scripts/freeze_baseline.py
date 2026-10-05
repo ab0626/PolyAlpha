@@ -103,7 +103,11 @@ def _sha256_of_files(rel_paths: list[Path], exclude: set[str] | None = None) -> 
             # config_sha256 line; otherwise writing the hash changes it.
             h.update(_config_content_without_self_hash())
         else:
-            h.update(p.read_bytes())
+            # Normalize CRLF -> LF so the hash is line-ending agnostic:
+            # core.autocrlf makes the Windows working tree CRLF while CI
+            # (Linux) checks out LF, and a CR/LF difference is not a
+            # meaningful research-logic difference.
+            h.update(p.read_bytes().replace(b"\r\n", b"\n"))
     return h.hexdigest()
 
 

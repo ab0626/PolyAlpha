@@ -14,7 +14,7 @@ new identity.
 ## v0.3.0-r1 — rebaseline (effective 2026-09-23)
 
 - tag: `v0.3.0-r1-research-baseline` → `fe365d9`
-- `research_logic_sha256`: `b48fdf8d4b39ee420d0cb06073161cecf0edeba1e6345ed5d7d75bf6f4bdf1ac`
+- `research_logic_sha256`: `3757e0482c192ad9227764dc10c13c202835125e08a4fb108bd9e3209270af69`
 - reason: commit `3e8c3d4` "fix: fail-closed pre-trade gate, notional sizing
   units, deployment backlog" changed frozen research-logic files after the
   original freeze without re-freezing, so `freeze_baseline.py verify` drifted
@@ -29,13 +29,22 @@ new identity.
     (execution safety).
 - **numerical research behavior: UNCHANGED.** The sizing correction is a
   units/name change with identical numeric output; the rest is execution-safety
-  code. The frozen information-propagation hash is unchanged (`51c370…`).
+  code.
 
-## v0.4 — information propagation (unchanged)
+## Hash-method correction (2026-10-05) — CRLF/LF normalization
+
+The frozen hashes are line-ending-agnostic: `_sha256_of_files` normalizes
+`CRLF -> LF` before hashing, matching the config hashing (which reads via
+universal newlines). Before this fix, `core.autocrlf` made the Windows working
+tree CRLF while CI (Linux) checked out LF, so the same logic hashed differently
+per platform. This is a hashing-method correction only — no research logic
+changed. The v0.3.0-r1 and v0.4 hashes below are the corrected (LF) values.
+
+## v0.4 — information propagation (unchanged logic; hash re-recorded LF)
 
 - tag: `v0.4-info-propagation-baseline` → `1c6ef1d`
-- `info_propagation_sha256`: `51c3701808cae0ead28c80fef08313556fe21db8f9e850fcefe8fe2627ad31f0`
-- status: **unchanged** — still cleanly anchored.
+- `info_propagation_sha256`: `e2a01754ce3b6bbdb85b9ae87609ae4752f93ebbb5729990f47e02626fb80d0c`
+- status: logic **unchanged** — hash re-recorded after the CRLF/LF normalization.
 
 ## Rebaseline procedure
 

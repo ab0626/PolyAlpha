@@ -85,8 +85,8 @@ collection:
 integrity:
   git_commit: "fe365d9d90bbc51a6533b4393f78626b0a0950b1"
   git_tag: "v0.3.0-r1-research-baseline"
-  research_logic_sha256: "b48fdf8d4b39ee420d0cb06073161cecf0edeba1e6345ed5d7d75bf6f4bdf1ac"
+  research_logic_sha256: "3757e0482c192ad9227764dc10c13c202835125e08a4fb108bd9e3209270af69"
   collector_sha256: "e0d7c569f35bfc441924b11b88499b057073c099dd6ef21c44b35f118b6f2d56"
   interface_sha256: "fd8404df15d4680710716f52f32ef415c2215e79fd7f22a8b0a2723bbbfc26b4"
-  info_propagation_sha256: "51c3701808cae0ead28c80fef08313556fe21db8f9e850fcefe8fe2627ad31f0"
-  config_sha256: "cf1bb4347a2e9dd6986c718cdcbd46a08c3e32ce96f201a18aea473c13639686"
+  info_propagation_sha256: "e2a01754ce3b6bbdb85b9ae87609ae4752f93ebbb5729990f47e02626fb80d0c"
+  config_sha256: "aafbce60c23c47c8650ebc7f58306b5830a28aed139dbef56de39eafa1e9a610"
