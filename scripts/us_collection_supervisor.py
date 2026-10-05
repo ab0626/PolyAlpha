@@ -194,6 +194,15 @@ def main() -> int:
     print("SUPERVISOR LAUNCH:", json.dumps(launch, indent=2))
     if not launch["collector_matches_impl"]:
         print("ERROR: on-disk collector differs from frozen implementation; aborting.")
+        _append_jsonl(DEFAULT_STATE_DIR / "alerts.jsonl", {
+            "event": "supervisor_fail_closed",
+            "at": _now(),
+            "reason": "collector_matches_impl",
+            "message": (
+                "run_us_collection.py differs from COLLECTION_IMPL_COMMIT; "
+                "collection halted until it is committed and the impl commit updated"
+            ),
+        })
         return 1
 
     # Integrity baseline: finalize + verify the previous completed day's
@@ -221,7 +230,18 @@ def main() -> int:
             err_log, "a", encoding="utf-8"
         ) as fe:
             proc = subprocess.Popen(cmd, cwd=ROOT, stdout=fo, stderr=fe)
-            code = proc.wait()
+            # A hung chunk (e.g. a network call with no timeout) used to block
+            # proc.wait() indefinitely, stalling the whole supervisor. Bound
+            # every chunk so collection resumes even if a run wedges.
+            timeout_seconds = args.chunk_duration * 3 + 60.0
+            hung = False
+            try:
+                code = proc.wait(timeout=timeout_seconds)
+            except subprocess.TimeoutExpired:
+                hung = True
+                proc.kill()
+                proc.wait()
+                code = -99  # sentinel: chunk exceeded 3x duration + 60s
         ended = _now()
         _append_jsonl(DEFAULT_STATE_DIR / "restart-log.jsonl", {
             "event": "run_end",
@@ -230,7 +250,13 @@ def main() -> int:
             "ended_at": ended,
             "exit_code": code,
         })
-        if code != 0:
+        if hung:
+            alert = {"event": "collector_hang", "at": _now(), "run": runs,
+                     "exit_code": code, "started_at": started, "ended_at": ended,
+                     "timeout_seconds": timeout_seconds}
+            _append_jsonl(DEFAULT_STATE_DIR / "alerts.jsonl", alert)
+            print(f"[{ended}] run #{runs} HUNG (>{timeout_seconds:.0f}s), killed")
+        elif code != 0:
             alert = {"event": "collector_death", "at": _now(), "run": runs,
                      "exit_code": code, "started_at": started, "ended_at": ended}
             _append_jsonl(DEFAULT_STATE_DIR / "alerts.jsonl", alert)
