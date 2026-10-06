@@ -9,15 +9,50 @@ separately with API keys in the execution boundary.
 
 from __future__ import annotations
 
+import socket
+import ssl
 import time
 from datetime import UTC, datetime
+from http.client import HTTPSConnection
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 GATEWAY = "https://gateway.polymarket.us"
 REQUESTS_PER_SECOND = 20
+
+# Pinned fallback IPs (Cloudflare anycast) for the gateway host, used only when
+# system DNS resolution fails (flaky campus resolver). SNI and the Host header
+# still use the real hostname, so TLS and CDN routing are unaffected. Normal
+# resolution always wins; this is a last-resort dial path.
+_FALLBACK_IPS = {
+    "gateway.polymarket.us": ["104.18.38.40", "172.64.149.216"],
+}
+
+
+class _IPHTTPSConnection(HTTPSConnection):
+    """HTTPSConnection that dials a pre-resolved IP while keeping the hostname
+    for SNI and the Host header (required for cert validation + routing)."""
+
+    def __init__(
+        self,
+        host: str,
+        ip: str,
+        port: int = 443,
+        timeout: float | None = None,
+        context: ssl.SSLContext | None = None,
+    ):
+        self._ip = ip
+        super().__init__(host, port=port, timeout=timeout, context=context)
+
+    def connect(self) -> None:
+        self.sock = socket.create_connection((self._ip, self.port), self.timeout)
+        if self._tunnel_host:
+            server_hostname = self._tunnel_host
+        else:
+            server_hostname = self.host
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=server_hostname)
 
 
 class UsRateLimited(RuntimeError):
@@ -72,11 +107,53 @@ class PublicUsClient:
                     time.sleep(2**attempt)
                 else:
                     raise
-            except (URLError, TimeoutError):
+            except (URLError, TimeoutError) as error:
+                # DNS resolution failure (flaky resolver): dial a pinned IP
+                # directly so the request still goes out. SNI/Host stay on the
+                # real hostname, so this is transparent to the server.
+                if isinstance(getattr(error, "reason", None), socket.gaierror):
+                    fallback = self._get_via_fallback_ip(path + query)
+                    if fallback is not None:
+                        return fallback
                 if attempt == self.attempts - 1:
                     raise
                 time.sleep(2**attempt)
         raise RuntimeError("unreachable")
+
+    def _get_via_fallback_ip(self, path_and_query: str) -> tuple[Any, datetime] | None:
+        """GET the path over a pinned IP, using the real hostname for SNI/Host.
+
+        Returns ``(body, received)`` on a 2xx, raises ``HTTPError`` on 4xx/5xx,
+        and returns ``None`` if every pinned IP fails to connect. Only used when
+        system DNS resolution has already failed.
+        """
+        host = urlparse(self.base_url).hostname or ""
+        url = self.base_url + path_and_query
+        for ip in _FALLBACK_IPS.get(host, []):
+            try:
+                conn = _IPHTTPSConnection(
+                    host, ip, timeout=self.timeout, context=ssl.create_default_context()
+                )
+                conn.request(
+                    "GET",
+                    path_and_query,
+                    headers={"User-Agent": "polyalpha-research/0.3"},
+                )
+                response = conn.getresponse()
+                body = response.read()
+                status = response.status
+                headers = dict(response.getheaders())
+                conn.close()
+                if status >= 400:
+                    raise HTTPError(url, status, response.reason, headers, None)
+                import json
+
+                return json.loads(body), datetime.now(UTC)
+            except HTTPError:
+                raise
+            except OSError:
+                continue
+        return None
 
     # ── Typed helpers ─────────────────────────────────────────────────────
 
