@@ -24,6 +24,7 @@ import base64
 import json
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
@@ -77,20 +78,24 @@ class ErcotClient:
             raise ValueError("ERCOT credentials missing: " + ", ".join(missing))
 
     def _fetch_token(self) -> tuple[str, float]:
-        body = urllib.parse.urlencode({
+        params = urllib.parse.urlencode({
             "username": self.username,
             "password": self.password,
             "grant_type": "password",
             "scope": SCOPE,
             "client_id": CLIENT_ID,
             "response_type": "id_token",
-        }).encode("utf-8")
+        })
         req = urllib.request.Request(
-            TOKEN_URL, data=body,
+            TOKEN_URL + "?" + params, data=b"",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"ERCOT token HTTP {exc.code}: {body[:300]}") from exc
         token = data.get("id_token")
         if not token:
             raise RuntimeError(f"ERCOT token request failed: {data}")
