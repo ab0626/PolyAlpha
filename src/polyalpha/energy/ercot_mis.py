@@ -83,6 +83,14 @@ def _dec(value: str) -> Decimal | None:
         return None
 
 
+def _norm_day(oper_day: str) -> str:
+    """Normalize ``MM/DD/YYYY`` to ``YYYY-MM-DD``."""
+    if "/" in oper_day:
+        m, d, y = oper_day.split("/")
+        return f"{y}-{int(m):02d}-{int(d):02d}"
+    return oper_day
+
+
 def parse_actual_load(blob: bytes) -> list[tuple[str, str, Decimal]]:
     """Return (oper_day, hour_ending, total_mw) rows from the actual-load CSV."""
     rows = _csv_from_zip(blob)
@@ -128,5 +136,48 @@ def historical_daily_peaks(report_type_id: int, limit: int | None = None) -> dic
         except Exception:  # noqa: BLE001 - best-effort backfill
             continue
         for day, peak in daily_peak(rows).items():
+            day = _norm_day(day)
             peaks[day] = max(peaks.get(day, Decimal("-Infinity")), peak)
     return peaks
+
+
+def parse_forecast(blob: bytes) -> dict[str, Decimal]:
+    """Return {delivery_day: peak_system_total} from a 7-day load-forecast CSV."""
+    rows = _csv_from_zip(blob)
+    if not rows:
+        return {}
+    header = [h.strip() for h in rows[0]]
+    di = header.index("DeliveryDate")
+    si = header.index("SystemTotal")
+    by_day: dict[str, Decimal] = {}
+    for r in rows[1:]:
+        if len(r) <= max(di, si):
+            continue
+        v = _dec(r[si])
+        if v is None:
+            continue
+        day = _norm_day(r[di])
+        by_day[day] = max(by_day.get(day, Decimal("-Infinity")), v)
+    return by_day
+
+
+def forecast_peaks(report_type_id: int, limit: int | None = None) -> dict[tuple[str, str], Decimal]:
+    """Return {(publish_day, delivery_day): peak_system_total}.
+
+    ``publish_day`` is the forecast-vintage date (YYYY-MM-DD); the latest forecast
+    on a given publish day wins for a given delivery day.
+    """
+    docs = [d for d in list_documents(report_type_id) if d.friendly_name.lower().endswith("csv")]
+    docs.sort(key=lambda d: d.publish_date, reverse=True)
+    if limit:
+        docs = docs[:limit]
+    out: dict[tuple[str, str], Decimal] = {}
+    for d in docs:
+        try:
+            peaks = parse_forecast(download_document(d.doc_id))
+        except Exception:  # noqa: BLE001
+            continue
+        pub_day = d.publish_date[:10]
+        for day, peak in peaks.items():
+            out[(pub_day, day)] = peak  # later publish wins within a day
+    return out

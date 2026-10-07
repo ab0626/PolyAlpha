@@ -9,7 +9,8 @@ climatology is the natural upgrade once multiple years are backfilled.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from collections import defaultdict
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 D = Decimal
@@ -64,3 +65,67 @@ class ClimatologyPeakModel:
             return None
         idx = min(int(q * len(sample)), len(sample) - 1)
         return sample[idx]
+
+
+class ForecastErrorModel:
+    """Official-forecast peak + lead-matched additive error (ENERGY_E3_BASELINE_V0).
+
+    Residuals ``ε = M_d - M̂_d`` are grouped by forecast lead (days). p_YES is the
+    empirical survival of ε with a rank correction ``r/(N+1)`` so a modest sample
+    never yields literal 0/1.
+    """
+
+    def __init__(self, actual_peaks: dict[str, Decimal],
+                 forecast_peaks: dict[tuple[str, str], Decimal],
+                 max_lead: int = 6, min_residuals: int = 5):
+        self.forecast_peaks = forecast_peaks          # {(publish_day, delivery_day): peak}
+        self.max_lead = max_lead
+        self.min_residuals = min_residuals
+        self.residuals: dict[int, list[Decimal]] = defaultdict(list)
+        self._build_residuals(actual_peaks)
+
+    def _build_residuals(self, actual_peaks: dict[str, Decimal]) -> None:
+        for day, actual in actual_peaks.items():
+            try:
+                dd = date.fromisoformat(day)
+            except ValueError:
+                continue
+            for lead in range(self.max_lead + 1):
+                pub_day = (dd - timedelta(days=lead)).isoformat()
+                fpeak = self.forecast_peaks.get((pub_day, day))
+                if fpeak is not None:
+                    self.residuals[lead].append(actual - fpeak)
+
+    def _current_forecast(self, target_day: str, as_of: datetime) -> tuple[Decimal, int] | None:
+        """Latest forecast (<= as_of) covering target_day, and its lead in days."""
+        try:
+            target = date.fromisoformat(target_day)
+        except ValueError:
+            return None
+        best: tuple[date, Decimal] | None = None
+        for (pub_day, day), peak in self.forecast_peaks.items():
+            if day != target_day:
+                continue
+            try:
+                pub = date.fromisoformat(pub_day)
+            except ValueError:
+                continue
+            if pub <= as_of.date() and (best is None or pub > best[0]):
+                best = (pub, peak)
+        if best is None:
+            return None
+        lead = (target - best[0]).days
+        return best[1], min(max(lead, 0), self.max_lead)
+
+    def p_peak_gt(self, target_day: str, as_of: datetime, strike: Decimal) -> Decimal | None:
+        fc = self._current_forecast(target_day, as_of)
+        if fc is None:
+            return None
+        mhat, lead = fc
+        eps = self.residuals.get(lead, [])
+        if len(eps) < self.min_residuals:
+            return None
+        threshold = strike - mhat
+        r = sum(1 for e in eps if e <= threshold)
+        n = len(eps)
+        return D(1) - D(r) / D(n + 1)
