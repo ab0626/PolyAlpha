@@ -50,6 +50,7 @@ class EnergyUnderlying:
     region: str | None = None
     resolution_source: str | None = None
     resolution_definition_hash: str | None = None
+    operating_day: str | None = None        # physical operating day (local ISO date)
     observation_window_start: datetime | None = None
     observation_window_end: datetime | None = None
     market_timezone: str | None = None

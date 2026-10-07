@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from . import taxonomy
 from .schemas import EnergyMarketLink, EnergyUnderlying
@@ -26,6 +27,18 @@ BASE = "https://external-api.kalshi.com/trade-api/v2"
 _UA = {"User-Agent": "polyalpha-energy/0.1", "Accept": "application/json"}
 
 D = Decimal
+ERCOT_TZ = ZoneInfo("America/Chicago")
+
+
+def ercot_operating_day(close_time_iso: str) -> str:
+    """Operating day (local ISO date) implied by a Kalshi ERCOT peak close time.
+
+    These markets close at a fixed 04:55 UTC, which is late evening of the
+    operating day in America/Chicago; the ERCOT actual-load report for that day
+    publishes the following morning (~05:50 CT). Timezone-aware, DST-safe.
+    """
+    dt = datetime.fromisoformat(close_time_iso.replace("Z", "+00:00"))
+    return dt.astimezone(ERCOT_TZ).date().isoformat()
 
 
 def _dec(value: Any) -> Decimal | None:
@@ -213,13 +226,13 @@ def build_ladder(series_ticker: str, markets: list[dict]) -> EnergyLadder:
     """
     leaf, kind = ENERGY_SERIES.get(series_ticker, (taxonomy.ENERGY_RELEASES, "unknown"))
     rungs: list[LadderRung] = []
-    occurrence = None
+    op_day = None
     for m in markets:
         threshold, direction = parse_threshold(m)
         if threshold is None:
             continue
-        if occurrence is None:
-            occurrence = m.get("occurrence_datetime")
+        if op_day is None and m.get("close_time"):
+            op_day = ercot_operating_day(m["close_time"])
         rungs.append(LadderRung(
             threshold=threshold,
             direction=direction or "greater",
@@ -233,11 +246,12 @@ def build_ladder(series_ticker: str, markets: list[dict]) -> EnergyLadder:
         ))
     rungs.sort(key=lambda r: r.threshold)
     underlying = EnergyUnderlying(
-        underlying_id=underlying_id_for(kind, occurrence),
+        underlying_id=underlying_id_for(kind, op_day),
         taxonomy_leaf=leaf,
         kind=kind,
         region=_region_from_leaf(leaf),
         resolution_source=(markets[0].get("rules_secondary") if markets else None),
+        operating_day=op_day,
         observation_window_start=_parse_iso(markets[0].get("open_time")) if markets else None,
         observation_window_end=_parse_iso(markets[0].get("close_time")) if markets else None,
         market_timezone="America/Chicago" if "ERCOT" in leaf else None,

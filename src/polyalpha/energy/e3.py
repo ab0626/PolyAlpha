@@ -26,8 +26,8 @@ COST = D("0.02")
 
 
 class PhysicalPeakModel(Protocol):
-    def p_peak_gt(self, as_of: datetime, strike: Decimal) -> Decimal | None:
-        """P(daily peak load > strike) using only information available at as_of."""
+    def p_peak_gt(self, target_day: str, as_of: datetime, strike: Decimal) -> Decimal | None:
+        """P(daily peak load > strike) for ``target_day`` using info available at ``as_of``."""
         ...
 
 
@@ -51,11 +51,12 @@ def build_opportunities(
     cost: Decimal = COST,
 ) -> list[OpportunityRow]:
     """One ledger row per strike, with both-direction executable edges."""
+    target_day = ladder.underlying.operating_day or ""
     rows: list[OpportunityRow] = []
     for r in ladder.rungs:
         if r.yes_bid is None or r.yes_ask is None:
             continue
-        p_model = model.p_peak_gt(as_of, r.threshold)
+        p_model = model.p_peak_gt(target_day, as_of, r.threshold)
         if p_model is None:
             continue
         e_yes = edge_yes(p_model, r.yes_ask, cost)
