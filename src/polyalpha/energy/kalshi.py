@@ -46,6 +46,8 @@ class LadderRung:
     yes_ask: Decimal | None
     yes_bid_size: Decimal | None
     yes_ask_size: Decimal | None
+    no_bid: Decimal | None
+    no_ask: Decimal | None
     ticker: str
 
     @property
@@ -225,6 +227,8 @@ def build_ladder(series_ticker: str, markets: list[dict]) -> EnergyLadder:
             yes_ask=_dec(m.get("yes_ask_dollars")),
             yes_bid_size=_dec(m.get("yes_bid_size_fp")),
             yes_ask_size=_dec(m.get("yes_ask_size_fp")),
+            no_bid=_dec(m.get("no_bid_dollars")),
+            no_ask=_dec(m.get("no_ask_dollars")),
             ticker=m.get("ticker") or "",
         ))
     rungs.sort(key=lambda r: r.threshold)
