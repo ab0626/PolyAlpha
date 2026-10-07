@@ -86,6 +86,7 @@ class ForecastErrorModel:
 
     def _build_residuals(self, actual_peaks: dict[str, Decimal]) -> None:
         for day, actual in actual_peaks.items():
+            day = _norm_day(day)
             try:
                 dd = date.fromisoformat(day)
             except ValueError:
