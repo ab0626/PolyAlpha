@@ -46,6 +46,10 @@ folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`), which invok
 - `PolyAlphaEnergyForecast.vbs`  -> `polyalpha_energy_forecast.bat` (crash-loop)
 - `PolyAlphaEnergyForecastHealth.vbs` -> `polyalpha_energy_forecast_health.bat`
 
+The E3 evaluator is NOT a service: it is a deterministic batch job scheduled via
+Windows Task Scheduler (`PolyAlphaEnergyE3`, daily 01:30 local/Central Time,
+DST-safe) -> `polyalpha_energy_e3.bat` -> `scripts/energy_e3_runner.py`.
+
 The crash-loop `.bat` files use `:loop ... timeout /t 5 ... goto loop`, which is why
 killing a collector PID makes it respawn ~5s later. To stop one permanently, kill the
 `cmd.exe` running its `.bat` (or disable the `.vbs` Startup item). Inside the Codex
@@ -80,7 +84,7 @@ evaluated: >=30 days since REAL_DATA_START_US (2026-09-16), >=200 settled market
 - Restart the US collector: `.venv/Scripts/python.exe scripts/us_collection_supervisor.py`
 - Raw-store replay diagnostic: `.venv/Scripts/python.exe scripts/replay_diagnostic.py [--max-seconds N]`
 - E3 readiness: `.venv/Scripts/python.exe scripts/energy_e3_readiness.py`
-- E3 shadow runner (run daily after ~06:00 UTC): `.venv/Scripts/python.exe scripts/energy_e3_runner.py`
+- E3 shadow runner (scheduled daily 01:30 CT): `.venv/Scripts/python.exe scripts/energy_e3_runner.py`
 
 ## Gotchas
 
