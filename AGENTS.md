@@ -17,6 +17,11 @@
   (`energy_capture_supervisor.py` -> `energy_capture.py`). Isolated from the frozen
   `data/us/...` lineage. `data/energy/kalshi/status.json` is the freshness heartbeat;
   `restart-log.jsonl` / `supervisor-log.jsonl` / `alerts.jsonl` are the lifecycle logs.
+- `data/energy/ercot/` — append-only ERCOT 7-day-load forecast vintages
+  (`energy_forecast_supervisor.py` -> `energy_forecast_collector.py`). Full hourly
+  intraday path, keyed by `publish_timestamp` (never collapses revisions):
+  `forecast_vintages.jsonl` (normalized rows), `receipts.jsonl` (raw-report
+  provenance), `status.json` (freshness heartbeat). Isolated from `data/us/...`.
 
 ## Collector launcher architecture (not in the repo, on the machine)
 
@@ -33,6 +38,8 @@ folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`), which invok
 - `PolyAlphaPreNfpWatchdog.vbs`  -> `polyalpha_pre_nfp_watchdog.bat`
 - `PolyAlphaEnergyCapture.vbs`   -> `polyalpha_energy_capture.bat` (crash-loop)
 - `PolyAlphaEnergyHealth.vbs`    -> `polyalpha_energy_health.bat`
+- `PolyAlphaEnergyForecast.vbs`  -> `polyalpha_energy_forecast.bat` (crash-loop)
+- `PolyAlphaEnergyForecastHealth.vbs` -> `polyalpha_energy_forecast_health.bat`
 
 The crash-loop `.bat` files use `:loop ... timeout /t 5 ... goto loop`, which is why
 killing a collector PID makes it respawn ~5s later. To stop one permanently, kill the

@@ -161,6 +161,31 @@ def parse_forecast(blob: bytes) -> dict[str, Decimal]:
     return by_day
 
 
+def parse_forecast_rows(blob: bytes) -> list[tuple[str, str, Decimal]]:
+    """Return (delivery_day, hour_ending, system_total_mw) rows from the forecast CSV.
+
+    Unlike :func:`parse_forecast` (which collapses to the daily peak), this
+    preserves every hourly interval so intraday forecast revisions are never
+    lost. Used by the forecast-vintage collector.
+    """
+    rows = _csv_from_zip(blob)
+    if not rows:
+        return []
+    header = [h.strip() for h in rows[0]]
+    di = header.index("DeliveryDate")
+    hi = header.index("HourEnding")
+    si = header.index("SystemTotal")
+    out: list[tuple[str, str, Decimal]] = []
+    for r in rows[1:]:
+        if len(r) <= max(di, hi, si):
+            continue
+        v = _dec(r[si])
+        if v is None:
+            continue
+        out.append((_norm_day(r[di]), r[hi].strip(), v))
+    return out
+
+
 def forecast_peaks(report_type_id: int, limit: int | None = None) -> dict[tuple[str, str], Decimal]:
     """Return {(publish_day, delivery_day): peak_system_total}.
 
