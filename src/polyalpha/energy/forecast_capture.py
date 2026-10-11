@@ -1,14 +1,16 @@
-"""Point-in-time ERCOT forecast-vintage capture (append-only, full intraday path).
+"""Point-in-time ERCOT capture (append-only, full hourly path): forecast + actual.
 
-Persists EVERY forecast vintage we actually observe — the full hourly intraday
-path — never only the daily winner. E3-v0 today consumes a single
-``(publish_day, delivery_day)`` value, but the raw evidence keeps the whole path
-so future alpha (e.g. the forecast-revision delta
+Persists EVERY forecast vintage and every actual-load observation we actually
+observe — the full hourly intraday path — never only the daily winner. E3-v0
+today consumes a single ``(publish_day, delivery_day)`` value, but the raw
+evidence keeps the whole path so future alpha (e.g. the forecast-revision delta
 ``Mhat_new - Mhat_old``) can be tested without replaying ERCOT.
 
 Storage (all append-only; nothing is overwritten):
     data/energy/ercot/forecast_vintages.jsonl   one normalized row per (doc, day, hour)
-    data/energy/ercot/receipts.jsonl            one raw-report receipt per downloaded doc
+    data/energy/ercot/receipts.jsonl            one raw-report receipt per forecast doc
+    data/energy/ercot/actuals.jsonl             one normalized row per (doc, day, hour)
+    data/energy/ercot/actual_receipts.jsonl     one raw-report receipt per actual doc
     data/energy/ercot/status.json               atomic freshness heartbeat
 
 ``publish_timestamp`` is the real observation identity (never ``publish_day``
@@ -24,10 +26,27 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from .ercot_mis import SEVEN_DAY_LOAD_FORECAST_BY_FORECAST_ZONE, parse_forecast_rows
+from .ercot_mis import (
+    ACTUAL_SYSTEM_LOAD_BY_FORECAST_ZONE,
+    SEVEN_DAY_LOAD_FORECAST_BY_FORECAST_ZONE,
+    parse_actual_load,
+    parse_forecast_rows,
+)
 
 SOURCE_PRODUCT = "NP3-560-CD"
 FORECAST_REPORT_TYPE_ID = SEVEN_DAY_LOAD_FORECAST_BY_FORECAST_ZONE
+
+ACTUAL_SOURCE_PRODUCT = "NP6-346-CD"
+ACTUAL_REPORT_TYPE_ID = ACTUAL_SYSTEM_LOAD_BY_FORECAST_ZONE
+
+
+def _norm_day(s: str) -> str:
+    """Normalize ``MM/DD/YYYY`` (ERCOT CSV) to ``YYYY-MM-DD``."""
+    s = s.strip()
+    if "/" in s:
+        m, d, y = s.split("/")
+        return f"{y}-{int(m):02d}-{int(d):02d}"
+    return s
 
 
 def vintage_dir(root: str | Path = "data/energy/ercot") -> Path:
@@ -40,6 +59,14 @@ def vintages_path(root: str | Path = "data/energy/ercot") -> Path:
 
 def receipts_path(root: str | Path = "data/energy/ercot") -> Path:
     return vintage_dir(root) / "receipts.jsonl"
+
+
+def actuals_path(root: str | Path = "data/energy/ercot") -> Path:
+    return vintage_dir(root) / "actuals.jsonl"
+
+
+def actual_receipts_path(root: str | Path = "data/energy/ercot") -> Path:
+    return vintage_dir(root) / "actual_receipts.jsonl"
 
 
 def status_path(root: str | Path = "data/energy/ercot") -> Path:
@@ -124,6 +151,48 @@ def build_doc_records(
             "collector_version": collector_version,
         })
     return receipt, vintage_rows
+
+
+def build_actual_records(
+    doc,
+    blob: bytes,
+    received_at: datetime,
+    collector_version: str,
+) -> tuple[dict, list[dict]]:
+    """Return ``(receipt, actual_rows)`` for one downloaded actual-load document.
+
+    ``doc`` is a ``MisDocument``; the actual rows are the normalized hourly
+    ``(operating_day, hour_ending, TOTAL)`` observations derived from it.
+    """
+    rows = parse_actual_load(blob)
+    raw_hash = sha256_bytes(blob)
+    receipt = {
+        "source_product": ACTUAL_SOURCE_PRODUCT,
+        "report_type_id": str(ACTUAL_REPORT_TYPE_ID),
+        "doc_id": str(doc.doc_id),
+        "publish_timestamp": doc.publish_date,
+        "received_at": received_at.isoformat(),
+        "friendly_name": doc.friendly_name,
+        "constructed_name": doc.constructed_name,
+        "raw_source_hash": raw_hash,
+        "n_rows": len(rows),
+        "collector_version": collector_version,
+    }
+    actual_rows: list[dict] = []
+    for oper_day, hour_ending, total_mw in rows:
+        actual_rows.append({
+            "source_product": ACTUAL_SOURCE_PRODUCT,
+            "report_type_id": str(ACTUAL_REPORT_TYPE_ID),
+            "doc_id": str(doc.doc_id),
+            "publish_timestamp": doc.publish_date,
+            "received_at": received_at.isoformat(),
+            "operating_day": _norm_day(oper_day),
+            "hour_ending": hour_ending.strip(),
+            "total_mw": str(total_mw),
+            "raw_source_hash": raw_hash,
+            "collector_version": collector_version,
+        })
+    return receipt, actual_rows
 
 
 def write_status(path: str | Path, status: dict) -> None:
