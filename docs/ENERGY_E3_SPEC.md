@@ -67,6 +67,32 @@ Both reported with day-clustered confidence intervals (block bootstrap, seed 42)
 `X_t` = information actually available at `t`. Revised ERCOT actuals are never
 used to compute `p_physical` at an earlier `t`.
 
+## Observation rule (frozen — v2, appended 2026-10-11)
+
+Appended before any prospective E3 evaluation; does not alter the v1 residual,
+edge, clustering, or metric definitions.
+
+- **Prospective cutover:** `2026-10-11T03:15:00Z`. Only Kalshi snapshots with
+  `captured_at >= cutover` may enter the shadow observation ledger. Historical /
+  backfilled ERCOT forecast vintages and actuals may train the residual
+  distribution, but never enter the ledger as observations.
+- **Sampling (per lead, once):** for each operating day `d`, each strike `K` in
+  the day's ladder, and each lead bucket `h ∈ {0..6}` whose training residual
+  count `N_h(d) >= 5` (using actual days strictly before `d`):
+    - take the latest forecast vintage for `(publish_day = d−h, delivery_day = d)`;
+    - `t*` = the first Kalshi snapshot for `(d, K)` with
+      `captured_at >= max(forecast.received_at, cutover)`;
+    - record exactly one observation at `t*` (deterministic id, idempotent).
+- **Denominator:** every strike at every qualifying `(d, K, h)` is recorded, not
+  only positive-edge ones. `is_candidate` is derived from the frozen edge rule
+  (`edge_yes > 0` or `edge_no > 0`).
+- **Resolution:** when operating day `d` completes, record BOTH the physical
+  outcome (`M_d = max_h ActualSystemLoad_{d,h}` and `physical_outcome_yes`) and the
+  venue settlement (`kalshi_result`, `kalshi_expiration_value`) separately, using
+  the first complete NP6-346 settlement-source publication (never a later
+  corrected revision). Disagreement between physical and venue outcomes is a
+  settlement/integration alarm, never silently collapsed.
+
 ## Prohibited
 
 - Post-hoc horizon/bin/split/cost selection.
@@ -77,3 +103,5 @@ used to compute `p_physical` at an earlier `t`.
 ## Version history
 
 - **v1** — initial freeze (2026-10-07), before any model-vs-market comparison.
+- **v2** — freeze the observation rule + prospective cutover (2026-10-11), before
+  any prospective E3 evaluation.
