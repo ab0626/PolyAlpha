@@ -247,6 +247,16 @@ def build_new_observations(
     forecast_first: dict,
     actuals: dict[str, Decimal],
 ) -> list[dict]:
+    # Lead-0 training residuals use the FIRST same-day vintage (matching the
+    # prospective observation's first-vintage forecast); leads 1..6 keep the
+    # latest vintage for separate readiness/research purposes. Using the tighter
+    # latest-vintage error distribution around the first-vintage forecast would
+    # make E3 look artificially confident.
+    training_peaks = dict(forecast_peaks)
+    for key, f in forecast_first.items():
+        if key[0] == key[1]:
+            training_peaks[key] = f["peak"]
+
     out: list[dict] = []
     today = datetime.now(UTC).date()
     for day, snaps in sorted(kalshi_by_day.items()):
@@ -257,7 +267,7 @@ def build_new_observations(
                 continue
         except ValueError:
             continue
-        residuals = _residuals_for_day(actuals, forecast_peaks, day)
+        residuals = _residuals_for_day(actuals, training_peaks, day)
         eps = residuals.get(0, [])
         if len(eps) < MIN_RESIDUALS:
             continue

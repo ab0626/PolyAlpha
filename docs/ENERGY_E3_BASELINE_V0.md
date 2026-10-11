@@ -42,6 +42,12 @@ Historical evaluation day `d` uses residuals from days **strictly before `d`**
 only (expanding window). Never estimate the residual distribution on the whole
 sample and then score those same days.
 
+**v0.1 correction (pre-first-observation):** the lead-0 residual bucket uses the
+**first same-day** NP3-560 vintage (`first_fc = first vintage published on h for
+delivery h`), so `ε_h = actual_peak_h − first_fc_peak_h`. This matches the
+prospective E3-v3 scoring, which uses the first same-day vintage. Leads 1..6 keep
+the latest vintage (readiness/research only).
+
 ## Finite-sample smoothing (frozen)
 
 The empirical error CDF uses a rank correction so a modest sample never yields
@@ -83,3 +89,7 @@ preregistered E3-v1, not something tuned until the market looks mispriced.
 ## Version history
 
 - **v0** — initial freeze (2026-10-07), before any model-vs-market scoring.
+- **v0.1** — pre-first-observation correction (2026-10-11): lead-0 residual
+  training uses the first same-day NP3-560 vintage to match prospective scoring
+  (previously trained on the latest same-day vintage, which over-confidences the
+  error distribution around the first-vintage forecast).
