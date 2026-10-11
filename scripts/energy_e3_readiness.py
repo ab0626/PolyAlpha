@@ -71,10 +71,17 @@ def _dec(value: object) -> Decimal | None:
 
 
 def _load_actuals() -> dict[str, Decimal]:
-    """{operating_day: daily_peak_total} from the append-only actuals store."""
-    by_day: dict[str, Decimal] = {}
+    """{operating_day: daily_peak} from the FIRST COMPLETE NP6-346 publication.
+
+    Mirrors the runner's settlement-vintage rule: per operating day, select the
+    earliest complete (24 hourly rows) document and take its peak. Later
+    corrections never silently replace the settlement-source value.
+    """
     if not ACTUALS.exists():
-        return by_day
+        return {}
+    docs: dict[tuple[str, str], dict] = defaultdict(
+        lambda: {"publish": "", "hours": set(), "totals": []}
+    )
     with ACTUALS.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -85,12 +92,32 @@ def _load_actuals() -> dict[str, Decimal]:
             except json.JSONDecodeError:
                 continue
             day = r.get("operating_day")
+            doc = r.get("doc_id")
             v = _dec(r.get("total_mw"))
-            if day and v is not None:
-                cur = by_day.get(str(day))
-                if cur is None or v > cur:
-                    by_day[str(day)] = v
-    return by_day
+            if not day or not doc or v is None:
+                continue
+            key = (str(day), str(doc))
+            d = docs[key]
+            pub = r.get("publish_timestamp") or ""
+            if not d["publish"] or pub < d["publish"]:
+                d["publish"] = pub
+            h = r.get("hour_ending")
+            if h:
+                d["hours"].add(str(h))
+            d["totals"].append(v)
+
+    by_day: dict[str, list[dict]] = defaultdict(list)
+    for (day, _doc), d in docs.items():
+        by_day[day].append(d)
+
+    out: dict[str, Decimal] = {}
+    for day, ds in by_day.items():
+        complete = [d for d in ds if len(d["hours"]) >= 24]
+        if not complete:
+            continue
+        earliest = min(complete, key=lambda d: d["publish"])
+        out[day] = max(earliest["totals"])
+    return out
 
 
 def _forecast_daily_peaks(vpath: Path) -> dict[tuple[str, str], Decimal]:

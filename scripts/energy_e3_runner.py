@@ -87,9 +87,18 @@ def _parse_iso(value: object) -> datetime | None:
 
 
 def _load_actuals(path: Path) -> dict[str, Decimal]:
-    by_day: dict[str, list[Decimal]] = defaultdict(list)
+    """{operating_day: daily_peak} using the FIRST COMPLETE NP6-346 publication.
+
+    Frozen settlement-vintage rule (ENERGY_E3_BASELINE_V0): for each operating
+    day, select the earliest document with a complete set of hourly rows (24)
+    by publish_timestamp, and compute the peak within that one document. Later
+    corrected revisions never silently replace the settlement-source value.
+    """
     if not path.exists():
         return {}
+    docs: dict[tuple[str, str], dict] = defaultdict(
+        lambda: {"publish": "", "hours": set(), "totals": []}
+    )
     with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -100,10 +109,32 @@ def _load_actuals(path: Path) -> dict[str, Decimal]:
             except json.JSONDecodeError:
                 continue
             day = r.get("operating_day")
+            doc = r.get("doc_id")
             v = _dec(r.get("total_mw"))
-            if day and v is not None:
-                by_day[str(day)].append(v)
-    return {day: max(vals) for day, vals in by_day.items()}
+            if not day or not doc or v is None:
+                continue
+            key = (str(day), str(doc))
+            d = docs[key]
+            pub = r.get("publish_timestamp") or ""
+            if not d["publish"] or pub < d["publish"]:
+                d["publish"] = pub
+            h = r.get("hour_ending")
+            if h:
+                d["hours"].add(str(h))
+            d["totals"].append(v)
+
+    by_day: dict[str, list[dict]] = defaultdict(list)
+    for (day, _doc), d in docs.items():
+        by_day[day].append(d)
+
+    out: dict[str, Decimal] = {}
+    for day, ds in by_day.items():
+        complete = [d for d in ds if len(d["hours"]) >= 24]
+        if not complete:
+            continue
+        earliest = min(complete, key=lambda d: d["publish"])
+        out[day] = max(earliest["totals"])
+    return out
 
 
 def _load_forecast(path: Path) -> tuple[dict, dict]:
@@ -238,9 +269,15 @@ def build_new_observations(
             # MISSING_PRE_CUTOVER: the lead-0 bucket begins before the cutover,
             # so the day's book is only partially observed prospectively.
             continue
-        t_first = _parse_iso(f0["publish_at"])
+        # No-lookahead: the forecast is usable only once BOTH published and
+        # actually received by our pipeline.
+        t_first_pub = _parse_iso(f0["publish_at"])
+        t_first_recv = _parse_iso(f0["received_at"])
+        if t_first_pub is None or t_first_recv is None:
+            continue
+        t_first = max(t_first_pub, t_first_recv)
         bucket_snaps = [s for s in snaps if bucket_start <= s["captured_at"] < bucket_end]
-        if not bucket_snaps or t_first is None:
+        if not bucket_snaps:
             continue
         candidates = [s for s in bucket_snaps if s["captured_at"] >= t_first]
         if not candidates:
