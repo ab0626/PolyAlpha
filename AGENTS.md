@@ -17,11 +17,12 @@
   (`energy_capture_supervisor.py` -> `energy_capture.py`). Isolated from the frozen
   `data/us/...` lineage. `data/energy/kalshi/status.json` is the freshness heartbeat;
   `restart-log.jsonl` / `supervisor-log.jsonl` / `alerts.jsonl` are the lifecycle logs.
-- `data/energy/ercot/` — append-only ERCOT 7-day-load forecast vintages
-  (`energy_forecast_supervisor.py` -> `energy_forecast_collector.py`). Full hourly
-  intraday path, keyed by `publish_timestamp` (never collapses revisions):
-  `forecast_vintages.jsonl` (normalized rows), `receipts.jsonl` (raw-report
-  provenance), `status.json` (freshness heartbeat). Isolated from `data/us/...`.
+- `data/energy/ercot/` — append-only ERCOT capture (forecast vintages + actual
+  settlement source) via `energy_forecast_supervisor.py` -> `energy_forecast_collector.py`.
+  Full hourly intraday path, keyed by `publish_timestamp` (never collapses revisions):
+  `forecast_vintages.jsonl` + `actuals.jsonl` (normalized rows), `receipts.jsonl` +
+  `actual_receipts.jsonl` (raw-report provenance), `status.json` (freshness heartbeat).
+  Isolated from `data/us/...`. Readiness: `scripts/energy_e3_readiness.py`.
 
 ## Collector launcher architecture (not in the repo, on the machine)
 
@@ -74,6 +75,7 @@ evaluated: >=30 days since REAL_DATA_START_US (2026-09-16), >=200 settled market
 - Raw store integrity: `RawStore(data/us/retail/raw).scan()` (valid/partial/mismatch)
 - Restart the US collector: `.venv/Scripts/python.exe scripts/us_collection_supervisor.py`
 - Raw-store replay diagnostic: `.venv/Scripts/python.exe scripts/replay_diagnostic.py [--max-seconds N]`
+- E3 readiness: `.venv/Scripts/python.exe scripts/energy_e3_readiness.py`
 
 ## Gotchas
 
