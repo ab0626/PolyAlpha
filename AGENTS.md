@@ -13,6 +13,10 @@
 - `data/us/{tracked,settled,stratified}_membership.jsonl` — persisted collection
   universe state. `release_mapping.jsonl` maps macro buckets -> release_id (parent
   event for clustering).
+- `data/energy/kalshi/ladders/` — append-only Kalshi energy ladder snapshots
+  (`energy_capture_supervisor.py` -> `energy_capture.py`). Isolated from the frozen
+  `data/us/...` lineage. `data/energy/kalshi/status.json` is the freshness heartbeat;
+  `restart-log.jsonl` / `supervisor-log.jsonl` / `alerts.jsonl` are the lifecycle logs.
 
 ## Collector launcher architecture (not in the repo, on the machine)
 
@@ -27,6 +31,8 @@ folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`), which invok
 - `PolyAlphaUSTrades.vbs`        -> `polyalpha_us_trades.bat` (crash-loop)
 - `PolyAlphaUSReport.vbs`        -> `polyalpha_us_report.bat`
 - `PolyAlphaPreNfpWatchdog.vbs`  -> `polyalpha_pre_nfp_watchdog.bat`
+- `PolyAlphaEnergyCapture.vbs`   -> `polyalpha_energy_capture.bat` (crash-loop)
+- `PolyAlphaEnergyHealth.vbs`    -> `polyalpha_energy_health.bat`
 
 The crash-loop `.bat` files use `:loop ... timeout /t 5 ... goto loop`, which is why
 killing a collector PID makes it respawn ~5s later. To stop one permanently, kill the

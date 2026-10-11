@@ -17,6 +17,7 @@ started at login).
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from datetime import UTC, datetime
@@ -34,12 +35,31 @@ from polyalpha.energy.capture import (  # noqa: E402
 from polyalpha.energy.kalshi import KalshiPublicClient  # noqa: E402
 
 
+def _write_status(path: str | Path | None, started: datetime, rows: int, interval: float) -> None:
+    """Atomically persist the freshness heartbeat used by the health watchdog."""
+    if not path:
+        return
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    status = {
+        "last_successful_capture_at": started.isoformat(),
+        "last_row_count": rows,
+        "interval_seconds": interval,
+    }
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(status, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(p)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Kalshi energy ladder collector")
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between cycles")
     parser.add_argument("--cycles", type=int, default=0, help="0 = run forever")
     parser.add_argument("--series", nargs="*", default=list(DEFAULT_SERIES))
     parser.add_argument("--root", default="data/energy/kalshi/ladders")
+    parser.add_argument("--status-file", default=None,
+                        help="Path to atomically-written freshness status JSON "
+                             "(default: none, for one-shot/bounded runs)")
     args = parser.parse_args()
 
     client = KalshiPublicClient()
@@ -49,7 +69,8 @@ def main() -> int:
         rows = snapshot_energy_ladders(client, tuple(args.series))
         path = ladder_raw_dir(args.root) / f"{started.strftime('%Y-%m-%d')}.jsonl"
         n = append_jsonl(path, rows)
-        print(f"[{started.isoformat()}] captured {len(rows)} active markets -> {path} ({n} bytes)")
+        _write_status(args.status_file, started, len(rows), args.interval)
+        print(f"[{started.isoformat()}] captured {len(rows)} active markets -> {path} ({n} bytes)", flush=True)
         run += 1
         if args.cycles != 0 and run >= args.cycles:
             break
