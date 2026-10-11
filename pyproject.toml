@@ -21,6 +21,8 @@ yaml = ["pyyaml>=6,<7"]
 dashboard = ["streamlit>=1.30,<2"]
 # Retail API-key (Ed25519) signing for the gated US execution scaffold.
 execution = ["PyNaCl>=1.5,<2"]
+# Kalshi authenticated Trade API (request signing: Ed25519 or RSA-PSS).
+kalshi = ["cryptography>=42,<46"]
 
 [project.scripts]
 polyalpha = "polyalpha.cli:main"
