@@ -226,6 +226,7 @@ async def run(args: argparse.Namespace) -> int:
                         })
 
                         status["last_message_at"] = received.isoformat()
+                        status["heartbeat_at"] = received.isoformat()  # alive + connected + data flowing
                         status["last_message_type"] = data.get("type")
                         status["messages_received"] += 1
                         status["last_error"] = None
