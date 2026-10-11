@@ -53,6 +53,25 @@ def load_private_key(path: str | Path):
         return serialization.load_pem_private_key(fh.read(), password=None)
 
 
+def load_env_file(path: str | Path, override: bool = False) -> None:
+    """Load simple ``KEY=VALUE`` pairs from a .env-style file into ``os.environ``.
+
+    Single-line values only (the private key is referenced by path, never inlined).
+    """
+    path = Path(path)
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and (override or key not in os.environ):
+            os.environ[key] = value
+
+
 def sign_request(private_key, timestamp_ms: str, method: str, path: str) -> str:
     """Return the base64 signature for ``timestamp + METHOD + path``.
 
