@@ -66,9 +66,16 @@ evaluated: >=30 days since REAL_DATA_START_US (2026-09-16), >=200 settled market
 - Compile check: `.venv/Scripts/python.exe -m py_compile <file>`
 - Raw store integrity: `RawStore(data/us/retail/raw).scan()` (valid/partial/mismatch)
 - Restart the US collector: `.venv/Scripts/python.exe scripts/us_collection_supervisor.py`
+- Raw-store replay diagnostic: `.venv/Scripts/python.exe scripts/replay_diagnostic.py [--max-seconds N]`
 
 ## Gotchas
 
+- The forward-evidence `--refresh` replay is NOT fast: ~7.7 GB compressed raw store
+  read twice (~45-65 min, JSON-parse-bound at ~5 MB/s; each record is double-parsed:
+  outer envelope + inner `canonical_json`). It used to look hung because it printed
+  nothing until done; `daily_forward_evidence.py` now streams progress to stdout and
+  has a `--watchdog-minutes` no-progress abort. `scripts/replay_diagnostic.py` measures
+  per-file timing when diagnosing this.
 - Disk has filled twice from unbounded collector writes. Two root causes fixed:
   (1) shadow `wire` duplicated per observation -> store once per `raw_payload_sha256`;
   (2) rawstore `_finalize` left truncated `.gz` on disk-full, which then shadowed the

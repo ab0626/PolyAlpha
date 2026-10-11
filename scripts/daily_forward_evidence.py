@@ -14,7 +14,10 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
+import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,6 +32,46 @@ from polyalpha.us.forward_evidence import build_report_from_raw  # noqa: E402
 N_PASSES = 2
 
 
+class NoProgressWatchdog:
+    """Abort the process if the replay stops making progress.
+
+    The replay is a long (tens of minutes) local job; a single wedged file or a
+    pathological path must fail visibly rather than appear hung. `tick()` is
+    called once per file; if it is not called for `timeout_seconds`, the process
+    exits non-zero with a clear message. Read-only: it only observes progress,
+    it never changes replay semantics.
+    """
+
+    def __init__(self, timeout_seconds: float):
+        self.timeout_seconds = timeout_seconds
+        self._event = threading.Event()
+        self._stopped = False
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    def _run(self) -> None:
+        while not self._stopped:
+            if self._event.wait(self.timeout_seconds):
+                self._event.clear()
+                continue
+            print(
+                f"FATAL: no replay progress for {self.timeout_seconds / 60.0:.1f} min "
+                f"— aborting rather than appearing hung.",
+                file=sys.stderr,
+                flush=True,
+            )
+            os._exit(1)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def tick(self) -> None:
+        self._event.set()
+
+    def stop(self) -> None:
+        self._stopped = True
+        self._event.set()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Daily forward-evidence snapshot")
     parser.add_argument("--raw-dir", default="data/us/retail/raw")
@@ -40,25 +83,49 @@ def main() -> int:
                         help="Pop periodic Windows desktop toasts with replay progress")
     parser.add_argument("--notify-interval-minutes", type=float, default=5.0,
                         help="Minutes between progress toasts (default 5)")
+    parser.add_argument("--progress-interval-seconds", type=float, default=30.0,
+                        help="Seconds between stdout progress lines (default 30)")
+    parser.add_argument("--watchdog-minutes", type=float, default=15.0,
+                        help="Abort if no replay progress for this many minutes "
+                             "(default 15; 0 disables)")
     args = parser.parse_args()
 
-    progress = None
+    watchdog = None
+    if args.watchdog_minutes and args.watchdog_minutes > 0:
+        watchdog = NoProgressWatchdog(args.watchdog_minutes * 60)
+        watchdog.start()
+
+    toaster = None
     if args.notify:
         toaster = ThrottledToaster(interval_seconds=args.notify_interval_minutes * 60)
 
-        def _progress(pass_idx: int, done: int, total: int) -> None:
-            frac = (pass_idx + (done / total if total else 0.0)) / N_PASSES
+    start = time.time()
+    last_stdout = [0.0]
+
+    def _progress(pass_idx: int, done: int, total: int) -> None:
+        if watchdog is not None:
+            watchdog.tick()
+        frac = (pass_idx + (done / total if total else 0.0)) / N_PASSES
+        now = time.time()
+        if now - last_stdout[0] >= args.progress_interval_seconds or (total and done >= total):
+            last_stdout[0] = now
+            print(
+                f"[replay] pass {pass_idx + 1}/{N_PASSES}  {done:,}/{total:,} files "
+                f"({frac * 100.0:.0f}%)  elapsed {now - start:.0f}s",
+                flush=True,
+            )
+        if toaster is not None:
             toaster.maybe(
                 "Forward-evidence replay",
                 f"{frac * 100.0:.0f}%  (pass {pass_idx + 1}/{N_PASSES}, "
                 f"{done:,}/{total:,} files)",
             )
 
-        progress = _progress
-
     report = build_report_from_raw(
-        args.raw_dir, release_mapping_path=args.release_mapping, progress=progress
+        args.raw_dir, release_mapping_path=args.release_mapping, progress=_progress
     )
+    if watchdog is not None:
+        watchdog.stop()
     now = datetime.now(UTC)
 
     report_dir = Path(args.report_dir)
