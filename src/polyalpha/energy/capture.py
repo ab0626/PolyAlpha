@@ -35,14 +35,19 @@ def snapshot_energy_ladders(
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """Fetch active markets for the given energy series and return one snapshot
-    record per active market (with receipt clock + derived strike identity)."""
-    received = now or datetime.now(UTC)
+    record per active market (with receipt clock + derived strike identity).
+
+    ``captured_at`` is the receipt clock: it is stamped AFTER the series response
+    arrives (per series), not at request start, so it is a true upper bound on
+    when this market state became known to the pipeline.
+    """
     rows: list[dict[str, Any]] = []
     for series in series_tickers:
         try:
             body = client.markets(series_ticker=series, limit=1000)
         except Exception:  # noqa: BLE001 - capture is best-effort, never blocks other series
             continue
+        received = now or datetime.now(UTC)  # receipt: after this series' response
         for m in body.get("markets", []):
             if m.get("status") != "active":
                 continue

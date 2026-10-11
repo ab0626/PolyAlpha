@@ -28,6 +28,7 @@ import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -128,7 +129,7 @@ class KalshiAuthClient:
     def request(self, method: str, path: str, params: dict | None = None) -> Any:
         url = self.base_url + path
         if params:
-            url += "?" + "&".join(f"{k}={v}" for k, v in params.items())
+            url += "?" + urllib.parse.urlencode(params)
         req = urllib.request.Request(url, headers=self._headers(method, path))
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:

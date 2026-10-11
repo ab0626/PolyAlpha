@@ -136,6 +136,23 @@ async def run(args: argparse.Namespace) -> int:
 
             market_tickers = await asyncio.to_thread(discover_active_markets, args.series)
             status["market_tickers"] = len(market_tickers)
+            if not market_tickers:
+                # Fail closed: never issue an unfiltered subscription. A transient
+                # discovery outage must not silently collect the whole channel.
+                status["last_error"] = "discovery returned no active energy markets; failing closed"
+                status["last_error_at"] = datetime.now(UTC).isoformat()
+                status["last_disconnect_at"] = datetime.now(UTC).isoformat()
+                status["reconnects"] += 1
+                write_status(status_path, status)
+                print(
+                    f"[{datetime.now(UTC).isoformat()}] discovery empty — failing closed; "
+                    f"retry in {backoff:.1f}s",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, MAX_BACKOFF_SECONDS)
+                continue
             write_status(status_path, status)
 
             try:
@@ -183,17 +200,16 @@ async def run(args: argparse.Namespace) -> int:
                                     discover_active_markets, args.series
                                 )
                                 if new_tickers != market_tickers:
-                                    market_tickers = new_tickers
-                                    status["market_tickers"] = len(market_tickers)
-                                    msg_id += 1
-                                    await ws.send(json.dumps(subscribe_message(
-                                        msg_id, ["orderbook_delta", "trade", "ticker"], market_tickers
-                                    )))
+                                    # Reconnect to establish the complete subscription
+                                    # set from scratch (no in-place add/subtract, so the
+                                    # old set is never left subscribed).
+                                    status["market_tickers"] = len(new_tickers)
                                     print(
-                                        f"[{datetime.now(UTC).isoformat()}] resubscribed: "
-                                        f"{len(market_tickers)} energy markets",
+                                        f"[{datetime.now(UTC).isoformat()}] ticker set changed "
+                                        f"({len(market_tickers)} -> {len(new_tickers)}); reconnecting",
                                         flush=True,
                                     )
+                                    break
                             continue
 
                         seq += 1

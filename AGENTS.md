@@ -28,7 +28,7 @@
   `actual_receipts.jsonl` (raw-report provenance), `status.json` (freshness heartbeat).
   Isolated from `data/us/...`. Readiness: `scripts/energy_e3_readiness.py`.
 - `data/energy/shadow_observations.jsonl` / `shadow_resolutions.jsonl` — E3 shadow
-  observation ledger (frozen per-lead-once rule, ENERGY_E3_SPEC v2). Full denominator
+  observation ledger (frozen lead-0-only rule, ENERGY_E3_SPEC v3). Full denominator
   (every strike, `is_candidate` derived), deterministic id, append-only. Written by
   `scripts/energy_e3_runner.py` (measurement only; never trades, never scores).
 
@@ -75,9 +75,10 @@ same logical script, so treat them as one.
 
 ## Forward-evidence gates (the "conclusion")
 
-Pre-registered in `docs/RESEARCH_AGENDA.md`. All three must pass before any family is
+Pre-registered in `docs/RESEARCH_AGENDA.md`. All four must pass before any family is
 evaluated: >=30 days since REAL_DATA_START_US (2026-09-16), >=200 settled markets,
->=200 independent clusters. Cluster count is honest AFTER macro-release clustering
+>=200 independent clusters, and >=0.8 observed coverage (1 minus known-gap fraction
+of the elapsed window). Cluster count is honest AFTER macro-release clustering
 (grouped by `release_id`). Progress monitor:
 
     .venv/Scripts/python.exe scripts/forward_evidence_monitor.py [--refresh]
