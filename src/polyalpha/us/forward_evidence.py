@@ -56,6 +56,11 @@ def _settlement_completeness(dataset: ResearchDataset) -> dict:
     """Markets whose end date has passed but which still lack a binary
     settlement. A high value is a settlement-poll gap (e.g. after an outage);
     a small residual is expected from non-binary (void/split) resolutions.
+
+    The snapshot population only contains pre-resolution/tradable books, so an
+    ended market is never observed as ``hours_to_resolution < 0``. When no ended
+    market appears, the metric is explicitly marked non-assessable rather than
+    silently reading as "100% complete".
     """
     ended: set[str] = set()
     ended_unsettled: set[str] = set()
@@ -69,11 +74,21 @@ def _settlement_completeness(dataset: ResearchDataset) -> dict:
             ended.add(mid)
             if s.final_resolution is None:
                 ended_unsettled.add(mid)
-    return {
+    out: dict = {
         "markets_ended": len(ended),
         "ended_without_binary_settlement": len(ended_unsettled),
         "markets_without_enddate_metadata": len(no_enddate),
     }
+    if len(ended) == 0:
+        out["assessable"] = False
+        out["reason"] = (
+            "book snapshots contain only pre-resolution/tradable markets, so no "
+            "snapshot is observed past its end date; settlement completeness is "
+            "not assessable from this population"
+        )
+    else:
+        out["assessable"] = True
+    return out
 
 
 def _parse_gap_ts(value: object) -> datetime | None:
