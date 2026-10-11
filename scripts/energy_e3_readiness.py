@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from polyalpha.energy.physical import ForecastErrorModel  # noqa: E402
 
-ACTUALS = ROOT / "data" / "energy" / "ercot_daily_peaks.json"
+ACTUALS = ROOT / "data" / "energy" / "ercot" / "actuals.jsonl"
 VINTAGES = ROOT / "data" / "energy" / "ercot" / "forecast_vintages.jsonl"
 KALSHI_STATUS = ROOT / "data" / "energy" / "kalshi" / "status.json"
 ERCOT_STATUS = ROOT / "data" / "energy" / "ercot" / "status.json"
@@ -70,23 +70,27 @@ def _dec(value: object) -> Decimal | None:
         return None
 
 
-def _norm_day(s: str) -> str:
-    """Normalize ``MM/DD/YYYY`` (ERCOT cache keys) to ``YYYY-MM-DD``."""
-    s = s.strip()
-    if "/" in s:
-        m, d, y = s.split("/")
-        return f"{y}-{int(m):02d}-{int(d):02d}"
-    return s
-
-
 def _load_actuals() -> dict[str, Decimal]:
-    data = _read_json(ACTUALS) or {}
-    out: dict[str, Decimal] = {}
-    for k, v in data.items():
-        d = _dec(v)
-        if d is not None:
-            out[_norm_day(str(k))] = d
-    return out
+    """{operating_day: daily_peak_total} from the append-only actuals store."""
+    by_day: dict[str, Decimal] = {}
+    if not ACTUALS.exists():
+        return by_day
+    with ACTUALS.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            day = r.get("operating_day")
+            v = _dec(r.get("total_mw"))
+            if day and v is not None:
+                cur = by_day.get(str(day))
+                if cur is None or v > cur:
+                    by_day[str(day)] = v
+    return by_day
 
 
 def _forecast_daily_peaks(vpath: Path) -> dict[tuple[str, str], Decimal]:
