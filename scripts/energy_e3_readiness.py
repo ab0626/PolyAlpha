@@ -4,15 +4,16 @@
 Shows when the frozen E3 machinery is actually allowed to fire, per the operating
 rule "No E3 score until a lead bucket reaches min_residuals naturally":
 
-  - per-lead residual support vs the frozen min_residuals=5
+  - per-lead residual support vs the frozen min_residuals=5 (leads 1..6 are
+    training-only; only lead 0 produces observations)
   - Kalshi ladder freshness
   - ERCOT forecast-vintage freshness
   - latest actual (settlement-source) operating day
   - eligible E3 leads
-  - shadow opportunities recorded / resolved
+  - shadow observations recorded / resolved
 
 Read-only: it never writes and never runs E3. "Run the frozen baseline once when
-a lead becomes eligible" is deliberately left to a separate step.
+lead 0 becomes eligible" is deliberately left to a separate step.
 
 Usage:
     .venv/Scripts/python.exe scripts/energy_e3_readiness.py [--json]
@@ -37,7 +38,8 @@ ACTUALS = ROOT / "data" / "energy" / "ercot" / "actuals.jsonl"
 VINTAGES = ROOT / "data" / "energy" / "ercot" / "forecast_vintages.jsonl"
 KALSHI_STATUS = ROOT / "data" / "energy" / "kalshi" / "status.json"
 ERCOT_STATUS = ROOT / "data" / "energy" / "ercot" / "status.json"
-SHADOW_LEDGER = ROOT / "data" / "energy" / "shadow_opportunities.jsonl"
+SHADOW_OBSERVATIONS = ROOT / "data" / "energy" / "shadow_observations.jsonl"
+SHADOW_RESOLUTIONS = ROOT / "data" / "energy" / "shadow_resolutions.jsonl"
 
 MIN_RESIDUALS = 5
 MAX_LEAD = 6
@@ -152,27 +154,6 @@ def _count_lines(path: Path) -> int:
     return sum(1 for _ in path.open("r", encoding="utf-8"))
 
 
-def _ledger_resolved(path: Path, actuals: dict[str, Decimal]) -> int:
-    """Shadow opportunities whose underlying operating day has an actual peak."""
-    if not path.exists():
-        return 0
-    n = 0
-    with path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                r = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            uid = r.get("underlying_id") or ""
-            day = uid.rsplit(":", 1)[-1]
-            if day in actuals:
-                n += 1
-    return n
-
-
 def _seconds_ago(now: datetime, value: object) -> float | None:
     ts = _parse_iso(value)
     if ts is None:
@@ -192,8 +173,8 @@ def build_summary() -> dict:
     kalshi = _read_json(KALSHI_STATUS) or {}
     ercot = _read_json(ERCOT_STATUS) or {}
 
-    n_opportunities = _count_lines(SHADOW_LEDGER)
-    n_resolved = _ledger_resolved(SHADOW_LEDGER, actuals)
+    n_observations = _count_lines(SHADOW_OBSERVATIONS)
+    n_resolved = _count_lines(SHADOW_RESOLUTIONS)
 
     return {
         "now": now.isoformat(),
@@ -215,8 +196,8 @@ def build_summary() -> dict:
             "total_docs_captured": ercot.get("total_docs_captured"),
             "stale_seconds": _seconds_ago(now, ercot.get("last_successful_poll_at")),
         },
-        "shadow_opportunities_recorded": n_opportunities,
-        "shadow_opportunities_resolved": n_resolved,
+        "shadow_observations_recorded": n_observations,
+        "shadow_observations_resolved": n_resolved,
     }
 
 
@@ -250,8 +231,8 @@ def _render(s: dict) -> str:
         "",
         f"  eligible E3 leads: {s['eligible_leads'] or 'none'}",
         "",
-        f"  shadow ledger: {s['shadow_opportunities_recorded']} recorded, "
-        f"{s['shadow_opportunities_resolved']} resolved",
+        f"  shadow ledger: {s['shadow_observations_recorded']} observations, "
+        f"{s['shadow_observations_resolved']} resolved",
     ]
     return "\n".join(lines)
 

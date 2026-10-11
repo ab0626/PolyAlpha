@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""E3 shadow-observation runner (frozen observation rule, ENERGY_E3_SPEC v2).
+"""E3 shadow-observation runner (frozen observation rule, ENERGY_E3_SPEC v3).
 
-Implements the frozen "per lead, once" observation rule with a literal
-prospective cutover:
+Implements the frozen "lead 0, once per operating day" observation rule with a
+literal prospective cutover:
 
   - historical/backfilled ERCOT data trains the residual distribution only;
   - only post-cutover Kalshi snapshots enter the shadow observation ledger;
-  - every strike at every qualifying (operating_day, lead) is recorded (the full
+  - every strike at every qualifying operating day is recorded (the full
     denominator), not only positive-edge ones;
   - deterministic observation_id makes restarts idempotent.
 
@@ -374,6 +374,13 @@ def build_resolutions(
                 kalshi_expiration = _dec(m.get("expiration_value"))
             except Exception:  # noqa: BLE001 — market may not be settled yet
                 pass
+
+        # Resolve ONLY when BOTH the physical actual AND the venue settlement are
+        # present. Otherwise the observation stays OPEN and is retried next run —
+        # a partial resolution must never be appended (it would be skipped forever
+        # by load_resolved_ids).
+        if not kalshi_result:
+            continue
 
         out.append({
             "observation_id": oid,
