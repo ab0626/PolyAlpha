@@ -23,6 +23,10 @@
   `forecast_vintages.jsonl` + `actuals.jsonl` (normalized rows), `receipts.jsonl` +
   `actual_receipts.jsonl` (raw-report provenance), `status.json` (freshness heartbeat).
   Isolated from `data/us/...`. Readiness: `scripts/energy_e3_readiness.py`.
+- `data/energy/shadow_observations.jsonl` / `shadow_resolutions.jsonl` — E3 shadow
+  observation ledger (frozen per-lead-once rule, ENERGY_E3_SPEC v2). Full denominator
+  (every strike, `is_candidate` derived), deterministic id, append-only. Written by
+  `scripts/energy_e3_runner.py` (measurement only; never trades, never scores).
 
 ## Collector launcher architecture (not in the repo, on the machine)
 
@@ -76,6 +80,7 @@ evaluated: >=30 days since REAL_DATA_START_US (2026-09-16), >=200 settled market
 - Restart the US collector: `.venv/Scripts/python.exe scripts/us_collection_supervisor.py`
 - Raw-store replay diagnostic: `.venv/Scripts/python.exe scripts/replay_diagnostic.py [--max-seconds N]`
 - E3 readiness: `.venv/Scripts/python.exe scripts/energy_e3_readiness.py`
+- E3 shadow runner (run daily after ~06:00 UTC): `.venv/Scripts/python.exe scripts/energy_e3_runner.py`
 
 ## Gotchas
 
