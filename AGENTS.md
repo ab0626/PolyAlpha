@@ -17,6 +17,10 @@
   (`energy_capture_supervisor.py` -> `energy_capture.py`). Isolated from the frozen
   `data/us/...` lineage. `data/energy/kalshi/status.json` is the freshness heartbeat;
   `restart-log.jsonl` / `supervisor-log.jsonl` / `alerts.jsonl` are the lifecycle logs.
+- `data/energy/kalshi/ws/` — authenticated Kalshi WebSocket raw lineage
+  (`energy_ws_supervisor.py` -> `energy_ws_collector.py`). orderbook_delta/trade/
+  ticker/market_lifecycle_v2 for the energy series. PARALLEL to (never mixed with)
+  the frozen 30s REST snapshots. `status.json` (heartbeat) is the freshness signal.
 - `data/energy/ercot/` — append-only ERCOT capture (forecast vintages + actual
   settlement source) via `energy_forecast_supervisor.py` -> `energy_forecast_collector.py`.
   Full hourly intraday path, keyed by `publish_timestamp` (never collapses revisions):
@@ -45,6 +49,8 @@ folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`), which invok
 - `PolyAlphaEnergyHealth.vbs`    -> `polyalpha_energy_health.bat`
 - `PolyAlphaEnergyForecast.vbs`  -> `polyalpha_energy_forecast.bat` (crash-loop)
 - `PolyAlphaEnergyForecastHealth.vbs` -> `polyalpha_energy_forecast_health.bat`
+- `PolyAlphaEnergyWs.vbs`       -> `polyalpha_energy_ws.bat` (crash-loop)
+- `PolyAlphaEnergyWsHealth.vbs` -> `polyalpha_energy_ws_health.bat`
 
 The E3 evaluator is NOT a service: it is a deterministic batch job scheduled via
 Windows Task Scheduler (`PolyAlphaEnergyE3`, daily 01:30 local/Central Time,
