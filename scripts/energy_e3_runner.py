@@ -30,6 +30,7 @@ from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -56,6 +57,15 @@ RESOLUTIONS = ROOT / "data" / "energy" / "shadow_resolutions.jsonl"
 
 SERIES = "KXTXERCOTPEAKD"
 D = Decimal
+ERCOT_TZ = ZoneInfo("America/Chicago")
+
+
+def _lead0_bucket(day: str) -> tuple[datetime, datetime]:
+    """Lead-0 bucket = [00:00 CT on `day`, 00:00 CT on `day`+1) as UTC datetimes."""
+    d = date.fromisoformat(day)
+    start = datetime(d.year, d.month, d.day, 0, 0, tzinfo=ERCOT_TZ)
+    end = start + timedelta(days=1)
+    return start.astimezone(UTC), end.astimezone(UTC)
 
 
 def _dec(value: object) -> Decimal | None:
@@ -97,11 +107,13 @@ def _load_actuals(path: Path) -> dict[str, Decimal]:
 
 
 def _load_forecast(path: Path) -> tuple[dict, dict]:
-    """Return (peaks, meta).
+    """Return (peaks, first).
 
-    peaks: {(publish_day, delivery_day): daily_peak_forecast}
-    meta:  {(publish_day, delivery_day): {"publish_at", "received_at"}}
-    using the latest intraday vintage per (publish_day, delivery_day).
+    peaks: {(publish_day, delivery_day): daily_peak} using the latest intraday
+           vintage (feeds lead-matched residual training, frozen "latest wins").
+    first: {(publish_day, delivery_day): {"publish_at", "peak", "received_at"}}
+           using the earliest intraday vintage (defines the lead-0 observation
+           time: first snapshot after the day's first same-day forecast).
     """
     by_key: dict[tuple[str, str], list[tuple[str, str, Decimal]]] = defaultdict(list)
     if not path.exists():
@@ -123,13 +135,19 @@ def _load_forecast(path: Path) -> tuple[dict, dict]:
                     (r.get("publish_timestamp") or "", r.get("received_at") or "", v)
                 )
     peaks: dict[tuple[str, str], Decimal] = {}
-    meta: dict[tuple[str, str], dict] = {}
+    first: dict[tuple[str, str], dict] = {}
     for key, rows in by_key.items():
         max_pub = max(r[0] for r in rows)
+        min_pub = min(r[0] for r in rows)
         latest = [r for r in rows if r[0] == max_pub]
+        earliest = [r for r in rows if r[0] == min_pub]
         peaks[key] = max(r[2] for r in latest)
-        meta[key] = {"publish_at": max_pub, "received_at": latest[0][1]}
-    return peaks, meta
+        first[key] = {
+            "publish_at": min_pub,
+            "peak": max(r[2] for r in earliest),
+            "received_at": earliest[0][1],
+        }
+    return peaks, first
 
 
 def _load_kalshi(dir_path: Path) -> dict[str, list[dict]]:
@@ -195,7 +213,7 @@ def build_new_observations(
     model_version: str,
     kalshi_by_day: dict[str, list[dict]],
     forecast_peaks: dict,
-    forecast_meta: dict,
+    forecast_first: dict,
     actuals: dict[str, Decimal],
 ) -> list[dict]:
     out: list[dict] = []
@@ -204,78 +222,81 @@ def build_new_observations(
         try:
             if date.fromisoformat(day) >= today:
                 # Operating day not yet complete: its lead-0 forecast vintages
-                # are still forming, so "latest vintage" is not final yet.
+                # are still forming, so "first lead-0 forecast" is not final yet.
                 continue
         except ValueError:
             continue
         residuals = _residuals_for_day(actuals, forecast_peaks, day)
-        strikes = sorted({s["strike"] for s in snaps})
-        captured_ats = sorted({s["captured_at_iso"] for s in snaps})
-        for lead in range(MAX_LEAD + 1):
-            eps = residuals.get(lead, [])
-            if len(eps) < MIN_RESIDUALS:
-                continue
-            pub_day = (date.fromisoformat(day) - timedelta(days=lead)).isoformat()
-            vm = forecast_meta.get((pub_day, day))
-            fpeak = forecast_peaks.get((pub_day, day))
-            if vm is None or fpeak is None:
-                continue
-            fr = _parse_iso(vm["received_at"])
-            threshold = max(fr, PROSPECTIVE_CUTOVER) if fr is not None else PROSPECTIVE_CUTOVER
-            t_star = next(
-                (t for t in captured_ats if _parse_iso(t) is not None and _parse_iso(t) >= threshold),
+        eps = residuals.get(0, [])
+        if len(eps) < MIN_RESIDUALS:
+            continue
+        f0 = forecast_first.get((day, day))
+        if f0 is None:
+            continue
+        bucket_start, bucket_end = _lead0_bucket(day)
+        if bucket_start < PROSPECTIVE_CUTOVER:
+            # MISSING_PRE_CUTOVER: the lead-0 bucket begins before the cutover,
+            # so the day's book is only partially observed prospectively.
+            continue
+        t_first = _parse_iso(f0["publish_at"])
+        bucket_snaps = [s for s in snaps if bucket_start <= s["captured_at"] < bucket_end]
+        if not bucket_snaps or t_first is None:
+            continue
+        candidates = [s for s in bucket_snaps if s["captured_at"] >= t_first]
+        if not candidates:
+            continue
+        t_star_dt = min(s["captured_at"] for s in candidates)
+        t_star = t_star_dt.isoformat()
+        strikes = sorted({s["strike"] for s in bucket_snaps})
+        fpeak = f0["peak"]
+        for strike in strikes:
+            snap = next(
+                (s for s in bucket_snaps if s["strike"] == strike and s["captured_at"] == t_star_dt),
                 None,
             )
-            if t_star is None:
+            if snap is None:
                 continue
-            for strike in strikes:
-                snap = next(
-                    (s for s in snaps if s["strike"] == strike and s["captured_at_iso"] == t_star),
-                    None,
-                )
-                if snap is None:
-                    continue
-                p_model = _survival(eps, strike - fpeak)
-                fee = FEES
-                edge_yes = p_model - (snap["yes_ask"] or D(1)) - fee if snap["yes_ask"] is not None else None
-                edge_no = (
-                    (D(1) - p_model) - (snap["no_ask"] or D(1)) - fee
-                    if snap["no_ask"] is not None
-                    else None
-                )
-                is_candidate = bool(
-                    (edge_yes is not None and edge_yes > 0) or (edge_no is not None and edge_no > 0)
-                )
-                out.append({
-                    "observation_id": build_observation_id(
-                        model_version, lead, snap["ticker"], strike, t_star
-                    ),
-                    "model_version": model_version,
-                    "lead_bucket": lead,
-                    "operating_day": day,
-                    "market_ticker": snap["ticker"],
-                    "strike_mw": strike,
-                    "kalshi_captured_at": t_star,
-                    "ercot_forecast_publish_at": vm["publish_at"],
-                    "ercot_forecast_received_at": vm["received_at"],
-                    "p_model": p_model,
-                    "yes_bid": snap["yes_bid"],
-                    "yes_ask": snap["yes_ask"],
-                    "yes_bid_size": snap["yes_bid_size"],
-                    "yes_ask_size": snap["yes_ask_size"],
-                    "no_bid": snap["no_bid"],
-                    "no_ask": snap["no_ask"],
-                    "no_bid_size": snap["no_bid_size"],
-                    "no_ask_size": snap["no_ask_size"],
-                    "fees": fee,
-                    "edge_yes": edge_yes,
-                    "edge_no": edge_no,
-                    "forecast_peak_mw": fpeak,
-                    "residual_training_n": len(eps),
-                    "residual_training_cutoff": day,
-                    "is_candidate": is_candidate,
-                    "status": "OPEN",
-                })
+            p_model = _survival(eps, strike - fpeak)
+            fee = FEES
+            edge_yes = p_model - (snap["yes_ask"] or D(1)) - fee if snap["yes_ask"] is not None else None
+            edge_no = (
+                (D(1) - p_model) - (snap["no_ask"] or D(1)) - fee
+                if snap["no_ask"] is not None
+                else None
+            )
+            is_candidate = bool(
+                (edge_yes is not None and edge_yes > 0) or (edge_no is not None and edge_no > 0)
+            )
+            out.append({
+                "observation_id": build_observation_id(
+                    model_version, 0, snap["ticker"], strike, t_star
+                ),
+                "model_version": model_version,
+                "lead_bucket": 0,
+                "operating_day": day,
+                "market_ticker": snap["ticker"],
+                "strike_mw": strike,
+                "kalshi_captured_at": t_star,
+                "ercot_forecast_publish_at": f0["publish_at"],
+                "ercot_forecast_received_at": f0["received_at"],
+                "p_model": p_model,
+                "yes_bid": snap["yes_bid"],
+                "yes_ask": snap["yes_ask"],
+                "yes_bid_size": snap["yes_bid_size"],
+                "yes_ask_size": snap["yes_ask_size"],
+                "no_bid": snap["no_bid"],
+                "no_ask": snap["no_ask"],
+                "no_bid_size": snap["no_bid_size"],
+                "no_ask_size": snap["no_ask_size"],
+                "fees": fee,
+                "edge_yes": edge_yes,
+                "edge_no": edge_no,
+                "forecast_peak_mw": fpeak,
+                "residual_training_n": len(eps),
+                "residual_training_cutoff": day,
+                "is_candidate": is_candidate,
+                "status": "OPEN",
+            })
     return out
 
 
@@ -340,13 +361,13 @@ def main() -> int:
 
     model_version = MODEL_VERSION
     actuals = _load_actuals(ACTUALS)
-    forecast_peaks, forecast_meta = _load_forecast(FORECAST_VINTAGES)
+    forecast_peaks, forecast_first = _load_forecast(FORECAST_VINTAGES)
     kalshi_by_day = _load_kalshi(KALSHI_LADDERS)
 
     if args.max_days and len(kalshi_by_day) > args.max_days:
         kalshi_by_day = dict(sorted(kalshi_by_day.items())[: args.max_days])
 
-    new_obs = build_new_observations(model_version, kalshi_by_day, forecast_peaks, forecast_meta, actuals)
+    new_obs = build_new_observations(model_version, kalshi_by_day, forecast_peaks, forecast_first, actuals)
     existing = load_existing_ids(OBSERVATIONS)
     fresh = [o for o in new_obs if o["observation_id"] not in existing]
 

@@ -67,24 +67,29 @@ Both reported with day-clustered confidence intervals (block bootstrap, seed 42)
 `X_t` = information actually available at `t`. Revised ERCOT actuals are never
 used to compute `p_physical` at an earlier `t`.
 
-## Observation rule (frozen — v2, appended 2026-10-11)
+## Observation rule (frozen — v3, amended 2026-10-11)
 
-Appended before any prospective E3 evaluation; does not alter the v1 residual,
-edge, clustering, or metric definitions.
+Amends v2 before any prospective E3 evaluation. The Kalshi `KXTXERCOTPEAKD`
+market is a ~24-hour market (open 04:55 UTC on day d−1, close 04:55 UTC on day
+d), so no market book exists for lead ≥ 1 — v2's per-lead buckets are infeasible.
 
 - **Prospective cutover:** `2026-10-11T03:15:00Z`. Only Kalshi snapshots with
   `captured_at >= cutover` may enter the shadow observation ledger. Historical /
   backfilled ERCOT forecast vintages and actuals may train the residual
   distribution, but never enter the ledger as observations.
-- **Sampling (per lead, once):** for each operating day `d`, each strike `K` in
-  the day's ladder, and each lead bucket `h ∈ {0..6}` whose training residual
-  count `N_h(d) >= 5` (using actual days strictly before `d`):
-    - take the latest forecast vintage for `(publish_day = d−h, delivery_day = d)`;
-    - `t*` = the first Kalshi snapshot for `(d, K)` with
-      `captured_at >= max(forecast.received_at, cutover)`;
-    - record exactly one observation at `t*` (deterministic id, idempotent).
-- **Denominator:** every strike at every qualifying `(d, K, h)` is recorded, not
-  only positive-edge ones. `is_candidate` is derived from the frozen edge rule
+- **Sampling (lead 0, once per operating day):** for each operating day `d` and
+  each strike `K`, exactly one observation:
+    - lead-0 bucket = `[00:00 CT on d, 00:00 CT on d+1)`;
+    - the bucket start must be `>= cutover`, else the day is `MISSING_PRE_CUTOVER`
+      (never sample the post-cutover tail of an already-partially-observed bucket);
+    - `t*` = the first Kalshi snapshot in the bucket with `captured_at` at/after
+      the first same-day (lead-0) NP3-560 forecast vintage publish time for `d`;
+    - `p_model` uses that first lead-0 forecast peak and the lead-0 residual
+      distribution (frozen finite-sample smoothing).
+- **Leads 1..6 are training-only**: they shape the residual distribution but
+  produce no market observation (no book exists that far out).
+- **Denominator:** every strike at every qualifying `(d, K)` is recorded, not only
+  positive-edge ones. `is_candidate` is derived from the frozen edge rule
   (`edge_yes > 0` or `edge_no > 0`).
 - **Resolution:** when operating day `d` completes, record BOTH the physical
   outcome (`M_d = max_h ActualSystemLoad_{d,h}` and `physical_outcome_yes`) and the
@@ -105,3 +110,4 @@ edge, clustering, or metric definitions.
 - **v1** — initial freeze (2026-10-07), before any model-vs-market comparison.
 - **v2** — freeze the observation rule + prospective cutover (2026-10-11), before
   any prospective E3 evaluation.
+- **v3** — amend to lead-0-only sampling (24-hour market) (2026-10-11).
