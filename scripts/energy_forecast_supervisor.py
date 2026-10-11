@@ -81,18 +81,7 @@ def main() -> int:
             err_log, "a", encoding="utf-8"
         ) as fe:
             proc = subprocess.Popen(cmd, cwd=ROOT, stdout=fo, stderr=fe)
-            # A fully-wedged collector (no exit, no writes) must not stall the
-            # supervisor. Individual calls are already bounded by urllib timeouts;
-            # this is a much wider guard that only fires on a true hang.
-            timeout_seconds = max(args.interval * 20 + 600.0, 3600.0)
-            hung = False
-            try:
-                code = proc.wait(timeout=timeout_seconds)
-            except subprocess.TimeoutExpired:
-                hung = True
-                proc.kill()
-                proc.wait()
-                code = -99  # sentinel: collector wedged, killed by supervisor
+            code = proc.wait()
 
         ended = _now()
         _append_jsonl(RESTART_LOG, {
@@ -104,18 +93,7 @@ def main() -> int:
             "restart_count": runs - 1,
         })
 
-        if hung:
-            _append_jsonl(ALERTS_LOG, {
-                "event": "collector_hang",
-                "at": _now(),
-                "run": runs,
-                "exit_code": code,
-                "started_at": started,
-                "ended_at": ended,
-                "timeout_seconds": timeout_seconds,
-            })
-            print(f"[{ended}] run #{runs} HUNG (>{timeout_seconds:.0f}s), killed", flush=True)
-        elif code != 0:
+        if code != 0:
             _append_jsonl(ALERTS_LOG, {
                 "event": "collector_death",
                 "at": _now(),
