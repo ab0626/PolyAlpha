@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
@@ -41,6 +40,7 @@ from polyalpha.energy.shadow_observation import (  # noqa: E402
     FEES,
     MAX_LEAD,
     MIN_RESIDUALS,
+    MODEL_VERSION,
     PROSPECTIVE_CUTOVER,
     append_jsonl,
     build_observation_id,
@@ -56,16 +56,6 @@ RESOLUTIONS = ROOT / "data" / "energy" / "shadow_resolutions.jsonl"
 
 SERIES = "KXTXERCOTPEAKD"
 D = Decimal
-
-
-def _git_head() -> str:
-    try:
-        out = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, stderr=subprocess.DEVNULL
-        )
-        return out.decode("utf-8").strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
 
 
 def _dec(value: object) -> Decimal | None:
@@ -348,7 +338,7 @@ def main() -> int:
                     help="skip Kalshi result lookups during resolution")
     args = ap.parse_args()
 
-    model_version = _git_head()
+    model_version = MODEL_VERSION
     actuals = _load_actuals(ACTUALS)
     forecast_peaks, forecast_meta = _load_forecast(FORECAST_VINTAGES)
     kalshi_by_day = _load_kalshi(KALSHI_LADDERS)

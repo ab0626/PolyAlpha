@@ -24,6 +24,10 @@ PROSPECTIVE_CUTOVER = datetime(2026, 10, 11, 3, 15, 0, tzinfo=UTC)
 MIN_RESIDUALS = 5
 MAX_LEAD = 6
 FEES = Decimal("0.02")  # frozen conservative placeholder (ENERGY_E3_SPEC v1)
+# Frozen model identifier (ENERGY_E3_BASELINE_V0). Deliberately NOT the git HEAD:
+# the observation identity must be stable across infra commits, or a docs commit
+# would silently re-key every observation and break idempotency.
+MODEL_VERSION = "e3-baseline-v0"
 
 DEFAULT_OBSERVATIONS = "data/energy/shadow_observations.jsonl"
 DEFAULT_RESOLUTIONS = "data/energy/shadow_resolutions.jsonl"
