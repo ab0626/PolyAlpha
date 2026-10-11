@@ -165,19 +165,22 @@ def forecast_peaks(report_type_id: int, limit: int | None = None) -> dict[tuple[
     """Return {(publish_day, delivery_day): peak_system_total}.
 
     ``publish_day`` is the forecast-vintage date (YYYY-MM-DD); the latest forecast
-    on a given publish day wins for a given delivery day.
+    on a given publish day wins for a given delivery day (the most-informed
+    vintage for that lead).
     """
     docs = [d for d in list_documents(report_type_id) if d.friendly_name.lower().endswith("csv")]
     docs.sort(key=lambda d: d.publish_date, reverse=True)
     if limit:
         docs = docs[:limit]
     out: dict[tuple[str, str], Decimal] = {}
-    for d in docs:
+    # `docs` is newest-first; iterate oldest-first so the newest (most recent)
+    # intra-day vintage is the final write and therefore wins per (pub, delivery).
+    for d in reversed(docs):
         try:
             peaks = parse_forecast(download_document(d.doc_id))
         except Exception:  # noqa: BLE001
             continue
         pub_day = d.publish_date[:10]
         for day, peak in peaks.items():
-            out[(pub_day, day)] = peak  # later publish wins within a day
+            out[(pub_day, day)] = peak
     return out
