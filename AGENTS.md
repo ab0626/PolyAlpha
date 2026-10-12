@@ -68,20 +68,32 @@ same logical script, so treat them as one.
   `scripts/us_collection_supervisor.py`. After ANY change to that runner: commit it,
   then update `COLLECTION_IMPL_COMMIT` to the new commit hash (the supervisor
   `_collector_matches_impl` check now LF-normalizes, so CRLF is not a false fail).
+  Additionally, `scripts/freeze_us_collector.py verify` pins the FULL US collection
+  runtime (`us-collector-v0.1`): `scripts/run_us_collection.py` +
+  `src/polyalpha/us/{collector,adapter,rest,identifiers,states,release_coverage}.py` +
+  `src/polyalpha/{gov_releases,rawstore}.py` +
+  `config/{gov_releases,collection_strata}.json`. Class A (collector/infra) only;
+  re-freeze after any committed Class-A change. `us/research.py` is excluded (Class C).
 - Frozen research logic: `scripts/freeze_baseline.py verify` covers the v0.3.0
   International baseline (models/features/research_dataset/etc.). The US `us/research.py`,
   `us/collector.py`, and scripts are NOT in that frozen domain — collector/infra fixes
   are Class A (allowed), strategy/research changes are Class C (forbidden).
 - Frozen execution mechanics: `scripts/freeze_kalshi_exec.py verify` pins the
-  Kalshi demo venue adapter (`kalshi-exec-demo-v0.2`, a separate integrity domain):
+  Kalshi demo venue adapter (`kalshi-exec-demo-v0.3`, a separate integrity domain):
   `src/polyalpha/kalshi_exec.py`, `src/polyalpha/kalshi_auth.py`,
   `src/polyalpha/kill_switch.py`. Any runtime drift fails verification and requires
   explicit review + a new execution version (re-freeze). Tests, the smoke script, and
   docs can evolve without re-freezing.
 - Frozen execution control plane: `scripts/freeze_kalshi_oms.py verify` pins the
-  demo automated execution harness (`kalshi-oms-demo-v0.3`): `src/polyalpha/kalshi_oms.py`
-  and `scripts/kalshi_oms_demo.py` (both are runtime control-plane code). Same drift
-  rule; the venue adapter stays independently frozen at v0.2.
+  demo automated execution harness (`kalshi-oms-demo-v0.5`): `src/polyalpha/kalshi_oms.py`,
+  `src/polyalpha/process_lease.py`, `src/polyalpha/execution_journal.py`, and
+  `scripts/kalshi_oms_demo.py` (runtime control-plane code, including the durable
+  lease + write-ahead journal + startup-recovery layer). Same drift rule; the venue
+  adapter stays independently frozen at v0.3.
+- Frozen E3 research methodology: `scripts/freeze_energy_e3.py verify` pins the E3
+  runtime (`energy-e3-research-v0.2`): `scripts/energy_e3_runner.py` +
+  `src/polyalpha/energy/{shadow_observation,physical,e3,kalshi}.py`.
+  `MODEL_VERSION` (`e3-baseline-v0.2`) alone does NOT detect code drift; this domain does.
 
 ## Forward-evidence gates (the "conclusion")
 
