@@ -1,0 +1,12 @@
+{
+  "version": "kalshi-oms-demo-v0.1",
+  "anchor_commit": "15c7963b59d9f11aa124efb0c359504230743202",
+  "runtime_sha256": "1655077368a8ba2800d35e86f51174e2aabcefab4a7a2e7b8cb54514a027027f",
+  "environment": "demo",
+  "production_execution": false,
+  "signal": "NULL",
+  "runtime_files": [
+    "src/polyalpha/kalshi_oms.py"
+  ],
+  "frozen_at": "2026-10-12T05:21:33.783570+00:00"
+}

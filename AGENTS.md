@@ -78,6 +78,9 @@ same logical script, so treat them as one.
   `src/polyalpha/kill_switch.py`. Any runtime drift fails verification and requires
   explicit review + a new execution version (re-freeze). Tests, the smoke script, and
   docs can evolve without re-freezing.
+- Frozen execution control plane: `scripts/freeze_kalshi_oms.py verify` pins the
+  demo automated execution harness (`kalshi-oms-demo-v0.1`): `src/polyalpha/kalshi_oms.py`.
+  Same drift rule; the venue adapter stays independently frozen at v0.2.
 
 ## Forward-evidence gates (the "conclusion")
 
