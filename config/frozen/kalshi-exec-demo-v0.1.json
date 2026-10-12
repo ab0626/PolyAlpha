@@ -1,0 +1,15 @@
+{
+  "version": "kalshi-exec-demo-v0.1",
+  "anchor_commit": "93c885ca5ed0fcac280157589c6bf58bd64420d1",
+  "runtime_sha256": "b667e7839dade206b7e3e62ea8a0207b1b4a4d09c102893b560dd0898fbded09",
+  "tests_sha256": "25741ffa3f46cf180cafbafa2f72c4113bc09d367a17f8a9040d152959552242",
+  "environment": "demo",
+  "production_execution": false,
+  "api_family": "kalshi_trade_api_v2",
+  "runtime_files": [
+    "src/polyalpha/kalshi_exec.py",
+    "src/polyalpha/kalshi_auth.py",
+    "src/polyalpha/kill_switch.py"
+  ],
+  "frozen_at": "2026-10-12T04:39:33.310707+00:00"
+}
