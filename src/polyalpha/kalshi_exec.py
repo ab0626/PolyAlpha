@@ -476,29 +476,54 @@ class KalshiExecClient:
         orders = data.get("orders", data if isinstance(data, list) else [])
         return [o for o in orders if isinstance(o, dict)]
 
+    def _orders_page(self, cursor: str | None = None) -> tuple[list[dict], str | None]:
+        """Fetch one page of open orders and the next cursor (None if exhausted)."""
+        params: dict[str, Any] = {"limit": 1000}
+        if cursor:
+            params["cursor"] = cursor
+        status, raw = self._request("GET", "/portfolio/orders", query=params)
+        data = self._decode(raw)
+        if status != 200:
+            raise OrderOutcomeUnknown(f"order list failed (HTTP {status}): {data}")
+        orders = data.get("orders", data if isinstance(data, list) else [])
+        orders = [o for o in orders if isinstance(o, dict)]
+        next_cursor = data.get("cursor") if isinstance(data, dict) else None
+        return orders, (next_cursor or None)
+
     def reconcile(self, client_order_id: str) -> ReconcileResult:
         """Resolve a client_order_id against the authoritative venue view.
 
         Used after an ``OrderOutcomeUnknown``: the caller must NOT blindly retry
         with a fresh id; it reconciles and, if absent, retries with the SAME id.
+
+        Paginates the open-order list until the id is found or the cursor is
+        exhausted, so a CID that falls outside the first response page is never
+        reported absent. A repeated cursor (pagination cycle) also terminates.
         """
         if not client_order_id:
             raise ValueError("client_order_id is required")
-        for o in self.list_orders():
-            if o.get("client_order_id") == client_order_id:
-                return ReconcileResult(
-                    client_order_id=client_order_id,
-                    found=True,
-                    order_id=o.get("order_id"),
-                    status=o.get("status"),
-                    remaining_count=parse_decimal(
-                        o.get("remaining_count") or o.get("remaining_count_fp")
-                    ),
-                    filled_count=parse_decimal(
-                        o.get("filled_count") or o.get("fill_count") or o.get("fill_count_fp")
-                    ),
-                    raw=o,
-                )
+        cursor: str | None = None
+        seen_cursors: set[str] = set()
+        while True:
+            orders, cursor = self._orders_page(cursor)
+            for o in orders:
+                if o.get("client_order_id") == client_order_id:
+                    return ReconcileResult(
+                        client_order_id=client_order_id,
+                        found=True,
+                        order_id=o.get("order_id"),
+                        status=o.get("status"),
+                        remaining_count=parse_decimal(
+                            o.get("remaining_count") or o.get("remaining_count_fp")
+                        ),
+                        filled_count=parse_decimal(
+                            o.get("filled_count") or o.get("fill_count") or o.get("fill_count_fp")
+                        ),
+                        raw=o,
+                    )
+            if not cursor or cursor in seen_cursors:
+                break
+            seen_cursors.add(cursor)
         return ReconcileResult(client_order_id=client_order_id, found=False)
 
 

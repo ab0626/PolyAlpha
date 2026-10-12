@@ -383,6 +383,44 @@ def test_reconcile_not_found(key_id, key_path, tmp_path):
     assert result.found is False
 
 
+def test_reconcile_paginates_cursor(key_id, key_path, tmp_path):
+    """A CID past the first page must still be found via cursor pagination."""
+    from urllib.parse import parse_qs, urlparse
+
+    calls: list[str] = []
+
+    def transport(method, url, headers, body):
+        calls.append(url)
+        cursor = (parse_qs(urlparse(url).query).get("cursor") or [None])[0]
+        if cursor is None:
+            payload = {
+                "orders": [{"order_id": "o1", "client_order_id": "other"}],
+                "cursor": "c2",
+            }
+        else:
+            payload = {
+                "orders": [
+                    {
+                        "order_id": "o2",
+                        "client_order_id": "cid-1",
+                        "status": "resting",
+                        "remaining_count": "5.00",
+                    }
+                ],
+                "cursor": "",
+            }
+        return 200, json.dumps(payload).encode()
+
+    client = make_client(key_id, key_path, tmp_path, transport)
+    client.enable()
+
+    result = client.reconcile("cid-1")
+    assert result.found is True
+    assert result.order_id == "o2"
+    assert result.remaining_count == Decimal("5.00")
+    assert len(calls) == 2  # first page + cursor page, then stop
+
+
 def test_idempotency_key_is_uuid4():
     a, b = new_client_order_id(), new_client_order_id()
     assert a != b

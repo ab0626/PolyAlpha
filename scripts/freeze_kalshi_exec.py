@@ -4,10 +4,11 @@
 EXECUTION FREEZE — a separate integrity domain from the research freeze
 (``freeze_baseline.py``) and the collector freeze (``COLLECTION_IMPL_COMMIT``).
 
-``kalshi-exec-demo-v0.1`` — frozen demo venue-adapter mechanics.
+``kalshi-exec-demo-v0.3`` — frozen demo venue-adapter mechanics.
 
 This pins the runtime behavior that determines whether and how an order reaches
-Kalshi. Only runtime drift fails verification:
+Kalshi (including cursor-paginated order reconciliation). Only runtime drift
+fails verification:
 
     src/polyalpha/kalshi_exec.py
     src/polyalpha/kalshi_auth.py
@@ -36,8 +37,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-exec-demo-v0.2.json"
-DEFAULT_VERSION = "kalshi-exec-demo-v0.2"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-exec-demo-v0.3.json"
+DEFAULT_VERSION = "kalshi-exec-demo-v0.3"
 
 # Runtime files whose drift BLOCKS verification (execution semantics).
 RUNTIME_FILES = (
