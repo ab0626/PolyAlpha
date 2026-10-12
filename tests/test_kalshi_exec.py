@@ -351,6 +351,29 @@ def test_reconcile_found(key_id, key_path, tmp_path):
     assert result.remaining_count == Decimal("7.00")
 
 
+def test_reconcile_parses_fp_field_names(key_id, key_path, tmp_path):
+    transport, _ = canned(
+        200,
+        {
+            "orders": [
+                {
+                    "order_id": "o1",
+                    "client_order_id": "cid-1",
+                    "status": "resting",
+                    "remaining_count_fp": "7.00",
+                    "fill_count_fp": "3.00",
+                }
+            ]
+        },
+    )
+    client = make_client(key_id, key_path, tmp_path, transport)
+    client.enable()
+    result = client.reconcile("cid-1")
+    assert result.found is True
+    assert result.remaining_count == Decimal("7.00")
+    assert result.filled_count == Decimal("3.00")
+
+
 def test_reconcile_not_found(key_id, key_path, tmp_path):
     transport, _ = canned(200, {"orders": []})
     client = make_client(key_id, key_path, tmp_path, transport)

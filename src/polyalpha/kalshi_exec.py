@@ -491,8 +491,12 @@ class KalshiExecClient:
                     found=True,
                     order_id=o.get("order_id"),
                     status=o.get("status"),
-                    remaining_count=parse_decimal(o.get("remaining_count")),
-                    filled_count=parse_decimal(o.get("filled_count")),
+                    remaining_count=parse_decimal(
+                        o.get("remaining_count") or o.get("remaining_count_fp")
+                    ),
+                    filled_count=parse_decimal(
+                        o.get("filled_count") or o.get("fill_count") or o.get("fill_count_fp")
+                    ),
                     raw=o,
                 )
         return ReconcileResult(client_order_id=client_order_id, found=False)

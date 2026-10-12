@@ -2,7 +2,7 @@
 """Demo smoke test for the Kalshi execution layer (read-only by default).
 
 Proves the order lifecycle mechanics against the LIVE DEMO venue (fake money):
-create -> ack -> cancel -> ack. By default it only READS account state and prints
+create -> amend -> cancel. By default it only READS account state and prints
 the safety-gate status; it mutates nothing unless you pass BOTH
 ``--place-demo-order`` and ``--enable-execution``.
 
@@ -41,17 +41,27 @@ DEFAULT_ENV_FILE = r"C:\Users\adith\powermarkets.env"
 
 
 def discover_ticker(demo_base_url: str) -> tuple[str, str] | None:
-    """First active energy market visible in the demo environment."""
+    """First active energy market, else any active demo market.
+
+    Demo may not mirror production's energy series, so fall back to any active
+    market: the smoke test proves VENUE MECHANICS, not the energy strategy.
+    """
     client = KalshiPublicClient(base_url=demo_base_url)
     for series in ENERGY_SERIES:
         try:
-            body = client.markets(series_ticker=series, status="active", limit=100)
+            body = client.markets(series_ticker=series, limit=100)
         except Exception:  # noqa: BLE001 — best-effort per series
             continue
         for market in body.get("markets", []):
-            ticker = market.get("ticker")
-            if ticker:
-                return ticker, series
+            if market.get("status") == "active" and market.get("ticker"):
+                return market["ticker"], series
+    try:
+        body = client.markets(limit=100)
+    except Exception:  # noqa: BLE001
+        return None
+    for market in body.get("markets", []):
+        if market.get("status") == "active" and market.get("ticker"):
+            return market["ticker"], market.get("series_ticker") or "demo"
     return None
 
 
@@ -60,7 +70,7 @@ def main() -> int:
     ap.add_argument("--env-file", default=DEFAULT_ENV_FILE, help="path to a .env file")
     ap.add_argument("--market-ticker", default=None, help="explicit market ticker to trade")
     ap.add_argument("--place-demo-order", action="store_true",
-                    help="exercise create->cancel (requires --enable-execution)")
+                    help="exercise create->amend->cancel (requires --enable-execution)")
     ap.add_argument("--enable-execution", action="store_true",
                     help="explicitly clear the kill switch (operator action)")
     args = ap.parse_args()
@@ -134,6 +144,26 @@ def main() -> int:
         print("No order_id in ack; aborting cancel.")
         return 1
 
+    amended_cid = new_client_order_id()
+    try:
+        amend_ack = exec_client.amend_order(
+            ack.order_id,
+            ticker=ticker,
+            side=OrderSide.BID,
+            price=Decimal("0.02"),
+            count=Decimal("1"),
+            original_client_order_id=order.client_order_id,
+            updated_client_order_id=amended_cid,
+        )
+        print("AMEND OK:", amend_ack.order_id, "status", amend_ack.status)
+    except OrderRejected as exc:
+        print("AMEND REJECTED:", exc)
+        return 1
+    except OrderOutcomeUnknown as exc:
+        print("AMEND UNKNOWN (reconcile required):", exc)
+        print("Reconcile:", exec_client.reconcile(amended_cid))
+        return 1
+
     try:
         cancel = exec_client.cancel_order(ack.order_id, market_ticker=ticker)
         print("CANCEL OK:", cancel.order_id, "reduced_by", cancel.reduced_by)
@@ -144,8 +174,8 @@ def main() -> int:
         print("CANCEL UNKNOWN:", exc)
         return 1
 
-    print("Reconcile:", exec_client.reconcile(order.client_order_id))
-    print("\ncreate->cancel lifecycle complete.")
+    print("Reconcile:", exec_client.reconcile(amended_cid))
+    print("\ncreate->amend->cancel lifecycle complete.")
     return 0
 
 
