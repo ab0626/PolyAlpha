@@ -142,7 +142,7 @@ def main() -> int:
 
     run = 0
     while args.cycles == 0 or run < args.cycles:
-        received = datetime.now(UTC)
+        poll_started = datetime.now(UTC)
         try:
             total_new = 0
             for s in streams:
@@ -158,13 +158,19 @@ def main() -> int:
                 n_receipts = 0
                 n_rows = 0
                 newest_publish = None
+                newest_received = None
                 for d in new_docs:
                     try:
                         blob = download_document(d.doc_id)
-                        receipt, rows = s["build"](d, blob, received, collector_version)
+                        # Receipt clock: stamp AFTER the bytes actually arrive,
+                        # independently per document. A single poll-start stamp
+                        # would record a doc as received before it existed,
+                        # leaking future information into E3's boundary.
+                        received_at = datetime.now(UTC)
+                        receipt, rows = s["build"](d, blob, received_at, collector_version)
                     except Exception as exc:  # noqa: BLE001 — per-doc best effort
                         print(
-                            f"[{received.isoformat()}] WARN {s['name']} doc {d.doc_id} "
+                            f"[{datetime.now(UTC).isoformat()}] WARN {s['name']} doc {d.doc_id} "
                             f"failed: {exc}",
                             file=sys.stderr,
                             flush=True,
@@ -176,29 +182,30 @@ def main() -> int:
                     n_receipts += 1
                     n_rows += len(rows)
                     newest_publish = d.publish_date
+                    newest_received = received_at
 
                 total_rows[s["name"]] += n_rows
                 status[s["docs_key"]] = len(captured[s["name"]])
                 status[s["rows_key"]] = total_rows[s["name"]]
                 if newest_publish is not None:
                     status[s["new_at_key"]] = newest_publish
-                    status[s["new_recv_key"]] = received.isoformat()
+                    status[s["new_recv_key"]] = newest_received.isoformat()
                 total_new += n_receipts
                 if n_receipts:
                     print(
-                        f"[{received.isoformat()}] {s['name']}: captured {n_receipts} docs "
+                        f"[{newest_received.isoformat()}] {s['name']}: captured {n_receipts} docs "
                         f"({n_rows} rows), newest {newest_publish}, "
                         f"total {len(captured[s['name']])}",
                         flush=True,
                     )
 
-            status["last_successful_poll_at"] = received.isoformat()
+            status["last_successful_poll_at"] = poll_started.isoformat()
             status["last_error"] = None
             status["last_error_at"] = None
             status["last_new_doc_count"] = total_new
             write_status(spath, status)
             if total_new == 0:
-                print(f"[{received.isoformat()}] no new ERCOT docs (poll ok)", flush=True)
+                print(f"[{poll_started.isoformat()}] no new ERCOT docs (poll ok)", flush=True)
         except Exception as exc:  # noqa: BLE001 — durable: log and retry
             status["last_error"] = f"{type(exc).__name__}: {exc}"
             status["last_error_at"] = datetime.now(UTC).isoformat()

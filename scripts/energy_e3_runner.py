@@ -258,14 +258,17 @@ def build_new_observations(
             training_peaks[key] = f["peak"]
 
     out: list[dict] = []
-    today = datetime.now(UTC).date()
+    now_utc = datetime.now(UTC)
     for day, snaps in sorted(kalshi_by_day.items()):
         try:
-            if date.fromisoformat(day) >= today:
-                # Operating day not yet complete: its lead-0 forecast vintages
-                # are still forming, so "first lead-0 forecast" is not final yet.
-                continue
+            bucket_start, bucket_end = _lead0_bucket(day)
         except ValueError:
+            continue
+        # Operating day not yet complete: require the lead-0 bucket to be fully
+        # closed (bucket_end <= now_utc) before sampling. A UTC calendar-date
+        # comparison is insufficient — at 00:30 UTC the local ERCOT day has not
+        # ended yet, and its first-vintage forecast is still forming.
+        if bucket_end > now_utc:
             continue
         residuals = _residuals_for_day(actuals, training_peaks, day)
         eps = residuals.get(0, [])
@@ -274,7 +277,6 @@ def build_new_observations(
         f0 = forecast_first.get((day, day))
         if f0 is None:
             continue
-        bucket_start, bucket_end = _lead0_bucket(day)
         if bucket_start < PROSPECTIVE_CUTOVER:
             # MISSING_PRE_CUTOVER: the lead-0 bucket begins before the cutover,
             # so the day's book is only partially observed prospectively.
@@ -504,7 +506,7 @@ def _status_report(observations_path: Path, resolutions_path: Path) -> str:
         "",
         f"  resolved observations:    {len(resolved)}",
         "",
-        f"  E3 ALPHA = UNKNOWN (until enough prospective operating days resolve)",
+        "  E3 ALPHA = UNKNOWN (until enough prospective operating days resolve)",
     ]
     return "\n".join(lines)
 

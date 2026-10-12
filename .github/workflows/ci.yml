@@ -40,5 +40,8 @@ jobs:
       - name: Freeze execution control-plane verify
         run: python scripts/freeze_kalshi_oms.py verify
 
+      - name: Freeze E3 research verify
+        run: python scripts/freeze_energy_e3.py verify
+
       - name: Tests
         run: pytest -q
