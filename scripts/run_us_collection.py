@@ -147,18 +147,27 @@ def main() -> int:
         # Widen the book universe to the full open event graph. The top-N
         # activity discovery only surfaces the most active markets; the events
         # feed exposes every parent event and its child markets. Harvest them
-        # (paginated) so the independent-cluster gate accumulates across the
-        # whole event graph, not just the activity window.
+        # with true pagination (until an undersized page signals exhaustion)
+        # so the independent-cluster gate accumulates across the whole event
+        # graph, not just a fixed six-page window.
         event_slugs: set[str] = set()
-        for offset in range(0, 600, 100):
+        event_discovery_complete = False
+        event_offset = 0
+        event_limit = 100
+        # Defensive page bound: a misbehaving feed that never returns an
+        # undersized page must not loop forever. If hit, discovery is recorded
+        # as incomplete rather than silently truncated.
+        for _ in range(1000):
             try:
-                events = collector.collect_events({"limit": 100, "offset": offset})
-                found = _harvest_event_slugs(events)
-                event_slugs |= found
-                if not found:
-                    break
+                events = collector.collect_events({"limit": event_limit, "offset": event_offset})
             except Exception as error:  # noqa: BLE001
-                print(f"events discovery error (offset {offset}): {error}")
+                print(f"events discovery error (offset {event_offset}): {error}")
+                break
+            event_slugs |= _harvest_event_slugs(events)
+            if len(events) < event_limit:
+                event_discovery_complete = True
+                break
+            event_offset += event_limit
 
         slugs = sorted(set(activity_slugs) | required_slugs | stratified_slugs | event_slugs)
 
@@ -218,7 +227,8 @@ def main() -> int:
 
         print(f"DISCOVERED: {len(markets)} activity; universe={len(slugs)} "
               f"(required={len(required_slugs)}, stratified={len(stratified_slugs)}, "
-              f"events={len(event_slugs)}); tracked={len(tracked_slugs)} "
+              f"events={len(event_slugs)}, event_discovery_complete={event_discovery_complete}); "
+              f"tracked={len(tracked_slugs)} "
               f"priority={len(priority_slugs)} round_robin={len(round_robin_slugs)} "
               f"settlement_poll={len(tracked_slugs - settled_slugs)}")
 
@@ -289,6 +299,7 @@ def main() -> int:
         "uptime_seconds": round(uptime, 1),
         "collection_cycles": cycles,
         "markets_tracked": len(markets_seen),
+        "event_discovery_complete": event_discovery_complete,
         "raw_counts": stats.as_dict(),
         "reconciliations": 0,  # sustained runner does not run the burn-in gate
         "evidence": {
