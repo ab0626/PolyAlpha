@@ -163,7 +163,17 @@ def main() -> int:
                 break
             time.sleep(args.interval)
     except KeyboardInterrupt:
-        print("\ninterrupted.")
+        if harness.state != HarnessState.IDLE:
+            halt_reason = f"operator interrupt during {harness.state.value}"
+            audit("operator_interrupt_active", {"state": harness.state.value, "reason": halt_reason})
+            try:
+                client.disable("ABNORMAL_RECONCILIATION", actor="oms-harness")
+            except Exception:
+                pass
+            safety_halt = True
+            print(f"\ninterrupted during {harness.state.value}; arming kill switch.")
+        else:
+            print("\nclean operator stop.")
     finally:
         audit("loop_stop", {"cycles": cycle, "safety_halt": safety_halt, "reason": halt_reason})
 

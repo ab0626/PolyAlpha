@@ -265,3 +265,87 @@ def test_halted_exit_code_nonzero(monkeypatch):
     rc = mod.main()
 
     assert rc == 2
+
+
+def test_interrupt_while_idle_exits_clean(monkeypatch):
+    mod = _load_script_module()
+    monkeypatch.setattr(mod, "load_env_file", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "make_audit", lambda path: (lambda event, fields: None))
+    monkeypatch.setattr(mod, "discover_ticker", lambda *a, **k: "KX-1")
+
+    class _ClearClient:
+        class _State:
+            active = False
+            reason = None
+
+            def as_dict(self):
+                return {"active": False}
+
+        kill_switch_state = _State()
+
+        def __init__(self):
+            self.disabled = None
+
+        def disable(self, reason, actor=None):
+            self.disabled = reason
+
+    class _InterruptIdleHarness:
+        state = HarnessState.IDLE
+
+        def __init__(self, *a, **k):
+            pass
+
+        def run_cycle(self):
+            raise KeyboardInterrupt
+
+    client = _ClearClient()
+    monkeypatch.setattr(mod, "KalshiExecClient", lambda *a, **k: client)
+    monkeypatch.setattr(mod, "DemoExecutionHarness", _InterruptIdleHarness)
+    monkeypatch.setattr(sys, "argv", ["kalshi_oms_demo.py", "--env-file", "/nonexistent"])
+
+    rc = mod.main()
+
+    assert rc == 0
+    assert client.disabled is None
+
+
+def test_interrupt_during_active_state_arms_and_exits_2(monkeypatch):
+    mod = _load_script_module()
+    monkeypatch.setattr(mod, "load_env_file", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "make_audit", lambda path: (lambda event, fields: None))
+    monkeypatch.setattr(mod, "discover_ticker", lambda *a, **k: "KX-1")
+
+    class _ClearClient:
+        class _State:
+            active = False
+            reason = None
+
+            def as_dict(self):
+                return {"active": False}
+
+        kill_switch_state = _State()
+
+        def __init__(self):
+            self.disabled = None
+
+        def disable(self, reason, actor=None):
+            self.disabled = reason
+
+    class _InterruptActiveHarness:
+        state = HarnessState.SUBMITTING
+
+        def __init__(self, *a, **k):
+            pass
+
+        def run_cycle(self):
+            raise KeyboardInterrupt
+
+    client = _ClearClient()
+    monkeypatch.setattr(mod, "KalshiExecClient", lambda *a, **k: client)
+    monkeypatch.setattr(mod, "DemoExecutionHarness", _InterruptActiveHarness)
+    monkeypatch.setattr(sys, "argv", ["kalshi_oms_demo.py", "--env-file", "/nonexistent"])
+
+    rc = mod.main()
+
+    assert rc == 2
+    assert client.disabled == "ABNORMAL_RECONCILIATION"
