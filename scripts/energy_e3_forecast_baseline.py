@@ -86,7 +86,9 @@ def main() -> int:
     print(f"{'strike':>7} {'p_model':>8} {'yes_bid':>8} {'yes_ask':>8} {'no_ask':>8} "
           f"{'edge_YES':>9} {'edge_NO':>9}")
     for r in build_opportunities(model, ladder, now):
-        pm = float(r.p_model); yb = float(r.yes_bid); ya = float(r.yes_ask)
+        pm = float(r.p_model)
+        yb = float(r.yes_bid)
+        ya = float(r.yes_ask)
         na = float(r.no_ask) if r.no_ask else float("nan")
         ey = float(r.edge_yes) if r.edge_yes else float("nan")
         en = float(r.edge_no) if r.edge_no else float("nan")

@@ -23,7 +23,6 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime
-from decimal import Decimal
 from pathlib import Path
 
 from .ercot_mis import (

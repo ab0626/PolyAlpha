@@ -20,7 +20,6 @@ sys.path.insert(0, str(ROOT / "src"))
 from polyalpha.energy.kalshi import (  # noqa: E402
     KalshiPublicClient,
     build_ladder,
-    parse_threshold,
 )
 
 SERIES = "KXTXERCOTPEAKD"

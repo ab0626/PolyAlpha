@@ -37,9 +37,8 @@ from polyalpha.energy.kalshi import ENERGY_SERIES, KalshiPublicClient  # noqa: E
 from polyalpha.energy.kalshi_ws import (  # noqa: E402
     WS_URLS,
     subscribe_message,
-    ws_auth_headers,
-    ws_raw_dir,
     write_status,
+    ws_auth_headers,
 )
 from polyalpha.kalshi_auth import load_env_file, load_private_key  # noqa: E402
 

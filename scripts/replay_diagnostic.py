@@ -112,7 +112,7 @@ def main() -> int:
                     continue
                 try:
                     data = json.loads(line)
-                    base = json.loads(data["canonical_json"])
+                    json.loads(data["canonical_json"])
                 except (json.JSONDecodeError, KeyError, ValueError):
                     continue
                 recs += 1

@@ -24,7 +24,6 @@ import time
 import urllib.request
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 _MIS_DOCLIST = "https://www.ercot.com/misapp/servlets/IceDocListJsonWS"

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import UTC, datetime
 from pathlib import Path
 
 from ..kalshi_auth import sign_request

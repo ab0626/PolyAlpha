@@ -80,7 +80,8 @@ def main() -> int:
     rows = build_opportunities(model, ladder, now)
     for r in rows:
         pm = float(r.p_model) if r.p_model else float("nan")
-        yb = float(r.yes_bid); ya = float(r.yes_ask)
+        yb = float(r.yes_bid)
+        ya = float(r.yes_ask)
         na = float(r.no_ask) if r.no_ask else float("nan")
         ey = float(r.edge_yes) if r.edge_yes else float("nan")
         en = float(r.edge_no) if r.edge_no else float("nan")
