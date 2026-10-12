@@ -93,6 +93,12 @@ def discover_active_markets(series_tickers: list[str]) -> list[str]:
     return tickers
 
 
+def _market_ticker_of(message: dict) -> str | None:
+    """Extract the market_ticker from a WS message envelope (if present)."""
+    msg = message.get("msg") or {}
+    return msg.get("market_ticker") or message.get("market_ticker")
+
+
 async def run(args: argparse.Namespace) -> int:
     key_id = os.environ["KALSHI_API_KEY_ID"]
     private_key = load_private_key(os.environ["KALSHI_PRIVATE_KEY_PATH"])
@@ -153,6 +159,7 @@ async def run(args: argparse.Namespace) -> int:
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, MAX_BACKOFF_SECONDS)
                 continue
+            subscribed = set(market_tickers)
             write_status(status_path, status)
 
             try:
@@ -218,12 +225,6 @@ async def run(args: argparse.Namespace) -> int:
                             data = json.loads(message)
                         except json.JSONDecodeError:
                             data = {"raw": message}
-                        writer.write({
-                            "received_at": received.isoformat(),
-                            "seq": seq,
-                            "type": data.get("type"),
-                            "message": data,
-                        })
 
                         status["last_message_at"] = received.isoformat()
                         status["heartbeat_at"] = received.isoformat()  # alive + connected + data flowing
@@ -231,6 +232,20 @@ async def run(args: argparse.Namespace) -> int:
                         status["messages_received"] += 1
                         status["last_error"] = None
                         status["last_error_at"] = None
+
+                        # Scope guard: some channels (e.g. market_lifecycle_v2) are
+                        # delivered exchange-wide regardless of the ticker filter in
+                        # the subscribe message. Drop any message whose market_ticker
+                        # is outside the subscribed energy set so this lineage stays
+                        # energy-only. Liveness counters above still reflect raw flow.
+                        ticker = _market_ticker_of(data)
+                        if ticker is None or ticker in subscribed:
+                            writer.write({
+                                "received_at": received.isoformat(),
+                                "seq": seq,
+                                "type": data.get("type"),
+                                "message": data,
+                            })
 
                         if seq % FLUSH_EVERY_MESSAGES == 0:
                             writer.flush()

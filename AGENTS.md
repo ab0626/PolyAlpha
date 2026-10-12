@@ -110,3 +110,12 @@ of the elapsed window). Cluster count is honest AFTER macro-release clustering
   so idle does not halt collection (the ~35h data gaps were the laptop sleeping after
   1h idle). Keep it plugged in: DC "never sleep" drains the battery to a hard
   shutdown. A reboot still needs a login to restart the launchers (no auto-login).
+- The Kalshi WS `market_lifecycle_v2` channel is delivered exchange-wide (the
+  `market_tickers` filter in the subscribe message is ignored for it), so the
+  energy WS lineage briefly captured non-energy lifecycle events (BTC/NFL/SOL/ETH/
+  etc.). Fixed 2026-10-12 by a client-side scope guard in `energy_ws_collector.py`
+  (drops any message whose `market_ticker` is outside the subscribed energy set;
+  liveness counters still track raw flow). Pre-fix files
+  `data/energy/kalshi/ws/2026-10-11.jsonl` and `2026-10-12.jsonl` (through ~02:54 UTC)
+  still contain those rows and are left as-is (append-only lineage).
+  `orderbook_delta`/`trade`/`ticker` were always correctly ticker-scoped.
