@@ -79,7 +79,7 @@ same logical script, so treat them as one.
   explicit review + a new execution version (re-freeze). Tests, the smoke script, and
   docs can evolve without re-freezing.
 - Frozen execution control plane: `scripts/freeze_kalshi_oms.py verify` pins the
-  demo automated execution harness (`kalshi-oms-demo-v0.2`): `src/polyalpha/kalshi_oms.py`
+  demo automated execution harness (`kalshi-oms-demo-v0.3`): `src/polyalpha/kalshi_oms.py`
   and `scripts/kalshi_oms_demo.py` (both are runtime control-plane code). Same drift
   rule; the venue adapter stays independently frozen at v0.2.
 
