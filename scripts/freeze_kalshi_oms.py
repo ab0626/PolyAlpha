@@ -32,10 +32,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-oms-demo-v0.1.json"
-DEFAULT_VERSION = "kalshi-oms-demo-v0.1"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-oms-demo-v0.2.json"
+DEFAULT_VERSION = "kalshi-oms-demo-v0.2"
 
-RUNTIME_FILES = ("src/polyalpha/kalshi_oms.py",)
+RUNTIME_FILES = (
+    "src/polyalpha/kalshi_oms.py",
+    "scripts/kalshi_oms_demo.py",
+)
 
 
 def _sha256_of_files(paths: tuple[str, ...]) -> str:
