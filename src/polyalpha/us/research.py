@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -162,6 +163,23 @@ def _default_release_mapping(raw_dir: str | Path) -> Path | None:
     return derived if derived.exists() else None
 
 
+def _latest_meta_at(
+    timeline: list[tuple[int, dict]], ts_index: list[int], observed_ns: int
+) -> dict:
+    """Most recent metadata record received at/after ``observed_ns`` (PIT).
+
+    Metadata (endDate/category/question) is mutable; an early book must not see
+    a later revision's metadata. Select the latest record whose receipt time is
+    <= the book's observation time, so predictive metadata is as-of.
+    """
+    if not timeline:
+        return {}
+    i = bisect_right(ts_index, observed_ns) - 1
+    if i < 0:
+        return {}
+    return timeline[i][1]
+
+
 def build_us_research_dataset(
     raw_dir: str | Path,
     max_snapshots_per_market: int | None = None,
@@ -178,7 +196,7 @@ def build_us_research_dataset(
     raw = RawStore(raw_dir)
     if release_mapping_path is None:
         release_mapping_path = _default_release_mapping(raw_dir)
-    markets_by_slug: dict[str, dict] = {}
+    markets_by_slug: dict[str, list[tuple[int, dict]]] = defaultdict(list)
     settlement_by_slug: dict[str, tuple[int | None, int]] = {}
     parent_event_by_slug: dict[str, str] = {}
 
@@ -190,7 +208,17 @@ def build_us_research_dataset(
             for market in record.payload.get("markets", []):
                 slug = market.get("slug")
                 if slug:
-                    markets_by_slug[slug] = market  # replay is time-ordered; latest wins
+                    # Keep only the mutable predictive metadata the snapshot
+                    # consumes, keyed by receipt time, so pass 2 selects it
+                    # as-of the book (never a later revision) without retaining
+                    # every full market payload. Key presence is preserved so
+                    # the pass-2 `.get(key, default)` semantics are unchanged.
+                    meta = {
+                        key: market[key]
+                        for key in ("endDate", "category", "question")
+                        if key in market
+                    }
+                    markets_by_slug[slug].append((record.received_at_ns, meta))
         elif record.source == SOURCE_EVENTS:
             for event in record.payload.get("events", []):
                 event_id = event.get("id")
@@ -207,6 +235,13 @@ def build_us_research_dataset(
                     _binary_label(record.payload.get("settlement")),
                     record.received_at_ns,
                 )
+
+    # Sort each market's metadata timeline by receipt time and precompute the
+    # timestamp index so Pass 2 can select the as-of metadata in O(log n).
+    market_meta_ts: dict[str, list[int]] = {}
+    for slug, timeline in markets_by_slug.items():
+        timeline.sort(key=lambda t: t[0])
+        market_meta_ts[slug] = [ts for ts, _ in timeline]
 
     # Macro release markets have no parent entry in the retail events feed, so
     # they would otherwise fall back to slug-as-cluster (each CPI/NFP/FOMC
@@ -245,7 +280,9 @@ def build_us_research_dataset(
         observed = _ts_from_ns(record.received_at_ns)
         bbo = _book_bbo(market_data)
         stats = market_data.get("stats") or {}
-        meta = markets_by_slug.get(slug, {})
+        # As-of metadata: latest record received no later than this book.
+        timeline = markets_by_slug.get(slug, [])
+        meta = _latest_meta_at(timeline, market_meta_ts.get(slug, []), record.received_at_ns)
         end = _parse_iso(meta.get("endDate"))
         hours = (end - observed).total_seconds() / 3600.0 if end is not None else None
 

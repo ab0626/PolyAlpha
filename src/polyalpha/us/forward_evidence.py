@@ -38,18 +38,26 @@ DEFAULT_KNOWN_GAPS = (
 )
 
 
-def _load_known_gaps(path: str | Path | None) -> list[dict]:
+def _load_known_gaps(path: str | Path | None) -> list[dict] | None:
+    """Load known-gap provenance; ``None`` means missing/unreadable/malformed.
+
+    Fail-closed: a missing or corrupt gap ledger must NOT silently read as "no
+    gaps" (which would compute 100% observed coverage). Return ``None`` so the
+    coverage gate can fail rather than assume full coverage.
+    """
     if path is None:
-        return []
+        return None
     path = Path(path)
     if not path.exists():
-        return []
+        return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return []
-    gaps = data.get("gaps", []) if isinstance(data, dict) else []
-    return gaps if isinstance(gaps, list) else []
+        return None
+    gaps = data.get("gaps") if isinstance(data, dict) else None
+    if not isinstance(gaps, list):
+        return None
+    return gaps
 
 
 def _settlement_completeness(dataset: ResearchDataset) -> dict:
@@ -158,7 +166,16 @@ def forward_evidence_report(
     settled = hierarchy["resolved_markets"]
     clusters = hierarchy["effective_n"]
     completeness = _settlement_completeness(dataset)
-    coverage = _observed_coverage(now, known_gaps or [])
+    # Fail-closed: missing/corrupt gap provenance must never read as full coverage.
+    coverage_unknown = known_gaps is None
+    coverage = None if coverage_unknown else _observed_coverage(now, known_gaps)
+    coverage_gate: dict = {
+        "met": (not coverage_unknown) and coverage >= MIN_COVERAGE,
+        "value": None if coverage_unknown else round(coverage, 4),
+        "required": MIN_COVERAGE,
+    }
+    if coverage_unknown:
+        coverage_gate["error"] = "gap provenance missing/corrupt (fail-closed)"
 
     gates = {
         "days": {
@@ -176,11 +193,7 @@ def forward_evidence_report(
             "value": clusters,
             "required": MIN_CLUSTERS,
         },
-        "observed_coverage": {
-            "met": coverage >= MIN_COVERAGE,
-            "value": round(coverage, 4),
-            "required": MIN_COVERAGE,
-        },
+        "observed_coverage": coverage_gate,
     }
     met = all(g["met"] for g in gates.values())
 
@@ -193,7 +206,12 @@ def forward_evidence_report(
         "sampling_hierarchy": hierarchy,
         "settlement_completeness": completeness,
         "data_gaps": known_gaps or [],
+        "coverage_provenance": "missing" if coverage_unknown else "ok",
     }
+    if coverage_unknown:
+        report["errors"] = [
+            "gap provenance missing/corrupt: observed coverage is UNKNOWN (fail-closed)"
+        ]
 
     if not met:
         report["status"] = "PENDING_EVIDENCE"

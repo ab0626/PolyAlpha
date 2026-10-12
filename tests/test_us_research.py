@@ -12,7 +12,12 @@ import sys
 sys.path.insert(0, "src")
 
 from polyalpha.rawstore import RawStore
-from polyalpha.us.forward_evidence import _observed_coverage
+from polyalpha.research_dataset import ResearchDataset
+from polyalpha.us.forward_evidence import (
+    _load_known_gaps,
+    _observed_coverage,
+    forward_evidence_report,
+)
 from polyalpha.us.research import build_us_research_dataset, sampling_hierarchy
 
 
@@ -152,6 +157,69 @@ def test_release_mapping_does_not_override_events_feed(tmp_path):
 
     ds = build_us_research_dataset(tmp_path / "raw", release_mapping_path=mapping)
     assert {s.event_cluster for s in ds.snapshots} == {"e1"}
+
+
+def test_metadata_is_point_in_time(tmp_path):
+    # An early book must not inherit a later metadata revision's endDate /
+    # category / question. Metadata is selected as-of the book's receipt time.
+    raw = RawStore(tmp_path / "raw", "test")
+    # Metadata revision 1 (t=100).
+    raw.append("polymarket_us_retail_markets", "d",
+               {"markets": [_market("m1", "sports", "Q1", end="2026-10-01T00:00:00Z")]},
+               received_at_ns=100)
+    # Book BEFORE any metadata -> unknown category, no end date.
+    raw.append("polymarket_us_retail_book", "m1", _book("m1"), received_at_ns=50)
+    # Book AFTER revision 1, BEFORE revision 2 -> revision 1 metadata only.
+    raw.append("polymarket_us_retail_book", "m1", _book("m1"), received_at_ns=200)
+    # Metadata revision 2 (t=300) changes category/question/endDate.
+    raw.append("polymarket_us_retail_markets", "d",
+               {"markets": [_market("m1", "politics", "Q2", end="2026-10-05T00:00:00Z")]},
+               received_at_ns=300)
+    raw.close()
+
+    ds = build_us_research_dataset(tmp_path / "raw")
+    snaps = sorted(ds.snapshots, key=lambda s: s.observation_timestamp)
+    early, mid = snaps[0], snaps[1]
+
+    assert early.category == "unknown"
+    assert early.hours_to_resolution is None  # no as-of endDate yet
+
+    assert mid.category == "sports"
+    assert mid.question == "Q1"
+    assert mid.hours_to_resolution is not None
+
+
+def test_load_known_gaps_fails_closed(tmp_path):
+    # Missing provenance -> None (never silently "no gaps").
+    assert _load_known_gaps(tmp_path / "nope.json") is None
+
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    assert _load_known_gaps(bad) is None
+
+    wrong = tmp_path / "wrong.json"
+    wrong.write_text('{"foo": 1}', encoding="utf-8")
+    assert _load_known_gaps(wrong) is None
+
+    ok = tmp_path / "ok.json"
+    ok.write_text('{"gaps": []}', encoding="utf-8")
+    assert _load_known_gaps(ok) == []
+
+    ok2 = tmp_path / "ok2.json"
+    ok2.write_text('{"gaps": [{"start": "x", "end": "y"}]}', encoding="utf-8")
+    assert _load_known_gaps(ok2) == [{"start": "x", "end": "y"}]
+
+
+def test_forward_evidence_coverage_fails_closed():
+    from datetime import UTC, datetime
+
+    ds = ResearchDataset(snapshots=[], created_at=datetime.now(UTC),
+                         source_reports=["test"], data_hash="x")
+    report = forward_evidence_report(ds, as_of=datetime.now(UTC), known_gaps=None)
+    assert report["gates"]["observed_coverage"]["met"] is False
+    assert report["gates"]["observed_coverage"]["value"] is None
+    assert report["coverage_provenance"] == "missing"
+    assert "errors" in report
 
 
 def test_observed_coverage_unions_overlapping_gaps():
