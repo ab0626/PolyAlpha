@@ -43,5 +43,8 @@ jobs:
       - name: Freeze E3 research verify
         run: python scripts/freeze_energy_e3.py verify
 
+      - name: Freeze US collector verify
+        run: python scripts/freeze_us_collector.py verify
+
       - name: Tests
         run: pytest -q
