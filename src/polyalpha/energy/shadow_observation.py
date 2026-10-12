@@ -20,16 +20,24 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-PROSPECTIVE_CUTOVER = datetime(2026, 10, 11, 3, 15, 0, tzinfo=UTC)
+# Prospective cutover advanced from 2026-10-11T03:15Z to the start of the first
+# operating day whose lead-0 forecast is captured with the CORRECTED ERCOT
+# receipt clock (energy_forecast_collector.py stamps received_at after download,
+# per document). Operating days 2026-10-11 and 2026-10-12 carried first same-day
+# forecasts whose stored received_at predates that fix (poll-start stamp, a few
+# seconds early), so their buckets are MISSING_PRE_CUTOVER under this value and
+# never enter the ledger.
+PROSPECTIVE_CUTOVER = datetime(2026, 10, 13, 5, 0, 0, tzinfo=UTC)
 MIN_RESIDUALS = 5
 MAX_LEAD = 6
 FEES = Decimal("0.02")  # frozen conservative placeholder (ENERGY_E3_SPEC v1)
 # Frozen model identifier. Deliberately NOT the git HEAD: the observation
 # identity must be stable across infra commits, or a docs commit would silently
 # re-key every observation and break idempotency. Bumped to v0.1 for the
-# pre-first-observation correction: historical lead-0 residuals now use the
-# FIRST same-day NP3-560 vintage, matching prospective scoring.
-MODEL_VERSION = "e3-baseline-v0.1"
+# pre-first-observation correction (first same-day NP3-560 vintage for lead-0),
+# and to v0.2 for the receipt-clock correction + prospective-cutover advance
+# (2026-10-13T05:00Z).
+MODEL_VERSION = "e3-baseline-v0.2"
 
 DEFAULT_OBSERVATIONS = "data/energy/shadow_observations.jsonl"
 DEFAULT_RESOLUTIONS = "data/energy/shadow_resolutions.jsonl"

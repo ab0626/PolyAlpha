@@ -44,8 +44,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "energy-e3-research-v0.1.json"
-DEFAULT_VERSION = "energy-e3-research-v0.1"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "energy-e3-research-v0.2.json"
+DEFAULT_VERSION = "energy-e3-research-v0.2"
 
 # E3 runtime methodology: the runner plus the physical model, observation
 # identity, edge definition, and market-side semantics it executes.
@@ -81,7 +81,7 @@ def freeze(version: str, commit: str | None, config: Path) -> None:
         "version": version,
         "anchor_commit": commit or _git_head(),
         "runtime_sha256": _sha256_of_files(RUNTIME_FILES),
-        "model_version": "e3-baseline-v0.1",
+        "model_version": "e3-baseline-v0.2",
         "research_spec": "docs/ENERGY_E3_SPEC.md (v3)",
         "runtime_files": list(RUNTIME_FILES),
         "frozen_at": datetime.now(UTC).isoformat(),

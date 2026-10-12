@@ -105,9 +105,30 @@ d), so no market book exists for lead ≥ 1 — v2's per-lead buckets are infeas
 - Mapping futures/options to a binary probability without a mathematically
   justified, point-in-time bridge.
 
+## Observation rule amendment — v4 (2026-10-12)
+
+Amends v3 before any E3 observation resolves. The ERCOT forecast collector
+stamped `received_at` once per poll cycle *before* `download_document()`
+completed, so a forecast's stored receipt time could be a few seconds earlier
+than its bytes actually arrived. Because E3's no-lookahead boundary is
+`max(publish_at, received_at)`, this could admit a Kalshi snapshot captured
+before our pipeline held the forecast.
+
+- **Collector fix:** `energy_forecast_collector.py` now stamps `received_at`
+  after each successful download, independently per document.
+- **Prospective cutover advanced** to `2026-10-13T05:00:00Z` (the start of the
+  first operating day whose lead-0 forecast is captured with the corrected
+  receipt clock). Operating days `2026-10-11` and `2026-10-12` are
+  `MISSING_PRE_CUTOVER` and never enter the ledger; the 19 observations already
+  recorded for `2026-10-11` are superseded (see
+  `data/energy/shadow_observations.SUPERSEDED_2026-10-12.reason.md`).
+- **`MODEL_VERSION`** bumped to `e3-baseline-v0.2`.
+
 ## Version history
 
 - **v1** — initial freeze (2026-10-07), before any model-vs-market comparison.
 - **v2** — freeze the observation rule + prospective cutover (2026-10-11), before
   any prospective E3 evaluation.
 - **v3** — amend to lead-0-only sampling (24-hour market) (2026-10-11).
+- **v4** — advance prospective cutover to 2026-10-13T05:00Z after the ERCOT
+  receipt-clock fix (2026-10-12).

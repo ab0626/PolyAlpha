@@ -1,0 +1,15 @@
+{
+  "version": "energy-e3-research-v0.2",
+  "anchor_commit": "7e09ad28f5a406d2e3e2f58072977d21066d7574",
+  "runtime_sha256": "0b31ee43ea5f33335db2d3f82c7b0e6c8b715b130cac4d58729362ae0b2af0bc",
+  "model_version": "e3-baseline-v0.2",
+  "research_spec": "docs/ENERGY_E3_SPEC.md (v3)",
+  "runtime_files": [
+    "scripts/energy_e3_runner.py",
+    "src/polyalpha/energy/shadow_observation.py",
+    "src/polyalpha/energy/physical.py",
+    "src/polyalpha/energy/e3.py",
+    "src/polyalpha/energy/kalshi.py"
+  ],
+  "frozen_at": "2026-10-12T16:04:07.749898+00:00"
+}
