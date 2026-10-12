@@ -192,6 +192,14 @@ def forward_evidence_report(
             "met": clusters >= MIN_CLUSTERS,
             "value": clusters,
             "required": MIN_CLUSTERS,
+            # Collection-diversity gate: counts ALL distinct parent-event
+            # clusters (the independent-ish units), not just resolved/evaluable
+            # ones. Each family verdict separately requires >=200 usable/resolved
+            # clusters over its own eval sample.
+            "note": (
+                "collection-diversity gate over all parent-event clusters; "
+                "family verdicts separately require >=200 resolved clusters"
+            ),
         },
         "observed_coverage": coverage_gate,
     }
