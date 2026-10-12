@@ -109,8 +109,9 @@ def main() -> int:
         ticker=ticker,
         side=OrderSide.BID,
         count=Decimal("1"),
-        price=Decimal("0.01"),  # minimum price; rests, does not cross the book
+        price=Decimal("0.01"),  # minimum price; post_only guarantees it cannot fill
         client_order_id=new_client_order_id(),
+        post_only=True,
     )
 
     ack = None
@@ -119,14 +120,14 @@ def main() -> int:
         print("CREATE OK:", ack.order_id, "status", ack.status, "remaining", ack.remaining_count)
     except KalshiConflict as exc:
         print("CREATE: idempotent conflict (already exists):", exc)
-        print("Reconcile:", exec_client.reconcile(order.client_order_id or ""))
+        print("Reconcile:", exec_client.reconcile(order.client_order_id))
         return 0
     except OrderRejected as exc:
         print("CREATE REJECTED:", exc)
         return 1
     except OrderOutcomeUnknown as exc:
         print("CREATE UNKNOWN (reconcile required):", exc)
-        print("Reconcile:", exec_client.reconcile(order.client_order_id or ""))
+        print("Reconcile:", exec_client.reconcile(order.client_order_id))
         return 1
 
     if ack is None or not ack.order_id:
@@ -143,7 +144,7 @@ def main() -> int:
         print("CANCEL UNKNOWN:", exc)
         return 1
 
-    print("Reconcile:", exec_client.reconcile(order.client_order_id or ""))
+    print("Reconcile:", exec_client.reconcile(order.client_order_id))
     print("\ncreate->cancel lifecycle complete.")
     return 0
 

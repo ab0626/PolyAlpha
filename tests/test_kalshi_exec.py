@@ -68,6 +68,18 @@ def canned(status, payload=None):
     return transport, calls
 
 
+def make_order(**kwargs) -> NewOrder:
+    base = dict(
+        ticker="KX-1",
+        side=OrderSide.BID,
+        count=Decimal("1"),
+        price=Decimal("0.01"),
+        client_order_id="cid-1",
+    )
+    base.update(kwargs)
+    return NewOrder(**base)
+
+
 # ── Safety gates ─────────────────────────────────────────────────────────
 
 
@@ -83,24 +95,42 @@ def test_kill_switch_armed_on_first_use(key_id, key_path, tmp_path):
     assert client.kill_switch_state.active is True
 
 
+def test_construction_never_clears_persisted_arm(key_id, key_path, tmp_path):
+    transport, _ = canned(201, {"order_id": "x"})
+    client_a = make_client(key_id, key_path, tmp_path, transport)
+    client_a.disable("DAILY_LOSS_BREACH")
+    assert client_a.kill_switch_state.active is True
+
+    # A fresh client over the same kill-switch file must NOT auto-clear it.
+    client_b = make_client(key_id, key_path, tmp_path, transport)
+    assert client_b.kill_switch_state.active is True
+    assert client_b.kill_switch_state.reason == "DAILY_LOSS_BREACH"
+
+
 def test_mutation_blocked_until_enabled(key_id, key_path, tmp_path):
     transport, calls = canned(201, {"order_id": "o1", "client_order_id": "c1"})
     client = make_client(key_id, key_path, tmp_path, transport)
 
-    order = NewOrder(
-        ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01")
-    )
     with pytest.raises(ExecutionBlocked):
-        client.create_order(order)
+        client.create_order(make_order())
     assert calls == []  # nothing reached the wire
 
     client.enable()
-    ack = client.create_order(order)
+    ack = client.create_order(make_order())
     assert ack.order_id == "o1"
     assert calls  # now it went through
 
 
 # ── Order validation ─────────────────────────────────────────────────────
+
+
+def test_client_order_id_required():
+    with pytest.raises(TypeError):
+        NewOrder(
+            ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01")
+        )
+    with pytest.raises(ValueError, match="client_order_id"):
+        make_order(client_order_id="  ")
 
 
 @pytest.mark.parametrize(
@@ -116,12 +146,22 @@ def test_mutation_blocked_until_enabled(key_id, key_path, tmp_path):
     ],
 )
 def test_new_order_validation_rejects_bad_input(kwargs, match):
-    base = dict(
-        ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.5")
-    )
-    base.update(kwargs)
     with pytest.raises(ValueError, match=match):
-        NewOrder(**base)
+        make_order(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "kwargs, match",
+    [
+        ({"count": Decimal("0.001")}, "count"),
+        ({"count": Decimal("0.005")}, "count"),
+        ({"price": Decimal("0.1234567")}, "price"),
+        ({"price": Decimal("0.0000001")}, "price"),
+    ],
+)
+def test_new_order_rejects_invalid_granularity(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        make_order(**kwargs)
 
 
 def test_new_order_payload_serialization():
@@ -132,7 +172,7 @@ def test_new_order_payload_serialization():
         price=Decimal("0.5600"),
         client_order_id="abc-123",
     )
-    payload = order.to_payload("abc-123")
+    payload = order.to_payload()
     assert payload == {
         "ticker": "KXWTI-26OCT1314-T90.49",
         "client_order_id": "abc-123",
@@ -147,24 +187,10 @@ def test_new_order_payload_serialization():
 
 
 def test_decimal_serialization_never_scientific():
-    order = NewOrder(
-        ticker="KX-1", side=OrderSide.BID, count=Decimal("1E+0"), price=Decimal("1E-2")
-    )
-    payload = order.to_payload("c")
+    order = make_order(count=Decimal("1E+0"), price=Decimal("1E-2"))
+    payload = order.to_payload()
     assert payload["count"] == "1"
     assert payload["price"] == "0.01"
-
-
-def test_client_order_id_minted_when_absent(key_id, key_path, tmp_path):
-    transport, calls = canned(201, {"order_id": "o", "client_order_id": "minted"})
-    client = make_client(key_id, key_path, tmp_path, transport)
-    client.enable()
-
-    order = NewOrder(ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01"))
-    client.create_order(order)
-
-    sent = json.loads(calls[0]["body"])
-    assert sent["client_order_id"]  # non-empty generated id
 
 
 # ── Request construction (mechanics) ─────────────────────────────────────
@@ -202,9 +228,7 @@ def test_create_order_rejected_400(key_id, key_path, tmp_path):
     client = make_client(key_id, key_path, tmp_path, transport)
     client.enable()
     with pytest.raises(OrderRejected):
-        client.create_order(
-            NewOrder(ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01"))
-        )
+        client.create_order(make_order())
 
 
 def test_create_order_conflict_409(key_id, key_path, tmp_path):
@@ -212,9 +236,7 @@ def test_create_order_conflict_409(key_id, key_path, tmp_path):
     client = make_client(key_id, key_path, tmp_path, transport)
     client.enable()
     with pytest.raises(KalshiConflict):
-        client.create_order(
-            NewOrder(ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01"))
-        )
+        client.create_order(make_order())
 
 
 @pytest.mark.parametrize("status", [429, 500, 503])
@@ -223,9 +245,7 @@ def test_create_order_unknown_status(key_id, key_path, tmp_path, status):
     client = make_client(key_id, key_path, tmp_path, transport)
     client.enable()
     with pytest.raises(OrderOutcomeUnknown):
-        client.create_order(
-            NewOrder(ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01"))
-        )
+        client.create_order(make_order())
 
 
 def test_network_error_is_unknown(key_id, key_path, tmp_path):
@@ -235,9 +255,7 @@ def test_network_error_is_unknown(key_id, key_path, tmp_path):
     client = make_client(key_id, key_path, tmp_path, boom)
     client.enable()
     with pytest.raises(OrderOutcomeUnknown, match="TimeoutError"):
-        client.create_order(
-            NewOrder(ticker="KX-1", side=OrderSide.BID, count=Decimal("1"), price=Decimal("0.01"))
-        )
+        client.create_order(make_order())
 
 
 # ── Cancel / amend ───────────────────────────────────────────────────────
@@ -254,7 +272,16 @@ def test_cancel_order(key_id, key_path, tmp_path):
     call = calls[0]
     assert call["method"] == "DELETE"
     assert "/portfolio/events/orders/o1" in call["url"]
+    assert "exchange_index=-1" in call["url"]
     assert "market_ticker=KXWTI-26OCT1314-T90.49" in call["url"]
+
+
+def test_cancel_order_429_is_unknown(key_id, key_path, tmp_path):
+    transport, _ = canned(429, {"error": "slow down"})
+    client = make_client(key_id, key_path, tmp_path, transport)
+    client.enable()
+    with pytest.raises(OrderOutcomeUnknown):
+        client.cancel_order("o1", market_ticker="KX-1")
 
 
 def test_amend_order(key_id, key_path, tmp_path):
@@ -268,12 +295,32 @@ def test_amend_order(key_id, key_path, tmp_path):
         side=OrderSide.BID,
         price=Decimal("0.0200"),
         count=Decimal("5"),
+        original_client_order_id="orig-cid",
+        updated_client_order_id="updated-cid",
     )
     assert isinstance(ack, OrderAck)
     body = json.loads(calls[0]["body"])
     assert body["price"] == "0.0200"
     assert body["count"] == "5"
+    assert body["client_order_id"] == "orig-cid"
+    assert body["updated_client_order_id"] == "updated-cid"
     assert "/portfolio/events/orders/o1/amend" in calls[0]["url"]
+
+
+def test_amend_order_429_is_unknown(key_id, key_path, tmp_path):
+    transport, _ = canned(429, {"error": "slow down"})
+    client = make_client(key_id, key_path, tmp_path, transport)
+    client.enable()
+    with pytest.raises(OrderOutcomeUnknown):
+        client.amend_order(
+            "o1",
+            ticker="KX-1",
+            side=OrderSide.BID,
+            price=Decimal("0.02"),
+            count=Decimal("5"),
+            original_client_order_id="orig",
+            updated_client_order_id="updated",
+        )
 
 
 # ── Reconciliation ───────────────────────────────────────────────────────

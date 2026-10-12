@@ -1,9 +1,14 @@
-"""Kalshi Trade API — execution layer (demo-only, disabled by default).
+"""Kalshi Trade API — demo venue adapter / execution-mechanics layer.
+
+This is a venue adapter that proves ORDER MECHANICS are correct, NOT a
+production execution system. It is intentionally NOT wired into the pre-trade
+gate / OrderIntent / approval-ledger / exposure architecture; strategy code must
+never call it directly. Production is hard-blocked, so this is safe by
+construction today.
 
 Class-B execution safety (see ``docs/ENERGY_RESEARCH_AGENDA_V0_1.md`` change
 classification): kill-switch, idempotency, reconciliation, fail-closed gating.
-This module exists to prove the ORDER MECHANICS are correct. It is inert until
-**all** of the following hold for a given mutation:
+A mutation is inert until **all** of the following hold:
 
 1. the client was constructed with ``KALSHI_ENV=demo`` (production is hard-blocked
    at construction time and never reachable),
@@ -16,14 +21,15 @@ It does **not** validate alpha. Demo prices and order books do not reflect
 production markets, so a successful demo order proves mechanics only, never edge.
 
 Prices and counts are ``Decimal`` and are serialized as fixed-point strings
-(never floats, never scientific notation). Kalshi's V2 single-book order model
-quotes the YES leg only: ``side="bid"`` means buy YES, ``side="ask"`` means sell
-YES (economically equivalent to buying NO at ``1 - price``).
+(never floats, never scientific notation). Counts are 0.01-contract granular;
+prices carry at most 6 decimal places. Kalshi's V2 single-book order model quotes
+the YES leg only: ``side="bid"`` means buy YES, ``side="ask"`` means sell YES
+(economically equivalent to buying NO at ``1 - price``).
 
 Endpoints (V2, event-market order family):
     POST   /portfolio/events/orders               create
     POST   /portfolio/events/orders/{id}/amend    amend price / max fillable count
-    DELETE /portfolio/events/orders/{id}          cancel (auto-routed by market_ticker)
+    DELETE /portfolio/events/orders/{id}          cancel (auto-route: exchange_index=-1)
 """
 
 from __future__ import annotations
@@ -76,6 +82,12 @@ def parse_decimal(value: Any) -> Decimal | None:
         return None
 
 
+def _is_whole_multiple(value: Decimal, unit: Decimal) -> bool:
+    """True iff ``value`` is an exact whole multiple of ``unit``."""
+    scaled = value / unit
+    return scaled == scaled.to_integral_value()
+
+
 class OrderSide(str, Enum):
     BID = "bid"  # buy YES
     ASK = "ask"  # sell YES
@@ -85,7 +97,6 @@ class TimeInForce(str, Enum):
     GOOD_TILL_CANCELED = "good_till_canceled"
     IMMEDIATE_OR_CANCEL = "immediate_or_cancel"
     FILL_OR_KILL = "fill_or_kill"
-    DAY = "day"
 
 
 # Kalshi self-trade prevention. Kept as a plain string because the venue may add
@@ -119,17 +130,18 @@ class NewOrder:
     """A single validated order intent.
 
     ``count`` and ``price`` are ``Decimal``; the venue serializes them as
-    fixed-point strings. ``client_order_id`` is the idempotency key — leave it
-    ``None`` to mint one, but reuse the same value to retry safely.
+    fixed-point strings. ``client_order_id`` is the idempotency key and is
+    REQUIRED: call ``new_client_order_id()`` before constructing the order and
+    keep the value, so an ambiguous submission can be reconciled.
     """
 
     ticker: str
     side: OrderSide
     count: Decimal
     price: Decimal
+    client_order_id: str
     time_in_force: TimeInForce = TimeInForce.GOOD_TILL_CANCELED
     self_trade_prevention_type: str = SELF_TRADE_TAKER_AT_CROSS
-    client_order_id: str | None = None
     post_only: bool = False
     reduce_only: bool = False
 
@@ -141,20 +153,24 @@ class NewOrder:
             raise ValueError("side must be OrderSide.BID or OrderSide.ASK")
         if not isinstance(self.count, Decimal) or self.count <= 0:
             raise ValueError("count must be a positive Decimal")
+        if not _is_whole_multiple(self.count, Decimal("0.01")):
+            raise ValueError("count must be a whole multiple of 0.01 contracts")
         if not isinstance(self.price, Decimal) or not (0 < self.price < 1):
             raise ValueError("price must be a Decimal strictly between 0 and 1")
+        if not _is_whole_multiple(self.price, Decimal("0.000001")):
+            raise ValueError("price must have at most 6 decimal places")
         if not isinstance(self.time_in_force, TimeInForce):
             raise ValueError("time_in_force must be a TimeInForce")
         if not self.self_trade_prevention_type:
             raise ValueError("self_trade_prevention_type must be non-empty")
-        if self.client_order_id is not None and not self.client_order_id.strip():
-            raise ValueError("client_order_id must be non-empty when provided")
+        if not isinstance(self.client_order_id, str) or not self.client_order_id.strip():
+            raise ValueError("client_order_id must be a non-empty string")
 
-    def to_payload(self, client_order_id: str) -> dict[str, Any]:
+    def to_payload(self) -> dict[str, Any]:
         """The JSON body for POST /portfolio/events/orders."""
         return {
             "ticker": self.ticker,
-            "client_order_id": client_order_id,
+            "client_order_id": self.client_order_id,
             "side": self.side.value,
             "count": _fmt(self.count),
             "price": _fmt(self.price),
@@ -335,23 +351,22 @@ class KalshiExecClient:
 
     def create_order(self, order: NewOrder) -> OrderAck:
         self._guard()
-        client_order_id = order.client_order_id or new_client_order_id()
         status, raw = self._request(
-            "POST", "/portfolio/events/orders", body=order.to_payload(client_order_id)
+            "POST", "/portfolio/events/orders", body=order.to_payload()
         )
         data = self._decode(raw)
 
         if status == 201:
             return OrderAck(
                 order_id=data.get("order_id"),
-                client_order_id=data.get("client_order_id") or client_order_id,
+                client_order_id=data.get("client_order_id") or order.client_order_id,
                 raw=data,
             )
         if status == 409:
             # Idempotency collision: this client_order_id already exists at the
             # venue. Treat as "already submitted", not an error — reconcile.
             raise KalshiConflict(
-                f"client_order_id {client_order_id!r} already exists at venue: {data}"
+                f"client_order_id {order.client_order_id!r} already exists at venue: {data}"
             )
         if status == 429:
             raise OrderOutcomeUnknown(
@@ -370,14 +385,14 @@ class KalshiExecClient:
         )
 
     def cancel_order(self, order_id: str, market_ticker: str) -> CancelAck:
-        """Cancel a resting order (auto-routed by market_ticker)."""
+        """Cancel a resting order (explicit auto-route: exchange_index=-1)."""
         self._guard()
         if not order_id or not market_ticker:
             raise ValueError("order_id and market_ticker are both required")
         status, raw = self._request(
             "DELETE",
             f"/portfolio/events/orders/{order_id}",
-            query={"market_ticker": market_ticker},
+            query={"exchange_index": -1, "market_ticker": market_ticker},
         )
         data = self._decode(raw)
         if status in (200, 204):
@@ -387,9 +402,11 @@ class KalshiExecClient:
                 reduced_by=parse_decimal(data.get("reduced_by")),
                 raw=data,
             )
+        if status == 429:
+            raise OrderOutcomeUnknown(f"cancel outcome unknown (HTTP 429): {data}")
         if 400 <= status < 500:
             raise OrderRejected(f"venue rejected cancel (HTTP {status}): {data}")
-        if status >= 500 or status == 429:
+        if status >= 500:
             raise OrderOutcomeUnknown(f"cancel outcome unknown (HTTP {status}): {data}")
         raise OrderOutcomeUnknown(f"unexpected status {status}: {data}")
 
@@ -401,27 +418,31 @@ class KalshiExecClient:
         side: OrderSide,
         price: Decimal,
         count: Decimal,
-        client_order_id: str | None = None,
+        original_client_order_id: str,
+        updated_client_order_id: str,
     ) -> OrderAck:
         """Amend price and/or max fillable count.
 
         ``count`` is the updated TOTAL fillable count (already-filled plus the
-        desired resting remainder). ``updated_client_order_id`` is minted here to
-        preserve idempotency across the amend.
+        desired resting remainder). Both client IDs are required up front so an
+        ambiguous amend can be reconciled: ``original_client_order_id`` is the
+        order being amended; ``updated_client_order_id`` is the new id the venue
+        will record (call ``new_client_order_id()`` before transmitting).
         """
         self._guard()
         if not (0 < price < 1):
             raise ValueError("price must be strictly between 0 and 1")
         if count <= 0:
             raise ValueError("count must be positive")
-        updated_cid = client_order_id or new_client_order_id()
+        if not original_client_order_id.strip() or not updated_client_order_id.strip():
+            raise ValueError("original and updated client_order_id are required")
         body = {
             "ticker": ticker,
             "side": side.value,
             "price": _fmt(price),
             "count": _fmt(count),
-            "client_order_id": updated_cid,
-            "updated_client_order_id": updated_cid,
+            "client_order_id": original_client_order_id,
+            "updated_client_order_id": updated_client_order_id,
         }
         status, raw = self._request(
             "POST", f"/portfolio/events/orders/{order_id}/amend", body=body
@@ -430,14 +451,17 @@ class KalshiExecClient:
         if status == 200:
             return OrderAck(
                 order_id=data.get("order_id") or order_id,
-                client_order_id=data.get("client_order_id") or updated_cid,
+                client_order_id=data.get("updated_client_order_id")
+                or updated_client_order_id,
                 raw=data,
             )
+        if status == 429:
+            raise OrderOutcomeUnknown(f"amend outcome unknown (HTTP 429): {data}")
         if status == 404:
             raise OrderRejected(f"order not found to amend (HTTP 404): {data}")
         if 400 <= status < 500:
             raise OrderRejected(f"venue rejected amend (HTTP {status}): {data}")
-        if status >= 500 or status == 429:
+        if status >= 500:
             raise OrderOutcomeUnknown(f"amend outcome unknown (HTTP {status}): {data}")
         raise OrderOutcomeUnknown(f"unexpected status {status}: {data}")
 
@@ -477,20 +501,17 @@ class KalshiExecClient:
 def load_exec_client(
     env_file: str | Path | None = None,
     *,
-    enabled: bool = False,
     kill_switch_path: str | Path | None = None,
     transport: Transport | None = None,
 ) -> KalshiExecClient:
     """Build a client from environment (optionally loading a .env file).
 
-    ``enabled`` is deliberately NOT a kill-switch bypass: it only controls
-    whether construction auto-clears a freshly-armed switch (still explicit).
+    Construction never clears persisted kill-switch state: an armed switch stays
+    armed across restarts. The only enabling path is an explicit
+    ``client.enable(actor=...)`` after the operator has inspected why it is armed.
     """
     if env_file:
         from .kalshi_auth import load_env_file
 
         load_env_file(env_file)
-    client = KalshiExecClient(kill_switch_path=kill_switch_path, transport=transport)
-    if enabled:
-        client.enable(actor="operator")
-    return client
+    return KalshiExecClient(kill_switch_path=kill_switch_path, transport=transport)
