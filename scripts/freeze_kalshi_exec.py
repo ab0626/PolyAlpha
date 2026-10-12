@@ -36,8 +36,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-exec-demo-v0.1.json"
-DEFAULT_VERSION = "kalshi-exec-demo-v0.1"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-exec-demo-v0.2.json"
+DEFAULT_VERSION = "kalshi-exec-demo-v0.2"
 
 # Runtime files whose drift BLOCKS verification (execution semantics).
 RUNTIME_FILES = (

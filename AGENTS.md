@@ -73,7 +73,7 @@ same logical script, so treat them as one.
   `us/collector.py`, and scripts are NOT in that frozen domain — collector/infra fixes
   are Class A (allowed), strategy/research changes are Class C (forbidden).
 - Frozen execution mechanics: `scripts/freeze_kalshi_exec.py verify` pins the
-  Kalshi demo venue adapter (`kalshi-exec-demo-v0.1`, a separate integrity domain):
+  Kalshi demo venue adapter (`kalshi-exec-demo-v0.2`, a separate integrity domain):
   `src/polyalpha/kalshi_exec.py`, `src/polyalpha/kalshi_auth.py`,
   `src/polyalpha/kill_switch.py`. Any runtime drift fails verification and requires
   explicit review + a new execution version (re-freeze). Tests, the smoke script, and
