@@ -132,16 +132,32 @@ def main() -> int:
     audit("loop_start", {"ticker": ticker, "interval": args.interval, "max_cycles": args.max_cycles})
 
     cycle = 0
+    safety_halt = False
+    halt_reason = None
     try:
         while True:
             if client.kill_switch_state.active:
-                audit("kill_switch_tripped", {"cycle": cycle})
+                halt_reason = client.kill_switch_state.reason
+                audit("kill_switch_tripped", {"cycle": cycle, "reason": halt_reason})
+                safety_halt = True
                 print("kill switch armed; halting loop.")
                 break
             cycle += 1
-            state = harness.run_cycle()
+            try:
+                state = harness.run_cycle()
+            except Exception as exc:  # noqa: BLE001 — arm the kill switch before exit
+                halt_reason = f"unhandled: {type(exc).__name__}"
+                audit("unhandled_error", {"error": f"{type(exc).__name__}: {exc}"})
+                try:
+                    client.disable("ABNORMAL_RECONCILIATION", actor="oms-harness")
+                except Exception:
+                    pass
+                safety_halt = True
+                break
             print(f"cycle {cycle} -> {state.value}")
             if state == HarnessState.HALTED:
+                halt_reason = harness.halt_reason or "ABNORMAL_RECONCILIATION"
+                safety_halt = True
                 break
             if args.max_cycles and cycle >= args.max_cycles:
                 break
@@ -149,10 +165,10 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\ninterrupted.")
     finally:
-        audit("loop_stop", {"cycles": cycle})
+        audit("loop_stop", {"cycles": cycle, "safety_halt": safety_halt, "reason": halt_reason})
 
     print(f"done. audit: {audit_path}")
-    return 0
+    return 2 if safety_halt else 0
 
 
 if __name__ == "__main__":

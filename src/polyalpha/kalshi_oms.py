@@ -73,6 +73,7 @@ class DemoExecutionHarness:
         self.reconcile_poll = reconcile_poll
         self.audit = audit or (lambda event, fields: None)
         self.state = HarnessState.IDLE
+        self.halt_reason: str | None = None
 
     def _set(self, state: HarnessState, **fields) -> None:
         self.state = state
@@ -86,14 +87,18 @@ class DemoExecutionHarness:
         """
         deadline = time.monotonic() + self.reconcile_timeout
         while True:
-            rec = self.client.reconcile(cid)
-            if rec.found:
+            try:
+                rec = self.client.reconcile(cid)
+            except OrderOutcomeUnknown:
+                rec = None  # reconcile transport failure is itself unresolved
+            if rec is not None and rec.found:
                 return rec
             if time.monotonic() >= deadline:
                 return None
             time.sleep(self.reconcile_poll)
 
     def _halt(self, cid: str, reason: str) -> HarnessState:
+        self.halt_reason = reason
         self._set(HarnessState.HALTED, client_order_id=cid, reason=reason)
         try:
             self.client.disable("ABNORMAL_RECONCILIATION", actor="oms-harness")
@@ -122,14 +127,15 @@ class DemoExecutionHarness:
             ack = self.client.create_order(order)
             order_id = ack.order_id
             self.audit("order_placed", {"client_order_id": cid, "order_id": order_id})
-        except (OrderRejected, KalshiConflict, ExecutionBlocked) as exc:
+        except (OrderRejected, ExecutionBlocked) as exc:
             # Definitive: the order was NOT placed -> safe to idle.
             self.audit("order_place_rejected", {"error": f"{type(exc).__name__}: {exc}"})
             self._set(HarnessState.IDLE, client_order_id=cid)
             return self.state
-        except OrderOutcomeUnknown as exc:
-            # Ambiguous: the order may exist. Reconcile before anything else.
-            self.audit("order_place_unknown", {"error": f"{type(exc).__name__}: {exc}"})
+        except (OrderOutcomeUnknown, KalshiConflict) as exc:
+            # Ambiguous: the order may already exist (unknown outcome or 409).
+            # Reconcile against the SAME client_order_id before anything else.
+            self.audit("order_place_ambiguous", {"error": f"{type(exc).__name__}: {exc}"})
             self._set(HarnessState.RECONCILING, client_order_id=cid)
             rec = self._reconcile_until_found(cid)
             if rec is None:
@@ -167,8 +173,11 @@ class DemoExecutionHarness:
         """
         deadline = time.monotonic() + self.reconcile_timeout
         while True:
-            rec = self.client.reconcile(cid)
-            if rec.found:
+            try:
+                rec = self.client.reconcile(cid)
+            except OrderOutcomeUnknown:
+                rec = None
+            if rec is not None and rec.found:
                 if rec.status == "canceled" or (
                     rec.remaining_count is not None and rec.remaining_count == 0
                 ):

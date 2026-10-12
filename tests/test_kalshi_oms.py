@@ -9,6 +9,7 @@ from pathlib import Path
 
 from polyalpha.kalshi_exec import (
     CancelAck,
+    KalshiConflict,
     OrderAck,
     OrderOutcomeUnknown,
     ReconcileResult,
@@ -21,10 +22,11 @@ ROOT = Path(__file__).resolve().parents[1]
 class FakeClient:
     """Scripted stand-in for KalshiExecClient (duck-typed)."""
 
-    def __init__(self, *, create_exc=None, cancel_excs=None, reconcile_results=None):
+    def __init__(self, *, create_exc=None, cancel_excs=None, reconcile_results=None, reconcile_exc=None):
         self.create_exc = create_exc
         self.cancel_excs = list(cancel_excs or [])
         self.reconcile_results = list(reconcile_results or [])
+        self.reconcile_exc = reconcile_exc
         self.cancel_calls: list[str] = []
         self.disabled_reason: str | None = None
         self.enable_called = False
@@ -43,6 +45,8 @@ class FakeClient:
         return CancelAck(order_id=order_id, client_order_id=None, reduced_by=Decimal("1"), raw={})
 
     def reconcile(self, cid):
+        if self.reconcile_exc:
+            raise self.reconcile_exc
         if self.reconcile_results:
             return self.reconcile_results.pop(0)
         return ReconcileResult(client_order_id=cid, found=False)
@@ -182,3 +186,82 @@ def test_clear_refuses_non_manual_reason(monkeypatch):
 
     assert rc == 1
     assert fake.enable_called is False
+
+
+def test_conflict_409_reconciles_same_cid():
+    confirmed = ReconcileResult(
+        client_order_id="c", found=True, order_id="order-1", status="resting",
+        remaining_count=Decimal("1.00"), filled_count=Decimal("0.00"),
+    )
+    client = FakeClient(create_exc=KalshiConflict("dup"), reconcile_results=[confirmed])
+    harness = make_harness(client, reconcile_timeout=1.0)
+
+    state = harness.run_cycle()
+
+    assert state == HarnessState.IDLE
+    assert client.cancel_calls == ["order-1"]  # reconciled, then canceled
+
+
+def test_reconcile_transport_failure_halts_and_arms():
+    client = FakeClient(
+        create_exc=OrderOutcomeUnknown("503"),
+        reconcile_exc=OrderOutcomeUnknown("timeout"),
+    )
+    harness = make_harness(client)
+
+    state = harness.run_cycle()
+
+    assert state == HarnessState.HALTED
+    assert client.disabled_reason == "ABNORMAL_RECONCILIATION"
+
+
+def test_cancel_reconcile_transport_failure_halts_and_arms():
+    client = FakeClient(
+        cancel_excs=[OrderOutcomeUnknown("503")],
+        reconcile_exc=OrderOutcomeUnknown("timeout"),
+    )
+    harness = make_harness(client)
+
+    state = harness.run_cycle()
+
+    assert state == HarnessState.HALTED
+    assert client.disabled_reason == "ABNORMAL_RECONCILIATION"
+
+
+def test_halted_exit_code_nonzero(monkeypatch):
+    mod = _load_script_module()
+    monkeypatch.setattr(mod, "load_env_file", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "make_audit", lambda path: (lambda event, fields: None))
+    monkeypatch.setattr(mod, "discover_ticker", lambda *a, **k: "KX-1")
+
+    class _ClearClient:
+        class _State:
+            active = False
+            reason = None
+
+            def as_dict(self):
+                return {"active": False}
+
+        kill_switch_state = _State()
+
+        def disable(self, reason, actor=None):
+            pass
+
+    class _HaltingHarness:
+        halt_reason = "create outcome unresolved at timeout"
+
+        def __init__(self, *a, **k):
+            pass
+
+        def run_cycle(self):
+            return HarnessState.HALTED
+
+    monkeypatch.setattr(mod, "KalshiExecClient", lambda *a, **k: _ClearClient())
+    monkeypatch.setattr(mod, "DemoExecutionHarness", _HaltingHarness)
+    monkeypatch.setattr(
+        sys, "argv", ["kalshi_oms_demo.py", "--env-file", "/nonexistent", "--max-cycles", "1"]
+    )
+
+    rc = mod.main()
+
+    assert rc == 2
