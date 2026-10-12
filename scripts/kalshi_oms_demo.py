@@ -37,9 +37,12 @@ from polyalpha.energy.kalshi import ENERGY_SERIES, KalshiPublicClient  # noqa: E
 from polyalpha.kalshi_auth import BASE_URLS, load_env_file  # noqa: E402
 from polyalpha.kalshi_exec import KalshiExecClient  # noqa: E402
 from polyalpha.kalshi_oms import DemoExecutionHarness, HarnessState  # noqa: E402
+from polyalpha.process_lease import ProcessLease  # noqa: E402
 
 DEFAULT_ENV_FILE = r"C:\Users\adith\powerdemoaccount.env"
 DEFAULT_AUDIT_FILE = ROOT / "data" / "energy" / "kalshi" / "oms_demo_audit.jsonl"
+DEFAULT_LEASE_FILE = ROOT / "data" / "energy" / "kalshi" / "oms_demo_lease.lock"
+DEFAULT_JOURNAL_FILE = ROOT / "data" / "energy" / "kalshi" / "oms_demo_journal.jsonl"
 
 
 def discover_ticker(demo_base_url: str) -> str | None:
@@ -83,6 +86,10 @@ def main() -> int:
     ap.add_argument("--reconcile-timeout", type=float, default=30.0)
     ap.add_argument("--reconcile-poll", type=float, default=1.0)
     ap.add_argument("--audit-file", default=str(DEFAULT_AUDIT_FILE))
+    ap.add_argument("--lease-file", default=str(DEFAULT_LEASE_FILE),
+                    help="OS-held process lease (singleton guard)")
+    ap.add_argument("--journal-file", default=str(DEFAULT_JOURNAL_FILE),
+                    help="durable write-ahead execution journal")
     args = ap.parse_args()
 
     load_env_file(args.env_file)
@@ -118,8 +125,16 @@ def main() -> int:
               "Clear it separately with --clear-kill-switch.")
         return 1
 
+    # Singleton guard: the OS-held lease fails fast if another harness instance
+    # is running, before any discovery or venue mutation.
+    lease = ProcessLease(args.lease_file)
+    if not lease.acquire():
+        print(f"REFUSING: another harness instance holds the lease ({args.lease_file}).")
+        return 1
+
     ticker = args.market_ticker or discover_ticker(BASE_URLS["demo"])
     if not ticker:
+        lease.release()
         print("No active demo market found.")
         return 1
 
@@ -131,6 +146,7 @@ def main() -> int:
         reconcile_timeout=args.reconcile_timeout,
         reconcile_poll=args.reconcile_poll,
         audit=audit,
+        journal_path=args.journal_file,
     )
 
     print(f"target: {ticker}  interval: {args.interval}s  max_cycles: {args.max_cycles or 'infinite'}")
@@ -181,6 +197,7 @@ def main() -> int:
             print("\nclean operator stop.")
     finally:
         audit("loop_stop", {"cycles": cycle, "safety_halt": safety_halt, "reason": halt_reason})
+        lease.release()
 
     print(f"done. audit: {audit_path}")
     return 2 if safety_halt else 0

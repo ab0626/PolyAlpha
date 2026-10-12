@@ -4,21 +4,24 @@
 EXECUTION-CONTROL-PLANE FREEZE — separate from the venue-adapter freeze
 (``freeze_kalshi_exec.py``) and the research/collector freezes.
 
-``kalshi-oms-demo-v0.4`` — frozen demo automated execution control plane.
+``kalshi-oms-demo-v0.5`` — frozen demo automated execution control plane.
 
 Pins the harness state machine AND the CLI runner (both are runtime
 control-plane code): the ambiguity invariant (UNKNOWN/unresolved state blocks
-new intents, with reconcile-backoff and kill-switch halt) plus the interrupt
-policy (interrupt during an active state arms the kill switch), and the
-kill-switch clear policy (--clear-kill-switch clears ONLY the initial
-fail-closed arm, never a later MANUAL_OPERATOR arm). Only runtime drift fails
+new intents, with reconcile-backoff and kill-switch halt), the interrupt policy
+(interrupt during an active state arms the kill switch), the kill-switch clear
+policy (--clear-kill-switch clears ONLY the initial fail-closed arm, never a
+later MANUAL_OPERATOR arm), and the durability layer (OS-held process lease +
+write-ahead execution journal + startup recovery). Only runtime drift fails
 verification:
 
     src/polyalpha/kalshi_oms.py
+    src/polyalpha/process_lease.py
+    src/polyalpha/execution_journal.py
     scripts/kalshi_oms_demo.py
 
 The venue adapter (``kalshi_exec.py`` / ``kalshi_auth.py`` / ``kill_switch.py``)
-remains independently frozen at ``kalshi-exec-demo-v0.2``. Tests are operational
+remains independently frozen at ``kalshi-exec-demo-v0.3``. Tests are operational
 tooling and are not part of this runtime hash.
 
 Usage:
@@ -37,11 +40,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-oms-demo-v0.4.json"
-DEFAULT_VERSION = "kalshi-oms-demo-v0.4"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-oms-demo-v0.5.json"
+DEFAULT_VERSION = "kalshi-oms-demo-v0.5"
 
 RUNTIME_FILES = (
     "src/polyalpha/kalshi_oms.py",
+    "src/polyalpha/process_lease.py",
+    "src/polyalpha/execution_journal.py",
     "scripts/kalshi_oms_demo.py",
 )
 
