@@ -4,13 +4,15 @@
 EXECUTION-CONTROL-PLANE FREEZE — separate from the venue-adapter freeze
 (``freeze_kalshi_exec.py``) and the research/collector freezes.
 
-``kalshi-oms-demo-v0.3`` — frozen demo automated execution control plane.
+``kalshi-oms-demo-v0.4`` — frozen demo automated execution control plane.
 
 Pins the harness state machine AND the CLI runner (both are runtime
 control-plane code): the ambiguity invariant (UNKNOWN/unresolved state blocks
 new intents, with reconcile-backoff and kill-switch halt) plus the interrupt
-policy (interrupt during an active state arms the kill switch). Only runtime
-drift fails verification:
+policy (interrupt during an active state arms the kill switch), and the
+kill-switch clear policy (--clear-kill-switch clears ONLY the initial
+fail-closed arm, never a later MANUAL_OPERATOR arm). Only runtime drift fails
+verification:
 
     src/polyalpha/kalshi_oms.py
     scripts/kalshi_oms_demo.py
@@ -35,8 +37,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-oms-demo-v0.3.json"
-DEFAULT_VERSION = "kalshi-oms-demo-v0.3"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-oms-demo-v0.4.json"
+DEFAULT_VERSION = "kalshi-oms-demo-v0.4"
 
 RUNTIME_FILES = (
     "src/polyalpha/kalshi_oms.py",

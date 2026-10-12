@@ -275,15 +275,31 @@ class LiveReadyExecutionGateway:
                 IntentState.APPROVAL_PENDING, submitted=False,
                 notes="awaiting explicit operator approval",
             )
-        valid, reason = approval.validate(intent, now)
+        # The approval must be ISSUED in the ledger: a caller-supplied object
+        # with valid-looking fields is not sufficient. Validate the authoritative
+        # ledger copy, never the caller's object.
+        authoritative = self.approvals.get(approval.approval_id)
+        if authoritative is None:
+            return ExecutionResult(
+                intent.intent_id, intent.execution_attempt_id, self.mode,
+                IntentState.REJECTED, submitted=False,
+                notes="approval not issued in ledger",
+            )
+        valid, reason = authoritative.validate(intent, now)
         if not valid:
             return ExecutionResult(
                 intent.intent_id, intent.execution_attempt_id, self.mode,
                 IntentState.REJECTED, submitted=False,
                 notes=f"approval invalid: {reason}",
             )
-        # 6. Single-use: mark consumed so it cannot authorize a second action.
-        self.approvals.mark_used(approval.approval_id)
+        # 6. Single-use: atomically consume so it cannot authorize a second
+        #    action. None means unknown or already used -> do not proceed.
+        if self.approvals.consume(approval.approval_id) is None:
+            return ExecutionResult(
+                intent.intent_id, intent.execution_attempt_id, self.mode,
+                IntentState.REJECTED, submitted=False,
+                notes="approval already used",
+            )
         # 7. Transmission requires a real venue adapter. This scaffold has none.
         if self.venue_adapter is None:
             return ExecutionResult(

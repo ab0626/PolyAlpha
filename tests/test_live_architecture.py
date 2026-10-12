@@ -302,14 +302,24 @@ class TestPreTradeGateMutationCoverage:
         result = gate.evaluate(_intent(), _world(), book)
         assert result.drift.spread_drift == D("0.04")
 
-    def test_sell_depth_counts_asks_at_or_above_limit(self):
+    def test_sell_depth_counts_bids_at_or_above_limit(self):
         gate = LivePreTradeGate(depth_tolerance=D("1"))
         intent = _intent(side="SELL", requested_shares=D("100"), limit_price=D("0.50"))
-        book = {"bids": [{"price": "0.49", "size": "100"}],
-                "asks": [{"price": "0.51", "size": "60"}, {"price": "0.52", "size": "40"}],
+        book = {"bids": [{"price": "0.51", "size": "60"}, {"price": "0.52", "size": "40"}],
+                "asks": [{"price": "0.53", "size": "100"}],
                 "hash": "h_signal"}
         result = gate.evaluate(intent, _world(), book)
-        # SELL depth = asks at >= 0.50 = 60 + 40 = 100 -> depth_drift 0.
+        # SELL consumes bids at >= 0.50 = 60 + 40 = 100 -> depth_drift 0.
+        assert result.drift.depth_drift == D("0")
+
+    def test_buy_depth_counts_asks_at_or_below_limit(self):
+        gate = LivePreTradeGate(depth_tolerance=D("1"))
+        intent = _intent(side="BUY", requested_shares=D("100"), limit_price=D("0.50"))
+        book = {"bids": [{"price": "0.48", "size": "100"}],
+                "asks": [{"price": "0.49", "size": "60"}, {"price": "0.50", "size": "40"}],
+                "hash": "h_signal"}
+        result = gate.evaluate(intent, _world(), book)
+        # BUY consumes asks at <= 0.50 = 60 + 40 = 100 -> depth_drift 0.
         assert result.drift.depth_drift == D("0")
 
     def test_one_sided_book_spread_zero(self):
@@ -765,63 +775,80 @@ class TestLiveReadyFaultInjection:
     # ── Approval boundary ───────────────────────────────────────────────
 
     def test_approval_expired(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent()
         approval = _approval(intent, expires_at=NOW - timedelta(seconds=1))
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "expired" in result.notes
 
     def test_approval_wrong_intent(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent()
         other = _intent(decision_id="other")
         approval = _approval(other)
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "different intent" in result.notes
 
     def test_approval_wrong_book_hash(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent()
         approval = _approval(intent, book_hash="different-hash")
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "book hash" in result.notes
 
     def test_approval_wrong_research_hash(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent()
         approval = _approval(intent, research_logic_sha256="w" * 64)
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "research hash" in result.notes
 
     def test_approval_wrong_config_hash(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent()
         approval = _approval(intent, config_sha256="w" * 64)
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "config hash" in result.notes
 
     def test_approval_cannot_authorize_larger_size(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent(requested_shares=D("100"), requested_notional=D("50"))
         # Approval authorizes only 50 shares / 25 notional.
         approval = _approval(intent, max_notional=D("25"))
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "notional" in result.notes
 
     def test_approval_cannot_authorize_worse_price(self, tmp_path):
-        gw, _, _, _ = self._gw(tmp_path)
+        gw, _, _, approvals = self._gw(tmp_path)
         intent = _intent(limit_price=D("0.51"))
         # Approval authorizes only up to 0.47.
         approval = _approval(intent, max_price=D("0.47"))
+        approvals.issue(approval)
         result = gw.submit(intent, _world()["book"], _world(), approval=approval)
         assert result.state == IntentState.REJECTED
         assert "price" in result.notes
+
+    def test_approval_not_issued_is_rejected(self, tmp_path):
+        gw, _, _, _ = self._gw(tmp_path)
+        intent = _intent()
+        # A caller-supplied approval object is NOT sufficient: it must exist in
+        # the ledger (have been issued) before the gateway will honor it.
+        approval = _approval(intent)
+        result = gw.submit(intent, _world()["book"], _world(), approval=approval)
+        assert result.state == IntentState.REJECTED
+        assert "issued" in result.notes
 
     def test_approval_supplied_twice_is_single_use(self, tmp_path):
         gw, _, _, approvals = self._gw(tmp_path)

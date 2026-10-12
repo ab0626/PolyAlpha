@@ -551,10 +551,16 @@ class ApprovalLedger:
     def get(self, approval_id: str) -> Approval | None:
         return self._by_id.get(approval_id)
 
-    def mark_used(self, approval_id: str) -> Approval | None:
+    def consume(self, approval_id: str) -> Approval | None:
+        """Atomically mark an approval used exactly once (single-use).
+
+        Returns the freshly-consumed approval, or ``None`` if the id is unknown
+        or the approval was already used. Callers MUST treat ``None`` as "do not
+        proceed": an approval is never usable twice.
+        """
         approval = self._by_id.get(approval_id)
         if approval is None or approval.used:
-            return approval
+            return None
         used = approval.with_used()
         self._by_id[approval_id] = used
         self._append(used)

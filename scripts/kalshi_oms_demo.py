@@ -98,9 +98,14 @@ def main() -> int:
     print("kill switch:", st.as_dict())
 
     if args.clear_kill_switch:
-        if st.active and st.reason == "MANUAL_OPERATOR":
+        # Only the INITIAL fail-closed arm (activated_by="init-fail-closed") may
+        # be cleared through this convenience path. A later MANUAL_OPERATOR arm
+        # (an operator intentionally stopping the system) must NOT be cleared
+        # here — it requires explicit manual review.
+        if (st.active and st.reason == "MANUAL_OPERATOR"
+                and st.activated_by == "init-fail-closed"):
             client.enable(actor="oms-operator")
-            print("kill switch cleared (was MANUAL_OPERATOR). Run the loop now.")
+            print("kill switch cleared (initial MANUAL_OPERATOR arm). Run the loop now.")
             return 0
         if st.active:
             print(f"REFUSING: kill switch armed with reason {st.reason!r}; requires manual review.")

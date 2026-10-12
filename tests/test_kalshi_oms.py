@@ -147,14 +147,17 @@ def _load_script_module():
 
 class _ArmedClient:
     class _State:
-        active = True
-        reason = "DAILY_LOSS_BREACH"
+        def __init__(self, reason="DAILY_LOSS_BREACH", activated_by=None):
+            self.active = True
+            self.reason = reason
+            self.activated_by = activated_by
 
         def as_dict(self):
-            return {"active": True, "reason": "DAILY_LOSS_BREACH"}
+            return {"active": True, "reason": self.reason}
 
-    kill_switch_state = _State()
-    enable_called = False
+    def __init__(self, reason="DAILY_LOSS_BREACH", activated_by=None):
+        self.kill_switch_state = self._State(reason=reason, activated_by=activated_by)
+        self.enable_called = False
 
     def enable(self, actor=None):
         self.enable_called = True
@@ -177,6 +180,36 @@ def test_clear_refuses_non_manual_reason(monkeypatch):
     mod = _load_script_module()
     monkeypatch.setattr(mod, "load_env_file", lambda *a, **k: None)
     fake = _ArmedClient()
+    monkeypatch.setattr(mod, "KalshiExecClient", lambda *a, **k: fake)
+    monkeypatch.setattr(
+        sys, "argv", ["kalshi_oms_demo.py", "--env-file", "/nonexistent", "--clear-kill-switch"]
+    )
+
+    rc = mod.main()
+
+    assert rc == 1
+    assert fake.enable_called is False
+
+
+def test_clear_only_clears_initial_manual_arm(monkeypatch):
+    mod = _load_script_module()
+    monkeypatch.setattr(mod, "load_env_file", lambda *a, **k: None)
+    fake = _ArmedClient(reason="MANUAL_OPERATOR", activated_by="init-fail-closed")
+    monkeypatch.setattr(mod, "KalshiExecClient", lambda *a, **k: fake)
+    monkeypatch.setattr(
+        sys, "argv", ["kalshi_oms_demo.py", "--env-file", "/nonexistent", "--clear-kill-switch"]
+    )
+
+    rc = mod.main()
+
+    assert rc == 0
+    assert fake.enable_called is True
+
+
+def test_clear_refuses_later_manual_arm(monkeypatch):
+    mod = _load_script_module()
+    monkeypatch.setattr(mod, "load_env_file", lambda *a, **k: None)
+    fake = _ArmedClient(reason="MANUAL_OPERATOR", activated_by="operator")
     monkeypatch.setattr(mod, "KalshiExecClient", lambda *a, **k: fake)
     monkeypatch.setattr(
         sys, "argv", ["kalshi_oms_demo.py", "--env-file", "/nonexistent", "--clear-kill-switch"]

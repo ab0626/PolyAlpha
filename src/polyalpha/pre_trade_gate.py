@@ -288,9 +288,10 @@ class LivePreTradeGate:
             spread = current_ask - current_bid
         spread_drift = spread
 
-        # Depth drift: depth at the limit price vs requested shares.
+        # Depth drift: depth at the limit price vs requested shares. A BUY
+        # consumes asks (prices <= limit); a SELL consumes bids (prices >= limit).
         total_depth = D("0")
-        levels = current_book.get("bids" if intent.side == "BUY" else "asks", [])
+        levels = current_book.get("asks" if intent.side == "BUY" else "bids", [])
         for level in levels:
             p = D(str(level.get("price")))
             if intent.side == "BUY" and p <= intent.limit_price:
