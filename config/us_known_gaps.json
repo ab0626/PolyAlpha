@@ -15,10 +15,10 @@
       "outcomes": "recovered"
     },
     {
-      "id": "outage-2026-09-25",
-      "start": "2026-09-25T00:00:00+00:00",
-      "end": "2026-09-26T00:00:00+00:00",
-      "reason": "collector down for one day (cause unverified)",
+      "id": "sleep-2026-09-22-to-09-23",
+      "start": "2026-09-22T22:34:00+00:00",
+      "end": "2026-09-23T04:26:00+00:00",
+      "reason": "laptop sleep overnight (health-check heartbeat gap)",
       "feeds_affected": [
         "polymarket_us_retail_book",
         "polymarket_us_retail_markets",
@@ -29,10 +29,10 @@
       "outcomes": "recovered"
     },
     {
-      "id": "outage-2026-09-29",
-      "start": "2026-09-29T00:00:00+00:00",
-      "end": "2026-09-30T00:00:00+00:00",
-      "reason": "collector down for one day (cause unverified)",
+      "id": "sleep-2026-09-23",
+      "start": "2026-09-23T17:33:00+00:00",
+      "end": "2026-09-23T18:34:00+00:00",
+      "reason": "laptop sleep (health-check heartbeat gap)",
       "feeds_affected": [
         "polymarket_us_retail_book",
         "polymarket_us_retail_markets",
@@ -43,10 +43,122 @@
       "outcomes": "recovered"
     },
     {
-      "id": "outage-2026-10-02",
-      "start": "2026-10-02T00:00:00+00:00",
-      "end": "2026-10-03T00:00:00+00:00",
-      "reason": "collector down on NFP release day (cause unverified); settlements recovered on Oct 3",
+      "id": "sleep-2026-09-24-early",
+      "start": "2026-09-24T00:49:00+00:00",
+      "end": "2026-09-24T02:36:00+00:00",
+      "reason": "laptop sleep (health-check heartbeat gap)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-09-24-afternoon",
+      "start": "2026-09-24T17:07:00+00:00",
+      "end": "2026-09-24T20:42:00+00:00",
+      "reason": "collector down: laptop sleep plus collector crash-loop",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "sleep-2026-09-24-night",
+      "start": "2026-09-24T22:17:00+00:00",
+      "end": "2026-09-24T23:55:00+00:00",
+      "reason": "laptop sleep (health-check heartbeat gap)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-09-25-to-09-28",
+      "start": "2026-09-25T00:25:00+00:00",
+      "end": "2026-09-28T00:59:00+00:00",
+      "reason": "extended laptop sleep/shutdown (no auto-login; recovery waits for manual login)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-09-29-to-09-30",
+      "start": "2026-09-29T03:28:00+00:00",
+      "end": "2026-09-30T18:20:00+00:00",
+      "reason": "unexpected power loss (Kernel-Power Event 41) plus collector crash-loop; no auto-login delayed recovery",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-01",
+      "start": "2026-10-01T02:20:00+00:00",
+      "end": "2026-10-01T18:31:00+00:00",
+      "reason": "collector crash-loop while host up (exit code 1)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-02-nfp",
+      "start": "2026-10-02T03:32:00+00:00",
+      "end": "2026-10-03T16:17:00+00:00",
+      "reason": "unexpected power loss on NFP release day (Kernel-Power Event 41); no auto-login delayed recovery",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-03",
+      "start": "2026-10-03T21:33:00+00:00",
+      "end": "2026-10-03T22:48:00+00:00",
+      "reason": "collector crash-loop while host up (exit code 1)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "sleep-2026-10-04-early",
+      "start": "2026-10-04T00:03:00+00:00",
+      "end": "2026-10-04T01:35:00+00:00",
+      "reason": "laptop sleep (health-check heartbeat gap)",
       "feeds_affected": [
         "polymarket_us_retail_book",
         "polymarket_us_retail_markets",
@@ -58,9 +170,107 @@
     },
     {
       "id": "dns-outage-2026-10-04",
-      "start": "2026-10-04T16:53:38+00:00",
-      "end": "2026-10-05T15:33:42+00:00",
-      "reason": "DNS resolution failure for gateway.polymarket.us (getaddrinfo failed) stalled all US retail feeds",
+      "start": "2026-10-04T17:22:00+00:00",
+      "end": "2026-10-05T15:46:00+00:00",
+      "reason": "DNS resolution failure for gateway.polymarket.us plus laptop sleep; all US retail feeds stalled",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-06",
+      "start": "2026-10-06T17:33:00+00:00",
+      "end": "2026-10-06T18:33:00+00:00",
+      "reason": "collector crash-loop while host up (exit code 1)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-06-to-10-07",
+      "start": "2026-10-06T21:49:00+00:00",
+      "end": "2026-10-07T06:36:00+00:00",
+      "reason": "unexpected power loss (Kernel-Power Event 41); no auto-login delayed recovery",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "sleep-2026-10-07",
+      "start": "2026-10-07T16:37:00+00:00",
+      "end": "2026-10-07T18:17:00+00:00",
+      "reason": "laptop sleep (health-check heartbeat gap)",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-08",
+      "start": "2026-10-08T01:18:00+00:00",
+      "end": "2026-10-08T18:43:00+00:00",
+      "reason": "laptop sleep/shutdown overnight plus collector crash-loop; no auto-login delayed recovery",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-08-to-10-10",
+      "start": "2026-10-08T22:59:00+00:00",
+      "end": "2026-10-10T04:17:00+00:00",
+      "reason": "unexpected power loss (Kernel-Power Event 41); no auto-login delayed recovery",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-10-to-10-11",
+      "start": "2026-10-10T08:33:00+00:00",
+      "end": "2026-10-11T02:08:00+00:00",
+      "reason": "unexpected power loss (Kernel-Power Event 41); no auto-login delayed recovery",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "outage-2026-10-13",
+      "start": "2026-10-13T05:21:00+00:00",
+      "end": "2026-10-13T06:37:00+00:00",
+      "reason": "collector crash-loop while host up (exit code 1)",
       "feeds_affected": [
         "polymarket_us_retail_book",
         "polymarket_us_retail_markets",
