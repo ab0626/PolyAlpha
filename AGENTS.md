@@ -129,9 +129,19 @@ of the elapsed window). Cluster count is honest AFTER macro-release clustering
   intact `.jsonl` and crashed replay. `_day_files`/`replay`/`scan` now tolerate it.
 - System `python` (3.9) has a broken `web3`/`eth_typing` install — always use `.venv`.
 - The host is a laptop (on AC). Sleep/hibernate/lid-close are set to never/do-nothing
-  so idle does not halt collection (the ~35h data gaps were the laptop sleeping after
-  1h idle). Keep it plugged in: DC "never sleep" drains the battery to a hard
-  shutdown. A reboot still needs a login to restart the launchers (no auto-login).
+  so idle does not halt collection. The real coverage gaps are NOT idle sleep — the
+  System event log shows a mix of user-initiated power-offs/restarts (Event 1074),
+  unexpected power loss / battery-to-zero (Kernel-Power Event 41 + 6008), and collector
+  crash-loops while the host is up (dominated by `getaddrinfo failed` for
+  `gateway.polymarket.us` — the pinned-IP fallback in `us/rest.py` covers DNS-down but
+  not a fully offline host). Keep it plugged in: DC "never sleep" drains the battery to
+  a hard shutdown. A reboot needs a login to restart the launchers (no auto-login) — see
+  `scripts/enable_autologon.ps1` to make recovery automatic. Critical-battery action was
+  changed from Hibernate to Shut down (2026-10-13).
+- Forward-evidence observed coverage was overstated at ~68% by a stale manual ledger
+  (`config/us_known_gaps.json` had 5 coarse entries and nothing after Oct 5). The ledger
+  was corrected (2026-10-13) to ~20 entries from the health-check heartbeat + event log;
+  real coverage is ~40%, not 68%. The `--refresh` snapshot must be rebuilt to reflect it.
 - The Kalshi WS `market_lifecycle_v2` channel is delivered exchange-wide (the
   `market_tickers` filter in the subscribe message is ignored for it), so the
   energy WS lineage briefly captured non-energy lifecycle events (BTC/NFL/SOL/ETH/
