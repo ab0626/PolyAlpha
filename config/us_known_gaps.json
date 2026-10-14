@@ -279,6 +279,34 @@
       ],
       "price_path": "unobserved",
       "outcomes": "recovered"
+    },
+    {
+      "id": "watchdog-2026-10-14T031028",
+      "start": "2026-10-14T03:10:28.795133+00:00",
+      "end": "2026-10-14T03:14:17.296318+00:00",
+      "reason": "controlled watchdog recovery test",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
+    },
+    {
+      "id": "watchdog-2026-10-14T031641",
+      "start": "2026-10-14T03:16:41.105412+00:00",
+      "end": "2026-10-14T03:17:55.777466+00:00",
+      "reason": "controlled watchdog recovery test",
+      "feeds_affected": [
+        "polymarket_us_retail_book",
+        "polymarket_us_retail_markets",
+        "polymarket_us_retail_events",
+        "polymarket_us_retail_settlement"
+      ],
+      "price_path": "unobserved",
+      "outcomes": "recovered"
     }
   ]
 }

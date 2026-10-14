@@ -63,11 +63,17 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="Machine-readable output")
     ap.add_argument("--apply", action="store_true",
                     help="Write candidates to the canonical ledger (human-reviewed step)")
+    ap.add_argument("--reason", default=None,
+                    help="Override the candidate reason with a human-reviewed judgment "
+                         "(e.g. 'controlled watchdog recovery test')")
     args = ap.parse_args()
 
     events = GapJournal(args.events_file).events()
     existing_gaps = _load_ledger_gaps(Path(args.ledger))
     candidates, still_open = build_candidates(events, existing_gaps)
+    if args.reason:
+        for c in candidates:
+            c["reason"] = args.reason
 
     if args.json:
         print(json.dumps({
