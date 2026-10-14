@@ -1,0 +1,23 @@
+{
+  "version": "us-collector-v0.2",
+  "anchor_commit": "38585fb7ab1b53b399b76bdc440ddbb397e0ca6d",
+  "runtime_sha256": "4d2a9f4bc40f6f1af63bd519770ecf60124b6d489ec0ba4a80b683faa7334594",
+  "change_class": "A",
+  "change_class_note": "collector/infra only; re-freeze after any committed Class-A change",
+  "runtime_files": [
+    "scripts/run_us_collection.py",
+    "src/polyalpha/us/collector.py",
+    "src/polyalpha/us/adapter.py",
+    "src/polyalpha/us/rest.py",
+    "src/polyalpha/us/identifiers.py",
+    "src/polyalpha/us/states.py",
+    "src/polyalpha/us/release_coverage.py",
+    "src/polyalpha/gov_releases.py",
+    "src/polyalpha/rawstore.py",
+    "scripts/us_gap_watchdog.py",
+    "src/polyalpha/us/gap_watchdog.py",
+    "config/gov_releases.json",
+    "config/collection_strata.json"
+  ],
+  "frozen_at": "2026-10-14T03:00:03.154380+00:00"
+}

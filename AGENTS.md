@@ -13,6 +13,11 @@
 - `data/us/{tracked,settled,stratified}_membership.jsonl` — persisted collection
   universe state. `release_mapping.jsonl` maps macro buckets -> release_id (parent
   event for clustering).
+- `data/us/gap_watchdog/` — append-only OPERATIONAL gap journal written by
+  `scripts/us_gap_watchdog.py` (`events.jsonl`) + its state-machine snapshot
+  (`state.json`). The watchdog NEVER edits `config/us_known_gaps.json` (the
+  canonical, human-reviewed research gap ledger); `scripts/reconcile_us_gaps.py`
+  turns the journal into candidate ledger additions for review/`--apply`.
 - `data/energy/kalshi/ladders/` — append-only Kalshi energy ladder snapshots
   (`energy_capture_supervisor.py` -> `energy_capture.py`). Isolated from the frozen
   `data/us/...` lineage. `data/energy/kalshi/status.json` is the freshness heartbeat;
@@ -41,6 +46,7 @@ folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`), which invok
 - `PolyAlphaShadowSupervisor.vbs` -> `polyalpha_shadow_supervisor.bat` (crash-loop)
 - `PolyAlphaUSCollector.vbs`     -> `polyalpha_us_collector.bat`
 - `PolyAlphaUSHealth.vbs`        -> `polyalpha_us_health.bat`
+- `PolyAlphaUSGapWatchdog.vbs`   -> `polyalpha_us_gap_watchdog.bat` (crash-loop)
 - `PolyAlphaUSMarketData.vbs`    -> `polyalpha_us_market_data.bat` (crash-loop)
 - `PolyAlphaUSTrades.vbs`        -> `polyalpha_us_trades.bat` (crash-loop)
 - `PolyAlphaUSReport.vbs`        -> `polyalpha_us_report.bat`
@@ -62,6 +68,13 @@ killing a collector PID makes it respawn ~5s later. To stop one permanently, kil
 agent runtime, each `.venv` process also gets a `codex-runtimes` wrapper child — the
 same logical script, so treat them as one.
 
+The US gap watchdog (`us_gap_watchdog.py`) monitors the `us_collection_supervisor.py`
+process and the raw-store data heartbeat. It adopts an already-running supervisor on
+startup (so it coexists with `PolyAlphaUSCollector` without double-launching), restarts
+a dead supervisor immediately, and kill/restarts an alive-but-stale one only after a
+second confirmation. Gap start = last known healthy heartbeat; gap end = first fresh
+heartbeat after recovery.
+
 ## Freeze discipline (do NOT skip)
 
 - `scripts/run_us_collection.py` is frozen against `COLLECTION_IMPL_COMMIT` in
@@ -69,11 +82,14 @@ same logical script, so treat them as one.
   then update `COLLECTION_IMPL_COMMIT` to the new commit hash (the supervisor
   `_collector_matches_impl` check now LF-normalizes, so CRLF is not a false fail).
   Additionally, `scripts/freeze_us_collector.py verify` pins the FULL US collection
-  runtime (`us-collector-v0.1`): `scripts/run_us_collection.py` +
-  `src/polyalpha/us/{collector,adapter,rest,identifiers,states,release_coverage}.py` +
-  `src/polyalpha/{gov_releases,rawstore}.py` +
+  runtime (`us-collector-v0.2`): `scripts/run_us_collection.py` +
+  `src/polyalpha/us/{collector,adapter,rest,identifiers,states,release_coverage,gap_watchdog}.py` +
+  `src/polyalpha/{gov_releases,rawstore}.py` + `scripts/us_gap_watchdog.py` +
   `config/{gov_releases,collection_strata}.json`. Class A (collector/infra) only;
   re-freeze after any committed Class-A change. `us/research.py` is excluded (Class C).
+  The watchdog writes its OWN journal (`data/us/gap_watchdog/`) and has NO authority
+  over `config/us_known_gaps.json`; `scripts/reconcile_us_gaps.py` is a human-review
+  tool (not pinned here) that proposes ledger additions from that journal.
 - Frozen research logic: `scripts/freeze_baseline.py verify` covers the v0.3.0
   International baseline (models/features/research_dataset/etc.). The US `us/research.py`,
   `us/collector.py`, and scripts are NOT in that frozen domain — collector/infra fixes
@@ -111,6 +127,9 @@ of the elapsed window). Cluster count is honest AFTER macro-release clustering
 - Compile check: `.venv/Scripts/python.exe -m py_compile <file>`
 - Raw store integrity: `RawStore(data/us/retail/raw).scan()` (valid/partial/mismatch)
 - Restart the US collector: `.venv/Scripts/python.exe scripts/us_collection_supervisor.py`
+- US gap watchdog: `.venv/Scripts/python.exe scripts/us_gap_watchdog.py [--once] [--dry-run]`
+- Reconcile watchdog gaps (dry-run): `.venv/Scripts/python.exe scripts/reconcile_us_gaps.py`
+  (add `--apply` to write closed intervals to `config/us_known_gaps.json` — human-reviewed)
 - Raw-store replay diagnostic: `.venv/Scripts/python.exe scripts/replay_diagnostic.py [--max-seconds N]`
 - E3 readiness: `.venv/Scripts/python.exe scripts/energy_e3_readiness.py`
 - E3 shadow runner (scheduled daily 01:30 CT): `.venv/Scripts/python.exe scripts/energy_e3_runner.py`
