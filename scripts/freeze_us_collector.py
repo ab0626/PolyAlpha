@@ -35,11 +35,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "us-collector-v0.1.json"
-DEFAULT_VERSION = "us-collector-v0.1"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "us-collector-v0.2.json"
+DEFAULT_VERSION = "us-collector-v0.2"
 
 # The full US collection runtime: runner + collector + adapter + transport +
-# identifiers + states + release coverage + raw store + collection config.
+# identifiers + states + release coverage + raw store + collection config, plus
+# the gap watchdog (v0.2 adds the active recovery daemon that keeps the
+# collector alive and journals outages). The watchdog writes its OWN journal —
+# it has no authority over config/us_known_gaps.json — so the canonical
+# research gap ledger stays a human-reviewed artifact.
 RUNTIME_FILES = (
     "scripts/run_us_collection.py",
     "src/polyalpha/us/collector.py",
@@ -50,6 +54,8 @@ RUNTIME_FILES = (
     "src/polyalpha/us/release_coverage.py",
     "src/polyalpha/gov_releases.py",
     "src/polyalpha/rawstore.py",
+    "scripts/us_gap_watchdog.py",
+    "src/polyalpha/us/gap_watchdog.py",
     "config/gov_releases.json",
     "config/collection_strata.json",
 )
