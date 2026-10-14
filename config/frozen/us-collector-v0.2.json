@@ -1,7 +1,7 @@
 {
   "version": "us-collector-v0.2",
-  "anchor_commit": "38585fb7ab1b53b399b76bdc440ddbb397e0ca6d",
-  "runtime_sha256": "4d2a9f4bc40f6f1af63bd519770ecf60124b6d489ec0ba4a80b683faa7334594",
+  "anchor_commit": "b0f31e05f6314e26898aeda8cb6407f0754d33fb",
+  "runtime_sha256": "d0fc644061f4b02bdf8473ed50712e74b2082112d716fbb981c3372fe400f6a1",
   "change_class": "A",
   "change_class_note": "collector/infra only; re-freeze after any committed Class-A change",
   "runtime_files": [
@@ -19,5 +19,5 @@
     "config/gov_releases.json",
     "config/collection_strata.json"
   ],
-  "frozen_at": "2026-10-14T03:00:03.154380+00:00"
+  "frozen_at": "2026-10-14T03:16:05.186583+00:00"
 }
