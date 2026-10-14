@@ -222,3 +222,26 @@ def test_build_candidates_pairs_and_subtracts():
     assert candidates[0]["outcomes"] == "recovered"
     assert set(candidates[0]["feeds_affected"]) == set(US_RETAIL_FEEDS)
     assert len(still_open) == 1
+
+
+def test_process_manager_launch_does_not_adopt_stale_pid(monkeypatch, tmp_path):
+    """Regression: launch() must not keep returning a dead pid after the process died."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "us_gap_watchdog_script", "scripts/us_gap_watchdog.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    monkeypatch.setattr(mod, "_find_supervisor_pid", lambda: 99999)  # stale pid
+    monkeypatch.setattr(mod, "_tasklist_has_pid", lambda pid: False)  # but it is dead
+    monkeypatch.setattr(mod, "DEFAULT_SUPERVISOR_LOG", tmp_path)
+
+    class _FakeProc:
+        pid = 55555
+
+    monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: _FakeProc())
+
+    pm = mod.ProcessManager(["python", "x.py"])
+    assert pm.launch() == 55555  # a real launch, not the stale 99999

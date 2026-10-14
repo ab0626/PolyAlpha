@@ -109,9 +109,8 @@ class ProcessManager:
     def _adopt(self) -> None:
         if self.dry_run:
             return
-        pid = _find_supervisor_pid()
-        if pid is not None:
-            self.pid = pid
+        # Always (re)assign, so a dead PID is cleared rather than kept stale.
+        self.pid = _find_supervisor_pid()
 
     def is_alive(self) -> bool:
         if self.dry_run:
@@ -128,8 +127,11 @@ class ProcessManager:
             return self.pid
         # Adopt an already-running supervisor instead of launching a duplicate.
         self._adopt()
-        if self.pid is not None:
+        # Only adopt a pid that is genuinely still alive; a stale pid (the
+        # process died) must fall through to a real launch.
+        if self.pid is not None and _tasklist_has_pid(self.pid):
             return self.pid
+        self.pid = None
         (DEFAULT_SUPERVISOR_LOG).mkdir(parents=True, exist_ok=True)
         out_log = open(DEFAULT_SUPERVISOR_LOG / "watchdog-supervisor.out.log", "a", encoding="utf-8")
         err_log = open(DEFAULT_SUPERVISOR_LOG / "watchdog-supervisor.err.log", "a", encoding="utf-8")
@@ -300,8 +302,8 @@ def main() -> int:
             _execute(action, journal, pm, args.toast)
 
         state_store.save(machine.to_dict())
-        print(f"[{_now_iso()}] state={machine.state}")
-        print(_render_coverage(machine, now_ts))
+        print(f"[{_now_iso()}] state={machine.state}", flush=True)
+        print(_render_coverage(machine, now_ts), flush=True)
 
         if args.once:
             return 0
