@@ -289,7 +289,7 @@ class WsFrameWriter:
             self.frames_enqueued += 1
             self.last_enqueued_frame_id = frame.frame_id
             self._queue_high_water = max(self._queue_high_water, self._queue.qsize())
-            self._pending.append((time.monotonic(), frame.frame_id))
+            self._pending.append((time.monotonic_ns(), frame.frame_id))
         return True
 
     def _write_batch(self, batch: list[WsTransportFrame]) -> None:
@@ -374,7 +374,7 @@ class WsFrameWriter:
         with self._lock:
             oldest_age = None
             if self._pending:
-                oldest_age = int((time.monotonic() - self._pending[0][0]) * 1000)
+                oldest_age = int((time.monotonic_ns() - self._pending[0][0]) / 1_000_000)
             return {
                 "frames_enqueued": self.frames_enqueued,
                 "frames_persisted": self.frames_persisted,
