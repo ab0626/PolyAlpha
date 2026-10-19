@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 from polyalpha.latency_trace import LatencyTrace, LatencyTracer
 
@@ -37,3 +38,13 @@ def test_telemetry_drop_is_not_fatal(tmp_path):
     tr.trace("ws_ingest", "src", {"r0": 0, "r4": 2})  # queue full -> dropped
     assert tr.health()["records_dropped"] == 1
     tr.close(drain=False)
+
+
+def test_monotonic_deltas_are_plausible():
+    # Adjacent monotonic_ns() samples around a tiny CPU op are nonnegative and
+    # far below any scheduler/preemption bound on the collector host.
+    a = time.monotonic_ns()
+    _ = sum(range(10_000))  # a real, tiny CPU operation
+    b = time.monotonic_ns()
+    assert b >= a
+    assert (b - a) < 1_000_000_000  # < 1s (would only exceed on pathological stalls)
