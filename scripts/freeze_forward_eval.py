@@ -32,8 +32,8 @@ from pathlib import Path
 from freeze_common import verify_anchor
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "us-forward-eval-v0.1.json"
-DEFAULT_VERSION = "us-forward-eval-v0.1"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "us-forward-eval-v0.2.json"
+DEFAULT_VERSION = "us-forward-eval-v0.2"
 
 RUNTIME_FILES = (
     "src/polyalpha/us/families.py",
@@ -46,6 +46,7 @@ RUNTIME_FILES = (
 TESTS_FILES = (
     "tests/test_us_families.py",
     "tests/test_us_research.py",
+    "tests/test_forward_evidence_gaps.py",
 )
 
 
