@@ -115,7 +115,7 @@ def _human_summary(sheet: dict) -> str:
     lines.append("")
     mp = sheet.get("markout_measurements") or {}
     if mp.get("path"):
-        lines.append(f"MARKOUT MEASUREMENTS (append-only derived stream):")
+        lines.append("MARKOUT MEASUREMENTS (append-only derived stream):")
         lines.append(f"  path={mp['path']}  derivation={mp.get('derivation_version')}")
         lines.append(f"  appended={mp['appended']}  seen={mp['seen']}  (idempotent; never rewritten)")
         lines.append("")

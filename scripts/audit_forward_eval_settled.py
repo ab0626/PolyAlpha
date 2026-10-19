@@ -36,7 +36,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from polyalpha.research_dataset import FeatureProvenance, MarketSnapshot, ResearchDataset  # noqa: E402
+from polyalpha.research_dataset import (  # noqa: E402
+    FeatureProvenance,
+    MarketSnapshot,
+    ResearchDataset,
+)
 from polyalpha.us.families import _end_date, _resolved_eval, default_split_date  # noqa: E402
 from polyalpha.us.research import (  # noqa: E402
     SOURCE_BOOK,
@@ -157,7 +161,6 @@ def build_dataset_mirror(
 
         observed = _ts_from_ns(received_at_ns)
         bbo = _book_bbo(market_data)
-        stats = market_data.get("stats") or {}
         timeline = markets_by_slug.get(slug, [])
         meta = _latest_meta_at(timeline, market_meta_ts.get(slug, []), received_at_ns)
         end = _parse_iso(meta.get("endDate")) if meta else None
