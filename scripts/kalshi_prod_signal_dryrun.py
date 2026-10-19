@@ -62,7 +62,7 @@ def main() -> int:
 
     try:
         client = KalshiPublicClient()
-        body = client.markets(series_ticker=SERIES, status="active", limit=1000)
+        body = client.markets(series_ticker=SERIES, limit=1000)
         markets = body.get("markets", [])
     except Exception as exc:  # noqa: BLE001 — read-only best-effort
         print(f"ladder fetch failed: {exc}")
