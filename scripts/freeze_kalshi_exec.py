@@ -36,6 +36,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from freeze_common import verify_anchor
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "frozen" / "kalshi-exec-demo-v0.3.json"
 DEFAULT_VERSION = "kalshi-exec-demo-v0.3"
@@ -119,6 +121,8 @@ def verify(config: Path) -> int:
         print(f"  runtime drift in {version}: requires explicit review + re-freeze")
         return 1
     print(f"ok   runtime_sha256: {actual}")
+    if not verify_anchor(RUNTIME_FILES, data.get("anchor_commit"), expected):
+        return 1
 
     # Informational, non-blocking.
     try:

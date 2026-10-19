@@ -34,6 +34,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from freeze_common import verify_anchor
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "frozen" / "us-collector-v0.2.json"
 DEFAULT_VERSION = "us-collector-v0.2"
@@ -121,6 +123,8 @@ def verify(config: Path) -> int:
         print(f"  runtime drift in {version}: commit + re-freeze (Class-A change)")
         return 1
     print(f"ok   runtime_sha256: {actual}")
+    if not verify_anchor(RUNTIME_FILES, data.get("anchor_commit"), expected):
+        return 1
     print(
         f"info change_class={data.get('change_class')} "
         f"anchor={data.get('anchor_commit')}"

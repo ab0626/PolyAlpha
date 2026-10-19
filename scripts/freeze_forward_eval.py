@@ -29,6 +29,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from freeze_common import verify_anchor
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "frozen" / "us-forward-eval-v0.1.json"
 DEFAULT_VERSION = "us-forward-eval-v0.1"
@@ -103,6 +105,8 @@ def verify(config: Path) -> int:
         print(f"  runtime drift in {version}: requires explicit review + re-freeze")
         return 1
     print(f"ok   runtime_sha256: {actual}")
+    if not verify_anchor(RUNTIME_FILES, data.get("anchor_commit"), expected):
+        return 1
 
     try:
         tests_actual = _sha256_of_files(TESTS_FILES)

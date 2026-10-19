@@ -43,6 +43,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from freeze_common import verify_anchor
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "frozen" / "energy-e3-research-v0.2.json"
 DEFAULT_VERSION = "energy-e3-research-v0.2"
@@ -116,6 +118,8 @@ def verify(config: Path) -> int:
         print(f"  runtime drift in {version}: requires explicit review + re-freeze")
         return 1
     print(f"ok   runtime_sha256: {actual}")
+    if not verify_anchor(RUNTIME_FILES, data.get("anchor_commit"), expected):
+        return 1
     print(
         f"info model_version={data.get('model_version')} "
         f"spec={data.get('research_spec')} anchor={data.get('anchor_commit')}"

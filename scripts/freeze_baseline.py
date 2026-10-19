@@ -111,6 +111,27 @@ def _sha256_of_files(rel_paths: list[Path], exclude: set[str] | None = None) -> 
     return h.hexdigest()
 
 
+def _sha256_of_files_at_commit(rel_paths: list[Path], commit: str) -> str:
+    """Hash the pinned files as they exist AT ``commit`` (historical provenance).
+
+    Used for the v0.4 information-propagation domain: ``us/families.py`` is now
+    owned by the forward-evaluation freeze, so the legacy baseline must prove
+    its historical hash at its recorded anchor — not reject today's versioned
+    evaluator in the working tree.
+    """
+    h = hashlib.sha256()
+    for p in sorted(rel_paths, key=lambda x: str(x)):
+        rel = str(p.relative_to(ROOT)).replace("\\", "/")
+        try:
+            blob = subprocess.check_output(
+                ["git", "show", f"{commit}:{rel}"], cwd=ROOT, stderr=subprocess.DEVNULL
+            )
+        except subprocess.CalledProcessError as exc:
+            raise FileNotFoundError(f"missing at {commit}: {rel}") from exc
+        h.update(blob.replace(b"\r\n", b"\n"))
+    return h.hexdigest()
+
+
 def _collect(paths: tuple[str, ...]) -> list[Path]:
     files: list[Path] = []
     for entry in paths:
@@ -189,10 +210,18 @@ def freeze(tag: str = "v0.3.0-research-baseline", commit: str | None = None) -> 
 
 def verify() -> int:
     frozen = _parse_integrity()
-    # The frozen commit records what the model/schema state was when frozen.
-    # HEAD legitimately moves when the freeze config itself is committed, so
-    # the git_commit check only requires that the frozen commit still exists.
     frozen_commit = frozen.get("git_commit", "")
+    # The v0.4 information-propagation domain is now historical: us/families.py
+    # is owned by us-forward-eval-v0.1. Verify it AT its recorded anchor, not the
+    # working tree, so a deliberately versioned evaluator does not fail here.
+    try:
+        info_propagation_actual = _sha256_of_files_at_commit(
+            _collect(INFO_PROPAGATION_PATHS), frozen_commit
+        )
+        info_propagation_error = None
+    except FileNotFoundError as exc:
+        info_propagation_actual = f"<missing: {exc}>"
+        info_propagation_error = str(exc)
     checks = [
         (
             "git_commit",
@@ -206,8 +235,9 @@ def verify() -> int:
         ),
         (
             "info_propagation_sha256",
-            _sha256_of_files(_collect(INFO_PROPAGATION_PATHS)),
-            "information-propagation methodology differs from frozen baseline",
+            info_propagation_actual,
+            info_propagation_error
+            or "information-propagation methodology differs from historical anchor",
         ),
         ("config_sha256", _config_sha256(), "frozen config file has been modified"),
     ]
