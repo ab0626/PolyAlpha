@@ -30,15 +30,20 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from kalshi_prod_submit import _build_context, _verified_ercot_rule  # noqa: E402
 
-from polyalpha.kalshi_signal_e3 import evaluate_ladder  # noqa: E402
+from polyalpha.kalshi_signal_e3 import MAX_SIGNAL_AGE_SECONDS, evaluate_ladder  # noqa: E402
 
 
 def _alert(candidates, day, signal_ts, realized, as_of, toaster) -> None:
     lines = ["=== KALSHI V0 CANDIDATE ALERT ==="]
     lines.append(f"operating_day: {day}")
+    remaining_h = None
     if signal_ts is not None:
-        lines.append(f"signal_age_hours: {(as_of - signal_ts).total_seconds() / 3600.0:.2f}")
+        age_h = (as_of - signal_ts).total_seconds() / 3600.0
+        remaining_h = MAX_SIGNAL_AGE_SECONDS / 3600.0 - age_h
+        lines.append(f"signal_usable_ts: {signal_ts.isoformat()}")
+        lines.append(f"signal_age_hours: {age_h:.2f}  (6h window, {remaining_h:.2f}h remaining)")
     else:
+        lines.append("signal_usable_ts: UNKNOWN")
         lines.append("signal_age_hours: UNKNOWN")
     lines.append(f"realized_running_max: {realized}")
     for e in candidates:
@@ -57,9 +62,10 @@ def _alert(candidates, day, signal_ts, realized, as_of, toaster) -> None:
     print(text, flush=True)
     if toaster is not None:
         first = candidates[0]
+        tail = f" ({remaining_h:.1f}h left)" if remaining_h is not None else ""
         toaster.maybe(
             "Kalshi V0 candidate",
-            f"{first.ticker} {first.side} edge={first.screen_edge}",
+            f"{first.ticker} {first.side} edge={first.screen_edge}{tail}",
             force=True,
         )
 
