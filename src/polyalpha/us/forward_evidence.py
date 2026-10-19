@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..research_dataset import ResearchDataset
-from .families import default_split_date, evaluate_all_families
+from .families import _resolved_eval, default_split_date, evaluate_all_families
 from .research import build_us_research_dataset, sampling_hierarchy
 
 REAL_DATA_START_US = datetime(2026, 9, 16, 2, 49, 12, tzinfo=UTC)
@@ -163,7 +163,10 @@ def forward_evidence_report(
     now = as_of or datetime.now(UTC)
     boundary = evaluation_boundary(now)
     hierarchy = sampling_hierarchy(dataset)
-    settled = hierarchy["resolved_markets"]
+    # v2.3: the settled-markets gate counts unique RESOLVED EVAL-SET markets
+    # (endDate >= SPLIT_DATE), not all historically resolved markets. This
+    # restores the pre-registered rule (">= 200 settled markets in the eval set").
+    settled = len({s.market_id for s in _resolved_eval(dataset, default_split_date())})
     clusters = hierarchy["effective_n"]
     completeness = _settlement_completeness(dataset)
     # Fail-closed: missing/corrupt gap provenance must never read as full coverage.
