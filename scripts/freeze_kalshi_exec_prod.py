@@ -43,6 +43,7 @@ RUNTIME_FILES = (
     "src/polyalpha/kalshi_fees.py",
     "src/polyalpha/kalshi_signal_e3.py",
     "src/polyalpha/energy/intraday_actuals.py",
+    "scripts/kalshi_prod_submit.py",
     "src/polyalpha/kalshi_auth.py",
     "src/polyalpha/kill_switch.py",
     "src/polyalpha/process_lease.py",

@@ -1,7 +1,7 @@
 {
   "version": "live-calibration-v0",
-  "anchor_commit": "230b7a976334923a0f3ef74441424e33cf3d8eec",
-  "runtime_sha256": "3c2b0983a0fa3042458085391830c92c8f2a1792fdad0abf129a6941ba5184ed",
+  "anchor_commit": "85e519f86d9f121c7c129e63e77a12e23decb40a",
+  "runtime_sha256": "c18fff18aa4a2f12418d4f6658489ab08c768ad25c544d6c34b5280ca3900699",
   "tests_sha256": "07c6c290d4addde73d67ef1cb293cad7cf21ad20745f29a2ff548533e5a1a12d",
   "environment": "production",
   "production_execution": true,
@@ -21,6 +21,7 @@
     "src/polyalpha/kalshi_fees.py",
     "src/polyalpha/kalshi_signal_e3.py",
     "src/polyalpha/energy/intraday_actuals.py",
+    "scripts/kalshi_prod_submit.py",
     "src/polyalpha/kalshi_auth.py",
     "src/polyalpha/kill_switch.py",
     "src/polyalpha/process_lease.py",
@@ -28,5 +29,5 @@
     "src/polyalpha/kalshi_exec.py",
     "src/polyalpha/kalshi_oms.py"
   ],
-  "frozen_at": "2026-10-19T03:57:33.600856+00:00"
+  "frozen_at": "2026-10-19T04:06:27.731663+00:00"
 }
