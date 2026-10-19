@@ -20,9 +20,11 @@ Families 5/6 DEFERRED; 4 and 7 NOT_RUN; 3 NOT_RUN / INSUFFICIENT_SPECIFICATION.
 
 from __future__ import annotations
 
+import json
 import random
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 from ..research_dataset import MarketSnapshot, ResearchDataset
 from ..statistical_tests import benjamini_hochberg
@@ -196,10 +198,12 @@ def _normalize_category(s: MarketSnapshot) -> str:
 
 
 def _liquidity_bounds(dataset: ResearchDataset, split_date: date) -> tuple[float, float] | None:
-    """Training-only openInterest tercile cutpoints (q1/3, q2/3).
+    """Compute training-only openInterest tercile cutpoints (q1/3, q2/3).
 
-    Computed once from pre-split market-level openInterest means. None when the
-    two quantiles collapse (ties/zeros) -> liquidity dimension INSUFFICIENT_DATA.
+    This is the DERIVATION step, used only by ``scripts/materialize_oi_terciles.py``
+    at the training-window boundary. The evaluator does NOT call this; it reads the
+    frozen constants via :func:`_load_frozen_oi_terciles` so a single invocation
+    never both derives thresholds and reveals holdout results.
     """
     by_market: dict[str, list[float]] = {}
     for s in dataset.snapshots:
@@ -217,6 +221,29 @@ def _liquidity_bounds(dataset: ResearchDataset, split_date: date) -> tuple[float
     if lo == hi:
         return None
     return (lo, hi)
+
+
+_FROZEN_OI_TERCILES = (
+    Path(__file__).resolve().parents[3] / "config" / "frozen" / "us_oi_terciles.json"
+)
+
+
+def _load_frozen_oi_terciles() -> tuple[float, float] | None:
+    """Read the FROZEN training-only openInterest tercile cutpoints.
+
+    Returns ``None`` (fail-closed => liquidity INSUFFICIENT_DATA) if the constants
+    have not yet been materialized at the training-window boundary. The evaluator
+    must never derive these at eval time.
+    """
+    try:
+        data = json.loads(_FROZEN_OI_TERCILES.read_text(encoding="utf-8"))
+        q1 = data.get("q1_3")
+        q2 = data.get("q2_3")
+        if q1 is None or q2 is None or float(q1) == float(q2):
+            return None
+        return (float(q1), float(q2))
+    except (OSError, json.JSONDecodeError, ValueError, TypeError):
+        return None
 
 
 def _liquidity_tercile(s: MarketSnapshot, bounds: tuple[float, float] | None) -> str | None:
@@ -305,7 +332,7 @@ def evaluate_family_1_calibration(
     # Primary descriptive metric: cluster-weighted binned ECE over price deciles.
     ece = _binned_ece(snaps, lambda s: _price_bucket(float(s.yes_mid)))
 
-    liq_bounds = _liquidity_bounds(dataset, split_date)
+    liq_bounds = _load_frozen_oi_terciles()
 
     cell_defs: list[tuple[str, list[MarketSnapshot]]] = []
     for idx in range(10):
@@ -323,7 +350,7 @@ def evaluate_family_1_calibration(
             cell = [s for s in snaps if _liquidity_tercile(s, liq_bounds) == name]
             cell_defs.append((f"liquidity[{name}]", cell))
     else:
-        d.reasons.append("liquidity dimension INSUFFICIENT_DATA (tercile collapse)")
+        d.reasons.append("liquidity dimension INSUFFICIENT_DATA (frozen OI terciles not materialized)")
     for ttr in ("<1h", "1h-24h", "1d-7d", ">=168h"):
         cell = [s for s in snaps if _ttr_bucket(s.hours_to_resolution) == ttr]
         cell_defs.append((f"TTR[{ttr}]", cell))

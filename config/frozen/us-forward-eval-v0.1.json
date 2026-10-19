@@ -1,6 +1,6 @@
 {
   "version": "us-forward-eval-v0.1",
-  "anchor_commit": "5514e8e14af6ecfef2b25fe9c07a459f12d9a356",
+  "anchor_commit": "1ed7229c180456b2304dedbd0de354ce7a8a2451",
   "runtime_sha256": "f9884609a9a6435479347efcf86cb870f5fd4c209cb6a2a822bf3a501882cdb7",
   "tests_sha256": "9d7a207306cdc1973cf165857b773c92eef225a9062242d42c08e1d08bac0e11",
   "spec": "docs/RESEARCH_AGENDA.md v2.0 + v2.1 + v2.2 + v2.3 + v2.3.1",

@@ -230,3 +230,24 @@ def test_settled_gate_counts_eval_set_not_all_resolved():
     ]
     report = forward_evidence_report(_dataset(snaps), as_of=NOW)
     assert report["gates"]["settled_markets"]["value"] == 0
+
+
+# ── Frozen OI tercile fail-closed (two-stage mechanism) ─────────────────────
+
+def test_frozen_oi_terciles_absent_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setattr(families, "_FROZEN_OI_TERCILES", tmp_path / "absent.json")
+    assert families._load_frozen_oi_terciles() is None
+
+
+def test_frozen_oi_terciles_present(tmp_path, monkeypatch):
+    p = tmp_path / "oi.json"
+    p.write_text('{"q1_3": 100.0, "q2_3": 200.0}', encoding="utf-8")
+    monkeypatch.setattr(families, "_FROZEN_OI_TERCILES", p)
+    assert families._load_frozen_oi_terciles() == (100.0, 200.0)
+
+
+def test_frozen_oi_terciles_collapse_fails_closed(tmp_path, monkeypatch):
+    p = tmp_path / "oi.json"
+    p.write_text('{"q1_3": 100.0, "q2_3": 100.0}', encoding="utf-8")
+    monkeypatch.setattr(families, "_FROZEN_OI_TERCILES", p)
+    assert families._load_frozen_oi_terciles() is None
