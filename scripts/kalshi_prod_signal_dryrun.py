@@ -52,6 +52,15 @@ from polyalpha.kalshi_signal_e3 import (  # noqa: E402
 SERIES = "KXTXERCOTPEAKD"
 
 
+def _parse_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _pick_upcoming_day(markets: list[dict], now: datetime) -> tuple[str, list[dict]]:
     """Pick the operating day with the nearest future close time (active day)."""
     by_day: dict[str, list[dict]] = defaultdict(list)
@@ -112,16 +121,33 @@ def main() -> int:
     snap = fetch_intraday_actuals()
     realized = running_max(snap.rows, day) if snap is not None else None
 
+    # Forecast-vintage timestamp for the 6h signal-age check (lead-0 first same-day
+    # forecast; usable once BOTH published and received).
+    f0 = _first.get((day, day))
+    signal_ts = None
+    if f0:
+        pub = _parse_iso(f0.get("publish_at"))
+        recv = _parse_iso(f0.get("received_at"))
+        if pub is not None and recv is not None:
+            signal_ts = max(pub, recv)
+
     # Fail-closed: unverified fee => 0 tradeable intents.
-    intents = build_signal_intents(model, ladder, unverified, as_of, realized_running_max=realized)
+    intents = build_signal_intents(
+        model, ladder, unverified, as_of,
+        realized_running_max=realized, signal_timestamp=signal_ts,
+    )
 
     # Display-only: a verified copy of the inferred rule so the table is readable.
     display_rule = verify_fee_rule(unverified)
-    evals = evaluate_ladder(model, ladder, display_rule, as_of, realized_running_max=realized)
+    evals = evaluate_ladder(
+        model, ladder, display_rule, as_of,
+        realized_running_max=realized, signal_timestamp=signal_ts,
+    )
 
     print("=== E3 -> SCREEN-EDGE DRY-RUN (log-only, taker calibration) ===")
     print(f"operating_day: {day}")
     print(f"rungs: {len(ladder.rungs)}")
+    print(f"signal timestamp (forecast vintage): {signal_ts.isoformat() if signal_ts else 'UNKNOWN'}")
     print(f"realized running max: {realized if realized is not None else 'FEED UNVERIFIED (fail-closed)'}")
     print(f"fee rule verified (live): {unverified.verified}")
     print(f"tradeable intents (fail-closed): {len(intents)}")
