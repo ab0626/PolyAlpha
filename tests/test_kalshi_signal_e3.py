@@ -12,6 +12,7 @@ from polyalpha.energy.kalshi import EnergyLadder, LadderRung
 from polyalpha.kalshi_exec import OrderSide
 from polyalpha.kalshi_exec_prod import MAX_NOTIONAL_PER_ORDER, MIN_SCREEN_EDGE
 from polyalpha.kalshi_fees import FeeRule, verify_fee_rule
+from polyalpha.kalshi_oms_prod import ProdOrderIntent
 from polyalpha.kalshi_signal_e3 import (
     REASON_EDGE_BELOW,
     REASON_ELIGIBLE,
@@ -20,6 +21,7 @@ from polyalpha.kalshi_signal_e3 import (
     build_signal_intents,
     build_single_day_ladder,
     evaluate_ladder,
+    revalidate_quote,
 )
 
 D = Decimal
@@ -158,3 +160,37 @@ def test_count_capped_at_max_notional():
     evals = eval_one(make_rung(yes_ask_size=D("100"), no_ask=None), p="0.60")
     e = [e for e in evals if e.side == "YES"][0]
     assert e.intent.count == MAX_NOTIONAL_PER_ORDER
+
+
+# ── Pre-submit quote revalidation ─────────────────────────────────────────
+
+def _intent(side, price):
+    return ProdOrderIntent(
+        ticker="KXTXERCOTPEAKD-100",
+        side=side,
+        price=D(price),
+        count=D("1"),
+        client_order_id="cid-1",
+    )
+
+
+def test_revalidate_bid_same_or_better():
+    intent = _intent(OrderSide.BID, "0.50")
+    assert revalidate_quote(intent, D("0.50")) is True   # same
+    assert revalidate_quote(intent, D("0.49")) is True   # better
+    assert revalidate_quote(intent, D("0.52")) is False  # ask moved up -> reject
+
+
+def test_revalidate_ask_same_or_better():
+    intent = _intent(OrderSide.ASK, "0.48")
+    assert revalidate_quote(intent, D("0.48")) is True   # same
+    assert revalidate_quote(intent, D("0.49")) is True   # better
+    assert revalidate_quote(intent, D("0.46")) is False  # bid moved down -> reject
+
+
+def test_revalidate_rejects_degenerate_quote():
+    intent = _intent(OrderSide.BID, "0.50")
+    assert revalidate_quote(intent, None) is False
+    assert revalidate_quote(intent, D("0.00")) is False
+    assert revalidate_quote(intent, D("1.00")) is False
+    assert revalidate_quote(intent, D("0.50"), fresh_size=D("0")) is False

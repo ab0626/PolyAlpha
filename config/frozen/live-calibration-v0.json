@@ -1,8 +1,8 @@
 {
   "version": "live-calibration-v0",
-  "anchor_commit": "b4b885f8e4f32addb85c7979341bcd6a87efb1a3",
-  "runtime_sha256": "6c967e438342feba311be00b99ff2dc2e997fc6f6f7b028264500a758ada703d",
-  "tests_sha256": "9f81162a13a03dc73b535dbd719231cb409c9291fa2f8ac2ba4211ffa98aceec",
+  "anchor_commit": "a91a721f1856b872eefab508ac4d49b0d7a6a256",
+  "runtime_sha256": "3a95184a70572a31023093a5a90e8b79079ccea2dcb90da3c8f791bf876d7c0e",
+  "tests_sha256": "e3df8ae82efd28ef2012546c7ceb4bd05d5ce94bd641ad804031a60d7ad149eb",
   "environment": "production",
   "production_execution": true,
   "signal": "E3",
@@ -27,5 +27,5 @@
     "src/polyalpha/kalshi_exec.py",
     "src/polyalpha/kalshi_oms.py"
   ],
-  "frozen_at": "2026-10-19T03:10:36.984257+00:00"
+  "frozen_at": "2026-10-19T03:13:45.719610+00:00"
 }

@@ -48,6 +48,7 @@ from .kalshi_oms_prod import ProdOrderIntent
 
 # Eligibility reasons (dry-run reports these; they are not tradeable labels).
 REASON_ELIGIBLE = "ELIGIBLE"
+REASON_WOULD_BE_ELIGIBLE = "WOULD_BE_ELIGIBLE_IF_FEE_VERIFIED"
 REASON_NO_QUOTE = "NO_EXECUTABLE_QUOTE"
 REASON_ZERO_SIZE = "ZERO_SIZE"
 REASON_FEE_UNVERIFIED = "FEE_UNVERIFIED"
@@ -253,3 +254,27 @@ def build_signal_intents(
         )
         if e.intent is not None
     ]
+
+
+def revalidate_quote(
+    intent: ProdOrderIntent,
+    fresh_exec_price: Decimal | None,
+    fresh_size: Decimal | None = None,
+) -> bool:
+    """Pre-submit freshness check: reject if the book moved against the intent.
+
+    ``fresh_exec_price`` is the current executable price in the intent's own
+    direction: the YES ask for a BID (buy YES), the YES bid for an ASK (sell
+    YES). Returns True only when the fresh quote is same-or-better AND genuine
+    (0 < price < 1, size > 0 when provided). A moved book must NOT be chased —
+    reject and recompute.
+    """
+    if fresh_exec_price is None:
+        return False
+    if not (Decimal("0") < fresh_exec_price < Decimal("1")):
+        return False
+    if fresh_size is not None and fresh_size <= 0:
+        return False
+    if intent.side == OrderSide.BID:
+        return fresh_exec_price <= intent.price  # ask did not move up
+    return fresh_exec_price >= intent.price      # bid did not move down

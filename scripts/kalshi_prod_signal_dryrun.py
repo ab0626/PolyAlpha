@@ -41,6 +41,8 @@ from polyalpha.kalshi_fees import (  # noqa: E402
     verify_fee_rule,
 )
 from polyalpha.kalshi_signal_e3 import (  # noqa: E402
+    REASON_ELIGIBLE,
+    REASON_WOULD_BE_ELIGIBLE,
     build_signal_intents,
     build_single_day_ladder,
     evaluate_ladder,
@@ -129,10 +131,15 @@ def main() -> int:
     for e in evals:
         def f(v, w=7):
             return "     -" if v is None else f"{v:{w}.4f}"
+        reason = (
+            REASON_WOULD_BE_ELIGIBLE
+            if e.eligibility_reason == REASON_ELIGIBLE
+            else e.eligibility_reason
+        )
         print(
             f"{e.strike:>8} {e.side:>4} {f(e.p_hat_e3, 7)} {f(e.executable_price, 8)} "
             f"{f(e.executable_size, 8)} {f(e.taker_fee, 6)} {f(e.buffer, 6)} "
-            f"{f(e.screen_edge, 8)}  {e.eligibility_reason}"
+            f"{f(e.screen_edge, 8)}  {reason}"
         )
 
     print()
