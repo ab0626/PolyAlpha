@@ -22,6 +22,7 @@ DEFAULT_SERIES = (
     "KXTXERCOTPEAKD",     # Tier-1 wedge: ERCOT daily peak load
     "KXUTILITYERCOT",     # Texas electricity prices
     "KXERCOTWESTM",       # ERCOT West Hub monthly power price
+    "KXERCOTWESTW",       # ERCOT West Hub WEEKLY power price (E4 market side)
     "KXERCOTHOUM",        # ERCOT Houston Hub monthly power price
     "KXERCOTNORTHM",      # ERCOT North Hub monthly power price
     "KXNATGASD",          # Natural Gas Daily

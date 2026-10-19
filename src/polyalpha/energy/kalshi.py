@@ -122,6 +122,7 @@ ENERGY_SERIES: dict[str, tuple[str, str]] = {
     "KXTXERCOTPEAKD": (taxonomy.power_leaf(taxonomy.ISO_ERCOT), "daily_peak_load"),
     "KXUTILITYERCOT": (taxonomy.power_leaf(taxonomy.ISO_ERCOT), "electricity_price"),
     "KXERCOTWESTM": (taxonomy.power_leaf(taxonomy.ISO_ERCOT), "hub_power_price"),
+    "KXERCOTWESTW": (taxonomy.power_leaf(taxonomy.ISO_ERCOT), "hub_power_price"),
     "KXERCOTHOUM": (taxonomy.power_leaf(taxonomy.ISO_ERCOT), "hub_power_price"),
     "KXERCOTNORTHM": (taxonomy.power_leaf(taxonomy.ISO_ERCOT), "hub_power_price"),
     "KXNATGASD": (taxonomy.NATURAL_GAS, "natgas_spot"),
