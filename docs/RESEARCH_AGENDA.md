@@ -458,3 +458,85 @@ Family | Primary Metric (e.g. ΔBrier) | Net Edge | PnL | N_eff | CI | Verdict
   per-family attribution reporting format. v2.0/v2.1 bodies unchanged. Written
   while MODEL PERFORMANCE: LOCKED, ALPHA: UNKNOWN. Addendum content committed at
   `308a486222ca037524022891d6dce49377087784`.
+
+---
+
+# v2.3 implementation-clarification addendum
+
+Appended after v2.2. **The v2.0/v2.1/v2.2 bodies above are unchanged.** This
+addendum resolves pre-registration ambiguities identified during implementation
+review, BEFORE any family evaluation has run (ALPHA: UNKNOWN, holdout unopened).
+It is an implementation clarification, not a new hypothesis and not a change to
+any frozen threshold.
+
+## Governing authority (frozen)
+
+The first forward-evidence report is governed by this document's v2.0, v2.1,
+and v2.2. `RESEARCH_AGENDA_V3.md` governs the NEXT-STAGE research program and
+does not retroactively modify v1's stopping rule, families, or decision rules.
+
+## Family 2 — favorite–longshot direction (frozen)
+
+```
+H_FLB:  E[Y − p | 0 ≤ p < 0.10] < 0
+```
+
+Low-price longshots are hypothesized to UNDERPERFORM quoted probability
+("underperform / are overbet"; v2.0 "longshot underperformance specifically").
+Minimum magnitude is the pre-registered 1pp. FLB is SUPPORTED only if a
+low-price bucket in [0.00, 0.10) shows a significant NEGATIVE residual
+(mean(Y−p) < 0) with |effect| ≥ 1pp after the family-wide BH-FDR correction.
+A significant residual at a higher price, or a POSITIVE residual at a low
+price, does NOT support FLB.
+
+Note: the sentence in `RESEARCH_AGENDA_V3.md` describing low-price contracts as
+"overperform" is a documentation error; it conflicts with that document's own
+"<10¢ loses" note and is superseded by the v2.0 direction above.
+
+## FDR scope (frozen)
+
+Benjamini–Hochberg FDR at 10% is applied PER FAMILY: every test and sub-group
+cell that can contribute to that family's verdict forms ONE BH universe. There
+is NO cross-family omnibus pool. (F2's price×category surface is one universe;
+F1, F2, and F3 are separate universes.)
+
+## Family 1 — primary calibration metric (frozen)
+
+The primary F1 metric is BINNED calibration error, not per-row mean absolute
+error:
+
+```
+ECE = Σ_c (n_c / N) · |mean(Y_c) − mean(p_c)|
+```
+
+where cells c partition the eval sample by PRICE DECILE (10 bins over
+[0.00, 1.00)). A perfectly calibrated market therefore reports ECE ≈ 0.
+`mean(|Y − p|)` (per-row MAE) is explicitly NOT the primary metric; it may be
+reported only as a secondary diagnostic. The calibration residual is
+additionally reported as per-cell mean residuals over category, spread regime
+(≤2¢ / >2¢), liquidity proxy (openInterest terciles), and TTR (<1h / 1h–24h /
+1d–7d / >7d), each as a separate one-dimensional table subject to the
+1pp-per-cell minimum, the sparse-cell floor, and the family-wide BH correction.
+
+## Sparse-cell floor (amendment)
+
+Any cell (price bucket, category, or other sub-group) must contain ≥ 20
+independent event clusters to contribute to its family's verdict. Cells below
+this floor are reported as INSUFFICIENT and excluded from significance. This
+generalizes the already-preregistered "≥ 20 clusters per category" (F2) to all
+cells.
+
+## Family 3 — deferral (frozen)
+
+Family 3 is NOT RUN for v1. The v2.0 spec names "a fixed horizon (e.g. 60s,
+300s)" but does not freeze an exact horizon, and the current round-robin
+collection cadence provides no fixed horizon. "Next observed book" is not a
+microstructure horizon. An exact horizon must be preregistered in a future
+version before F3 can be evaluated.
+
+## v2.3 version history entry
+
+- **v2.3** — implementation-clarification addendum: governing authority, FLB
+  direction, FDR scope, F1 primary binned-ECE metric, sparse-cell floor, F3
+  deferral. v2.0/v2.1/v2.2 bodies unchanged. Written while ALPHA: UNKNOWN and
+  before any family evaluation.
