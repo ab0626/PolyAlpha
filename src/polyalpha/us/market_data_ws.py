@@ -241,18 +241,19 @@ class MarketDataWsCollector:
                             # Immutable transport frame at recv, BEFORE decode/parse.
                             wall_ns = time.time_ns()
                             mono_ns = time.monotonic_ns()
-                            frame = capture_frame(SOURCE_US_MARKET_DATA, session, message, wall_ns, mono_ns)
-                            r1 = time.monotonic_ns()
+                            perf_ns = time.perf_counter_ns()
+                            frame = capture_frame(SOURCE_US_MARKET_DATA, session, message, wall_ns, mono_ns, perf_ns)
+                            r1 = time.perf_counter_ns()
                             if not frame_writer.try_submit(frame):
                                 fail_closed(self.frame_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
-                            r2 = time.monotonic_ns()
+                            r2 = time.perf_counter_ns()
 
                             try:
                                 payload = json.loads(frame_text(frame))
                             except (json.JSONDecodeError, UnicodeDecodeError):
                                 self.stats["errors"] += 1
                                 continue  # frame already enqueued; no parsed record
-                            r3 = time.monotonic_ns()
+                            r3 = time.perf_counter_ns()
 
                             now_wall = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                             if "heartbeat" in payload:
@@ -262,7 +263,7 @@ class MarketDataWsCollector:
                             update = self.stream.ingest(payload, now_wall)
                             if update is None:
                                 continue
-                            r4 = time.monotonic_ns()
+                            r4 = time.perf_counter_ns()
 
                             # Three clocks: venue time (ms), wall ns, monotonic ns.
                             venue_ms = (
@@ -283,10 +284,10 @@ class MarketDataWsCollector:
                                 "exchange_timestamp_ms": venue_ms,
                             }):
                                 fail_closed(self.frame_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
-                            r5 = time.monotonic_ns()
+                            r5 = time.perf_counter_ns()
                             self.tracer.trace(
                                 "ws_ingest", SOURCE_US_MARKET_DATA,
-                                {"r0": frame.received_monotonic_ns, "r1": r1, "r2": r2,
+                                {"r0": frame.received_perf_ns, "r1": r1, "r2": r2,
                                  "r3": r3, "r4": r4, "r5": r5},
                                 session_id=frame.session_id, seq=frame.session_seq,
                                 message_type=update.kind,

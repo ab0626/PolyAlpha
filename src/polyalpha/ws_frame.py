@@ -61,6 +61,7 @@ class WsTransportFrame:
     session_seq: int
     received_at_ns: int
     received_monotonic_ns: int
+    received_perf_ns: int
     wire_encoding: str  # "utf-8" | "base64"
     wire: str           # exact wire text (base64 when the source was bytes)
     wire_sha256: str
@@ -96,10 +97,12 @@ def capture_frame(
     message: str | bytes,
     wall_ns: int | None = None,
     mono_ns: int | None = None,
+    perf_ns: int | None = None,
 ) -> WsTransportFrame:
-    """Create the immutable frame. Wall/mono are captured back-to-back here."""
+    """Create the immutable frame. Wall/mono/perf captured back-to-back here."""
     wall = wall_ns if wall_ns is not None else time.time_ns()
     mono = mono_ns if mono_ns is not None else time.monotonic_ns()
+    perf = perf_ns if perf_ns is not None else time.perf_counter_ns()
     if isinstance(message, bytes):
         wire = base64.b64encode(message).decode("ascii")
         encoding = "base64"
@@ -121,6 +124,7 @@ def capture_frame(
         session_seq=seq,
         received_at_ns=wall,
         received_monotonic_ns=mono,
+        received_perf_ns=perf,
         wire_encoding=encoding,
         wire=wire,
         wire_sha256=sha,
@@ -289,16 +293,16 @@ class WsFrameWriter:
             self.frames_enqueued += 1
             self.last_enqueued_frame_id = frame.frame_id
             self._queue_high_water = max(self._queue_high_water, self._queue.qsize())
-            self._pending.append((time.monotonic_ns(), frame.frame_id))
+            self._pending.append((time.perf_counter_ns(), frame.frame_id))
         return True
 
     def _write_batch(self, batch: list[WsTransportFrame]) -> None:
-        w0 = self._pending[0][0] if self._pending else time.monotonic_ns()
-        w1 = time.monotonic_ns()
+        w0 = self._pending[0][0] if self._pending else time.perf_counter_ns()
+        w1 = time.perf_counter_ns()
         for frame in batch:
             self.store.write(frame)
         self.store.flush()
-        w2 = time.monotonic_ns()
+        w2 = time.perf_counter_ns()
         with self._lock:
             for _ in batch:
                 if self._pending:
@@ -312,7 +316,7 @@ class WsFrameWriter:
             oldest = batch[0]
             self.tracer.trace(
                 "ws_writer", self.store.source,
-                {"r0": oldest.received_monotonic_ns, "w0": w0, "w1": w1, "w2": w2},
+                {"r0": oldest.received_perf_ns, "w0": w0, "w1": w1, "w2": w2},
                 session_id=oldest.session_id, seq=oldest.session_seq,
                 message_type="batch",
                 metadata={"batch_size": len(batch)},
@@ -374,7 +378,7 @@ class WsFrameWriter:
         with self._lock:
             oldest_age = None
             if self._pending:
-                oldest_age = int((time.monotonic_ns() - self._pending[0][0]) / 1_000_000)
+                oldest_age = int((time.perf_counter_ns() - self._pending[0][0]) / 1_000_000)
             return {
                 "frames_enqueued": self.frames_enqueued,
                 "frames_persisted": self.frames_persisted,

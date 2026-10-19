@@ -171,11 +171,12 @@ class UsTradeWsCollector:
                             # Immutable transport frame at recv (BEFORE dedupe/parse).
                             wall_ns = time.time_ns()
                             mono_ns = time.monotonic_ns()
-                            frame = capture_frame(SOURCE_US_TRADE, session, message, wall_ns, mono_ns)
-                            r1 = time.monotonic_ns()
+                            perf_ns = time.perf_counter_ns()
+                            frame = capture_frame(SOURCE_US_TRADE, session, message, wall_ns, mono_ns, perf_ns)
+                            r1 = time.perf_counter_ns()
                             if not frame_writer.try_submit(frame):  # duplicates survive here
                                 fail_closed(self.frame_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
-                            r2 = time.monotonic_ns()
+                            r2 = time.perf_counter_ns()
 
                             received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                             try:
@@ -183,13 +184,13 @@ class UsTradeWsCollector:
                             except (json.JSONDecodeError, UnicodeDecodeError):
                                 self.stats["errors"] += 1
                                 continue
-                            r3 = time.monotonic_ns()
+                            r3 = time.perf_counter_ns()
 
                             record = self.stream.ingest(payload, received)  # dedupe is DERIVED
                             if record is None:
                                 self.stats["duplicates"] += 1
                                 continue
-                            r4 = time.monotonic_ns()
+                            r4 = time.perf_counter_ns()
                             payload["frame_id"] = frame.frame_id
                             if not derived_writer.try_submit({
                                 "frame_id": frame.frame_id,
@@ -202,10 +203,10 @@ class UsTradeWsCollector:
                                 "received_monotonic_ns": mono_ns,
                             }):
                                 fail_closed(self.frame_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
-                            r5 = time.monotonic_ns()
+                            r5 = time.perf_counter_ns()
                             self.tracer.trace(
                                 "ws_ingest", SOURCE_US_TRADE,
-                                {"r0": frame.received_monotonic_ns, "r1": r1, "r2": r2,
+                                {"r0": frame.received_perf_ns, "r1": r1, "r2": r2,
                                  "r3": r3, "r4": r4, "r5": r5},
                                 session_id=frame.session_id, seq=frame.session_seq,
                                 message_type="trade",

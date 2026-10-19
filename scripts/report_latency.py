@@ -83,21 +83,28 @@ def _nearest_rank(sorted_values: list[float], p: float) -> float:
     return sorted_values[min(k, len(sorted_values)) - 1]
 
 
-def _validate_trace(trace: dict) -> bool:
-    """True if the trace's present stages are monotonic nondecreasing."""
+def _first_violation(trace: dict):
+    """Return (reason, pair, delta) for the first monotonicity violation, else None."""
     order = STAGE_ORDER.get(trace.get("family", ""), [])
     stages = trace.get("stages_ns") or {}
-    prev = None
+    prev_key = None
+    prev_val = None
     for key in order:
         if key not in stages:
             continue
         v = stages[key]
         if not isinstance(v, int):
-            return False
-        if prev is not None and v < prev:
-            return False
-        prev = v
-    return True
+            return ("non_int_stage", key, None)
+        if prev_val is not None and v < prev_val:
+            return (f"{key}<{prev_key}", f"{prev_key}->{key}", v - prev_val)
+        prev_key = key
+        prev_val = v
+    return None
+
+
+def _validate_trace(trace: dict) -> bool:
+    """True if the trace's present stages are monotonic nondecreasing."""
+    return _first_violation(trace) is None
 
 
 def _component_values(trace: dict, family: str) -> dict[str, float]:
@@ -161,6 +168,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Offline latency report")
     ap.add_argument("--dir", default="data/latency")
     ap.add_argument("--slowest", type=int, default=0, help="dump the N slowest receive->usable traces")
+    ap.add_argument("--invalid", action="store_true", help="dump every INVALID_TRACE and bucket the violation reasons")
     args = ap.parse_args()
 
     print("clock: monotonic resolution=", time.get_clock_info("monotonic").resolution,
@@ -183,13 +191,31 @@ def main() -> int:
         return 0
 
     # Validate; invalid traces are excluded loudly.
-    valid, invalid = [], 0
+    valid, invalid = [], []
     for t in traces:
         if _validate_trace(t):
             valid.append(t)
         else:
-            invalid += 1
-    print(f"traces={len(traces)}  valid={len(valid)}  INVALID_TRACE={invalid}")
+            invalid.append(t)
+    print(f"traces={len(traces)}  valid={len(valid)}  INVALID_TRACE={len(invalid)}")
+
+    if args.invalid and invalid:
+        from collections import Counter
+        reasons = Counter()
+        print("\nINVALID TRACES (first violation + reason bucket):")
+        for t in invalid:
+            viol = _first_violation(t)
+            reason = viol[0] if viol else "other"
+            reasons[reason] += 1
+            st = t.get("stages_ns") or {}
+            print(f"  trace_id={t.get('trace_id', '?')[:16]} family={t.get('family')} "
+                  f"source={t.get('source')} session={str(t.get('session_id'))[:16]} "
+                  f"seq={t.get('seq')} mtype={t.get('message_type')} "
+                  f"violation={viol}")
+            print(f"    stages={st}")
+        print("\nVIOLATION REASON BUCKETS:")
+        for reason, count in reasons.most_common():
+            print(f"  {reason:24s} {count}")
 
     global_values: dict[str, list[float]] = defaultdict(list)
     by_source: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))

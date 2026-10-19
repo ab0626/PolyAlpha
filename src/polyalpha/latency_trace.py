@@ -35,6 +35,7 @@ class LatencyTrace:
     message_type: str | None
     trace_id: str
     stages_ns: dict[str, int]
+    clock_domain: str = "perf_counter_ns"
     wall_received_at_ns: int | None = None
     venue_timestamp_ns: int | None = None
     metadata: dict = field(default_factory=dict)

@@ -262,18 +262,19 @@ async def run(args: argparse.Namespace) -> int:
                         # Immutable transport frame at recv (BEFORE parse/scope).
                         wall_ns = time.time_ns()
                         mono_ns = time.monotonic_ns()
-                        frame = capture_frame(SOURCE_ENERGY_WS, session, message, wall_ns, mono_ns)
-                        r1 = time.monotonic_ns()
+                        perf_ns = time.perf_counter_ns()
+                        frame = capture_frame(SOURCE_ENERGY_WS, session, message, wall_ns, mono_ns, perf_ns)
+                        r1 = time.perf_counter_ns()
                         if not frame_writer.try_submit(frame):
                             fail_closed(frames_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
-                        r2 = time.monotonic_ns()
+                        r2 = time.perf_counter_ns()
 
                         received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                         try:
                             data = json.loads(frame_text(frame))
                         except (json.JSONDecodeError, UnicodeDecodeError):
                             data = {"raw": frame_text(frame)}
-                        r3 = time.monotonic_ns()
+                        r3 = time.perf_counter_ns()
 
                         status["last_message_at"] = received.isoformat()
                         status["heartbeat_at"] = received.isoformat()  # alive + connected + data flowing
@@ -297,11 +298,11 @@ async def run(args: argparse.Namespace) -> int:
                                 "message": data,
                             }):
                                 fail_closed(frames_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
-                            r4 = time.monotonic_ns()
-                            r5 = time.monotonic_ns()
+                            r4 = time.perf_counter_ns()
+                            r5 = time.perf_counter_ns()
                             tracer.trace(
                                 "ws_ingest", SOURCE_ENERGY_WS,
-                                {"r0": frame.received_monotonic_ns, "r1": r1, "r2": r2,
+                                {"r0": frame.received_perf_ns, "r1": r1, "r2": r2,
                                  "r3": r3, "r4": r4, "r5": r5},
                                 session_id=frame.session_id, seq=frame.session_seq,
                                 message_type=data.get("type"),
