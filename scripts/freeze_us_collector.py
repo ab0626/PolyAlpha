@@ -46,6 +46,7 @@ DEFAULT_VERSION = "us-collector-v0.2"
 # research gap ledger stays a human-reviewed artifact.
 RUNTIME_FILES = (
     "scripts/run_us_collection.py",
+    "scripts/us_collection_supervisor.py",
     "src/polyalpha/us/collector.py",
     "src/polyalpha/us/adapter.py",
     "src/polyalpha/us/rest.py",

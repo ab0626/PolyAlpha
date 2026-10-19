@@ -1,11 +1,12 @@
 {
   "version": "us-collector-v0.2",
-  "anchor_commit": "b0f31e05f6314e26898aeda8cb6407f0754d33fb",
-  "runtime_sha256": "d0fc644061f4b02bdf8473ed50712e74b2082112d716fbb981c3372fe400f6a1",
+  "anchor_commit": "7f29a47f8fff927bca9d6cbe085c50537e2bd06b",
+  "runtime_sha256": "dbe3a45389e75ef5d400ffde660dfaf07a266e10a2577fbf0542ff1859d19ce0",
   "change_class": "A",
   "change_class_note": "collector/infra only; re-freeze after any committed Class-A change",
   "runtime_files": [
     "scripts/run_us_collection.py",
+    "scripts/us_collection_supervisor.py",
     "src/polyalpha/us/collector.py",
     "src/polyalpha/us/adapter.py",
     "src/polyalpha/us/rest.py",
@@ -19,5 +20,5 @@
     "config/gov_releases.json",
     "config/collection_strata.json"
   ],
-  "frozen_at": "2026-10-14T03:16:05.186583+00:00"
+  "frozen_at": "2026-10-19T04:31:45.082165+00:00"
 }
