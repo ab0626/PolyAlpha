@@ -1,0 +1,16 @@
+{
+  "version": "us-forward-eval-v0.1",
+  "anchor_commit": "4f7e9ad56d0b1facf520024f78c3bf0652b81fa6",
+  "runtime_sha256": "2945714fdfc32f2b27efb7b70ad028ed4e267ba4e773acc697303da29490ec7e",
+  "tests_sha256": "6856846c33a069a7c248f4e1eeba0a9b37d6b4957bd754a206c68dec8e8d7ab1",
+  "spec": "docs/RESEARCH_AGENDA.md v2.0 + v2.1 + v2.2 + v2.3",
+  "runtime_files": [
+    "src/polyalpha/us/families.py",
+    "src/polyalpha/us/forward_evidence.py",
+    "src/polyalpha/us/research.py",
+    "src/polyalpha/research_dataset.py",
+    "src/polyalpha/statistical_tests.py",
+    "docs/RESEARCH_AGENDA.md"
+  ],
+  "frozen_at": "2026-10-19T04:44:45.125154+00:00"
+}

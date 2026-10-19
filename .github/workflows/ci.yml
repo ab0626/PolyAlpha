@@ -49,5 +49,8 @@ jobs:
       - name: Freeze US collector verify
         run: python scripts/freeze_us_collector.py verify
 
+      - name: Freeze forward-evaluation verify
+        run: python scripts/freeze_forward_eval.py verify
+
       - name: Tests
         run: pytest -q
