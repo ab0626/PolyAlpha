@@ -67,10 +67,14 @@ from .kill_switch import TradingKillSwitch
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# ── Frozen calibration protocol + caps (LIVE_CALIBRATION_V0) ───────────────
+# ── Frozen calibration protocol + caps (LIVE_CALIBRATION_V0.1 successor) ───
+# v0.1 is a SAFETY successor to v0: it repairs persistent risk/recovery semantics
+# (durable journal, singleton lease, file-backed daily-loss/bankroll) and truthful
+# fee/signal provenance. It does NOT change E3 probabilities, the 5c screen, or
+# the sizing caps. The historical v0 anchor is preserved, not rewritten.
 # These are the single source of truth; the OMS imports them. They must never be
 # derived from caller input, and changing any of them is a re-freeze event.
-CALIBRATION_PROTOCOL_VERSION = "live-calibration-v0"
+CALIBRATION_PROTOCOL_VERSION = "live-calibration-v0.1"
 
 # Contracts == dollars of notional (1 contract pays $1). Capping notional at 2
 # contracts bounds worst-case loss strictly below $2 because price in (0,1).

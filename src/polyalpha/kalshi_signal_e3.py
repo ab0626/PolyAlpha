@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 
 from .energy.e3 import PhysicalPeakModel
@@ -57,7 +57,12 @@ REASON_NO_MODEL = "NO_MODEL_PROBABILITY"
 REASON_STALE = "STALE_MARKET"
 REASON_REALIZED_CROSSED = "REALIZED_PATH_ALREADY_CROSSED"
 REASON_FEED_UNVERIFIED = "FEED_UNVERIFIED"
+REASON_SIGNAL_UNVERIFIED = "SIGNAL_UNVERIFIED"
 REASON_SIGNAL_STALE = "SIGNAL_STALE"
+
+# A signal timestamp materially in the future indicates clock/provenance
+# corruption, not a usable signal. Allow only small wall-clock skew.
+FUTURE_SKEW_TOLERANCE = timedelta(seconds=60)
 
 # Frozen signal-age window (LIVE_CALIBRATION_V0): a forecast-only E3 probability
 # is only tradable shortly after the forecast vintage that produced it. Placeholder
@@ -130,16 +135,22 @@ def _feed_status(
 ) -> str | None:
     """Return a blocking reason, or None if the live feed + signal age are valid.
 
-    Fail-closed: an unverified realized-path feed blocks every side (the signal
-    must never silently fall back to the forecast-only probability).
+    Fail-closed on BOTH axes:
+      - an unverified realized-path feed blocks every side (never silently fall
+        back to the forecast-only probability);
+      - a MISSING or materially-FUTURE signal timestamp blocks every side
+        (freshness cannot be established, or the clock/provenance is corrupt).
     """
     if realized_running_max is None:
         return REASON_FEED_UNVERIFIED
-    if signal_timestamp is not None:
-        age = (as_of - signal_timestamp).total_seconds()
-        limit = max_signal_age_seconds if max_signal_age_seconds is not None else MAX_SIGNAL_AGE_SECONDS
-        if age > limit:
-            return REASON_SIGNAL_STALE
+    if signal_timestamp is None:
+        return REASON_SIGNAL_UNVERIFIED
+    if signal_timestamp > as_of + FUTURE_SKEW_TOLERANCE:
+        return REASON_SIGNAL_UNVERIFIED
+    age = (as_of - signal_timestamp).total_seconds()
+    limit = max_signal_age_seconds if max_signal_age_seconds is not None else MAX_SIGNAL_AGE_SECONDS
+    if age > limit:
+        return REASON_SIGNAL_STALE
     return None
 
 

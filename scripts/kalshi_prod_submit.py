@@ -24,6 +24,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -54,9 +56,17 @@ from polyalpha.kalshi_signal_e3 import (  # noqa: E402
     evaluate_ladder,
     revalidate_quote,
 )
+from polyalpha.process_lease import ProcessLease  # noqa: E402
 
 SERIES = "KXTXERCOTPEAKD"
 DEFAULT_ENV_FILE = "C:/Users/adith/powermarkets.env"
+
+# Durable OMS episode + cumulative risk state + singleton lease. These make the
+# frozen daily-loss stop / bankroll cap and startup recovery HARD across
+# one-intent process invocations, instead of resetting on every run.
+PROD_JOURNAL = ROOT / "data" / "energy" / "kalshi" / "oms_prod_journal.jsonl"
+PROD_RISK = ROOT / "data" / "energy" / "kalshi" / "experiment_risk.json"
+PROD_LEASE = ROOT / "data" / "energy" / "kalshi" / "oms_prod_submit.lock"
 
 
 def _parse_iso(value: object) -> datetime | None:
@@ -93,14 +103,33 @@ def _pick_upcoming_day(markets: list[dict], now: datetime) -> tuple[str, list[di
 
 
 def _verified_ercot_rule() -> FeeRule:
-    return verify_fee_rule(
-        FeeRule(
-            series_ticker=SERIES,
-            taker_rate=Decimal("0.07"),
-            maker_rate=Decimal("0"),
-            source="live GET /series/fee_changes (0 entries) + kalshi.com/fee-schedule "
-            "standard table; verified 2026-10-19",
+    """Verify the ERCOT fee rule against the live venue (fail closed).
+
+    Fetches the live series fee schedule and records the returned schedule's
+    identity (hash) plus the verification timestamp. On ANY fetch failure the
+    rule is returned UNVERIFIED (verified_at=None), so every edge computation
+    fails closed (no trade). Never mints a fresh verified_at from the wall clock.
+    """
+    taker = Decimal("0.07")
+    maker = Decimal("0")
+    try:
+        client = KalshiPublicClient()
+        body = client._get("/series/fee_changes", {"series_ticker": SERIES})
+        schedule_hash = hashlib.sha256(
+            json.dumps(body, sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()
+        source = (
+            f"live GET /series/fee_changes {SERIES} (schedule_hash={schedule_hash[:12]})"
         )
+        verified_at = datetime.now(UTC).isoformat()
+    except Exception as exc:  # noqa: BLE001 — unverified on any fetch error
+        schedule_hash = None
+        source = f"UNVERIFIED (live fee schedule fetch failed: {type(exc).__name__})"
+        verified_at = None
+    return verify_fee_rule(
+        FeeRule(series_ticker=SERIES, taker_rate=taker, maker_rate=maker, source=source),
+        verified_at=verified_at,
+        schedule_hash=schedule_hash,
     )
 
 
@@ -183,6 +212,13 @@ def main() -> int:
         print("\ndry-run complete (no mutation). Pass --ticker --side --execute to submit ONE intent.")
         return 0
 
+    # Singleton the entire mutation/reconciliation lifecycle: a second operator
+    # invocation must not race this one while armed/kill-clear.
+    lease = ProcessLease(PROD_LEASE)
+    if not lease.acquire():
+        print("REFUSING: another submit/reconcile process holds the OMS lease")
+        return 1
+
     # Exactly one intent for the selected (ticker, side).
     matches = [e for e in evals if e.ticker == args.ticker and e.side == args.side]
     if not matches:
@@ -215,7 +251,13 @@ def main() -> int:
         return 0
 
     print(f"submitting ONE intent: {intent.side.value} {intent.count} @ {intent.price} {intent.ticker}")
-    harness = ProdExecutionHarness(client, args.ticker, frozen_version=CALIBRATION_PROTOCOL_VERSION)
+    harness = ProdExecutionHarness(
+        client,
+        args.ticker,
+        frozen_version=CALIBRATION_PROTOCOL_VERSION,
+        journal_path=str(PROD_JOURNAL),
+        risk_path=str(PROD_RISK),
+    )
     state = harness.submit_intent(intent)
     print(f"harness state: {state.value}")
     print(f"client_order_id: {intent.client_order_id}")

@@ -34,8 +34,8 @@ from pathlib import Path
 from freeze_common import verify_anchor
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = ROOT / "config" / "frozen" / "live-calibration-v0.json"
-DEFAULT_VERSION = "live-calibration-v0"
+DEFAULT_CONFIG = ROOT / "config" / "frozen" / "live-calibration-v0.1.json"
+DEFAULT_VERSION = "live-calibration-v0.1"
 
 # Runtime files whose drift BLOCKS verification (production execution semantics).
 RUNTIME_FILES = (

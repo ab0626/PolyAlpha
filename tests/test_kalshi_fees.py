@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from polyalpha.kalshi_fees import (
@@ -21,7 +22,11 @@ def make_rule(verified=True, maker_rate="0.0175"):
         maker_rate=Decimal(maker_rate),
         source="https://docs.kalshi.com/fees",
     )
-    return verify_fee_rule(rule) if verified else rule
+    if verified:
+        return verify_fee_rule(
+            rule, verified_at=datetime.now(UTC).isoformat(), schedule_hash="test-hash"
+        )
+    return rule
 
 
 def test_fee_formula_is_ceiling_quantized():

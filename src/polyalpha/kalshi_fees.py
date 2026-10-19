@@ -26,7 +26,7 @@ edge computation returns ``None`` (fail-closed => no trade).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_CEILING, Decimal
 
 # Published general prediction-market rates (docs.kalshi.com). NOT live-verified.
@@ -40,13 +40,20 @@ FEE_MAKER_RATE_PUBLISHED = Decimal("0.0175")
 SLIPPAGE_ADVERSE_SELECTION_BUFFER = Decimal("0.02")
 
 
+# A verified fee rule is only trusted within this TTL of its verification. A
+# stale verification is treated as unverified (fail-closed => no trade).
+FEE_VERIFICATION_TTL = timedelta(hours=24)
+
+
 @dataclass(frozen=True)
 class FeeRule:
     """A fee rule tied to an exact series/product at trade time, with provenance.
 
     ``taker_rate`` / ``maker_rate`` are the effective per-contract rates (the
-    published rate times the series multiplier). For the ERCOT series the
-    inferred defaults are taker=0.07 (M=1) and maker=0.00 (M=0) — UNVERIFIED.
+    published rate times the series multiplier). ``verified_at`` is the timestamp
+    of an ACTUAL live verification and ``schedule_hash`` is the identity of the
+    returned schedule — so a later schedule change invalidates the rule via TTL
+    or hash mismatch. None => NOT verified (unusable).
     """
 
     series_ticker: str
@@ -54,24 +61,40 @@ class FeeRule:
     maker_rate: Decimal
     source: str
     verified_at: str | None = None  # ISO timestamp; None => NOT verified (unusable)
+    schedule_hash: str | None = None  # identity of the returned schedule
 
     @property
     def verified(self) -> bool:
-        return self.verified_at is not None
+        if self.verified_at is None:
+            return False
+        try:
+            t = datetime.fromisoformat(self.verified_at.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        return (datetime.now(UTC) - t) <= FEE_VERIFICATION_TTL
 
 
-def verify_fee_rule(rule: FeeRule, source: str | None = None) -> FeeRule:
-    """Return a copy of ``rule`` marked verified with the current timestamp.
+def verify_fee_rule(
+    rule: FeeRule,
+    *,
+    verified_at: str | None = None,
+    schedule_hash: str | None = None,
+    source: str | None = None,
+) -> FeeRule:
+    """Record that ``rule`` was checked against the authoritative live schedule.
 
-    This is an OPERATOR action: it records that the rule was checked against the
-    authoritative live schedule. Strategy code must never call it.
+    This is an OPERATOR action. ``verified_at`` and ``schedule_hash`` are the
+    provenance of that actual verification — they are NEVER minted here from the
+    wall clock. Strategy code must never call this; it must only CONSUME a
+    verified rule, and an unverified rule fails closed.
     """
     return FeeRule(
         series_ticker=rule.series_ticker,
         taker_rate=rule.taker_rate,
         maker_rate=rule.maker_rate,
         source=source or rule.source,
-        verified_at=datetime.now(UTC).isoformat(),
+        verified_at=verified_at,
+        schedule_hash=schedule_hash,
     )
 
 

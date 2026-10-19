@@ -26,10 +26,12 @@ precondition-verifying no-op until the E3 signal layer is wired in a later pass.
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -102,6 +104,50 @@ def _parse_iso(value: str | None) -> datetime | None:
         return None
 
 
+class ExperimentRiskLedger:
+    """File-backed cumulative experiment risk (daily loss + committed notional).
+
+    Persists the two frozen risk gates so they are HARD across one-intent process
+    invocations/restarts, rather than resetting to zero on every new harness. An
+    unreadable ledger fails closed: it reads as an infinite loss and infinite
+    committed notional, which blocks every intent until an operator repairs it.
+    """
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+
+    def load(self) -> tuple[str | None, Decimal, Decimal]:
+        """Return (daily_loss_day, daily_loss, committed_notional)."""
+        if not self.path.exists():
+            return None, Decimal("0"), Decimal("0")
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            day = data.get("daily_loss_day")
+            loss = Decimal(str(data.get("daily_loss", "0")))
+            committed = Decimal(str(data.get("committed_notional", "0")))
+        except (json.JSONDecodeError, OSError, TypeError, ValueError, InvalidOperation):
+            # Cannot establish risk state: fail closed (infinite loss blocks).
+            return None, Decimal("inf"), Decimal("inf")
+        return day, loss, committed
+
+    def save(self, daily_loss_day: str | None, daily_loss: Decimal, committed_notional: Decimal) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(
+            json.dumps(
+                {
+                    "daily_loss_day": daily_loss_day,
+                    "daily_loss": _fmt(daily_loss),
+                    "committed_notional": _fmt(committed_notional),
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        tmp.replace(self.path)
+
+
 class ProdExecutionHarness:
     """Production resting-fill state machine with deterministic recovery."""
 
@@ -119,6 +165,7 @@ class ProdExecutionHarness:
         audit: Any = None,
         journal_path: str | None = None,
         run_id: str | None = None,
+        risk_path: str | Path | None = None,
     ) -> None:
         self.client = client
         self.ticker = ticker
@@ -138,10 +185,19 @@ class ProdExecutionHarness:
         self.order_id: str | None = None
         self.intent: ProdOrderIntent | None = None
         self._recovery_pending = False
-        self._daily_loss = Decimal("0")
-        self._daily_loss_day: str | None = None
-        self._committed_notional = Decimal("0")
+        self.risk_ledger = ExperimentRiskLedger(risk_path) if risk_path else None
+        if self.risk_ledger is not None:
+            self._daily_loss_day, self._daily_loss, self._committed_notional = self.risk_ledger.load()
+        else:
+            self._daily_loss = Decimal("0")
+            self._daily_loss_day: str | None = None
+            self._committed_notional = Decimal("0")
         self._load_nonterminal_episode()
+
+    def _persist_risk(self) -> None:
+        """Persist the cumulative risk state (no-op when no ledger is configured)."""
+        if self.risk_ledger is not None:
+            self.risk_ledger.save(self._daily_loss_day, self._daily_loss, self._committed_notional)
 
     # ── Persistence ───────────────────────────────────────────────────────
 
@@ -257,6 +313,7 @@ class ProdExecutionHarness:
             self._daily_loss_day = today
             self._daily_loss = Decimal("0")
         self._daily_loss += Decimal(amount)
+        self._persist_risk()
         if self._daily_loss >= self.daily_loss_stop:
             self._transition(HarnessState.HALTED, halt_reason="DAILY_LOSS_BREACH")
             try:
@@ -503,6 +560,7 @@ class ProdExecutionHarness:
             return self._halt(intent.client_order_id, "create ack missing order_id")
 
         self._committed_notional += intent.count
+        self._persist_risk()
         self._transition(
             HarnessState.WORKING,
             client_order_id=intent.client_order_id,

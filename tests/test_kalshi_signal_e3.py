@@ -20,6 +20,7 @@ from polyalpha.kalshi_signal_e3 import (
     REASON_NO_QUOTE,
     REASON_REALIZED_CROSSED,
     REASON_SIGNAL_STALE,
+    REASON_SIGNAL_UNVERIFIED,
     REASON_ZERO_SIZE,
     build_signal_intents,
     build_single_day_ladder,
@@ -71,7 +72,11 @@ def ercot_rule(verified=True):
         maker_rate=D("0"),
         source="inferred",
     )
-    return verify_fee_rule(rule) if verified else rule
+    if verified:
+        return verify_fee_rule(
+            rule, verified_at=datetime.now(UTC).isoformat(), schedule_hash="test-hash"
+        )
+    return rule
 
 
 def eval_one(rung, p="0.60", fee_rule=None, as_of=AS_OF, realized_running_max=Decimal("0")):
@@ -80,6 +85,7 @@ def eval_one(rung, p="0.60", fee_rule=None, as_of=AS_OF, realized_running_max=De
     return evaluate_ladder(
         model, ladder, fee_rule if fee_rule is not None else ercot_rule(), as_of,
         realized_running_max=realized_running_max,
+        signal_timestamp=as_of,  # valid (non-missing, non-stale) for intent tests
     )
 
 
@@ -231,4 +237,32 @@ def test_signal_stale_blocks_all():
         max_signal_age_seconds=6 * 3600,
     )
     assert all(e.eligibility_reason == REASON_SIGNAL_STALE for e in evals)
+    assert all(e.intent is None for e in evals)
+
+
+def test_missing_signal_timestamp_blocks_all():
+    # signal_timestamp=None must fail CLOSED (freshness cannot be established),
+    # never silently pass the freshness gate.
+    model = FakeModel("0.60")
+    ladder = make_ladder(make_rung())
+    evals = evaluate_ladder(
+        model, ladder, ercot_rule(), AS_OF,
+        realized_running_max=Decimal("0"),
+        signal_timestamp=None,
+    )
+    assert all(e.eligibility_reason == REASON_SIGNAL_UNVERIFIED for e in evals)
+    assert all(e.intent is None for e in evals)
+
+
+def test_future_signal_timestamp_blocks_all():
+    # A materially future timestamp indicates clock/provenance corruption.
+    future_ts = AS_OF + timedelta(hours=2)
+    model = FakeModel("0.60")
+    ladder = make_ladder(make_rung())
+    evals = evaluate_ladder(
+        model, ladder, ercot_rule(), AS_OF,
+        realized_running_max=Decimal("0"),
+        signal_timestamp=future_ts,
+    )
+    assert all(e.eligibility_reason == REASON_SIGNAL_UNVERIFIED for e in evals)
     assert all(e.intent is None for e in evals)
