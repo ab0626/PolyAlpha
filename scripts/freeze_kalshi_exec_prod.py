@@ -39,6 +39,8 @@ DEFAULT_VERSION = "live-calibration-v0"
 RUNTIME_FILES = (
     "src/polyalpha/kalshi_exec_prod.py",
     "src/polyalpha/kalshi_oms_prod.py",
+    "src/polyalpha/execution_journal_prod.py",
+    "src/polyalpha/kalshi_fees.py",
     "src/polyalpha/kalshi_auth.py",
     "src/polyalpha/kill_switch.py",
     "src/polyalpha/process_lease.py",
@@ -50,6 +52,7 @@ RUNTIME_FILES = (
 TESTS_FILES = (
     "tests/test_kalshi_exec_prod.py",
     "tests/test_kalshi_oms_prod.py",
+    "tests/test_kalshi_fees.py",
 )
 
 
