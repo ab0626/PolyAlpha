@@ -26,7 +26,7 @@ import json
 import os
 import sys
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -46,6 +46,8 @@ OBS_PATH = DATA / "observations.jsonl"
 HEARTBEAT_PATH = DATA / "heartbeat.json"
 CENTRAL = ZoneInfo("America/Chicago")
 DEFAULT_INTERVAL = 300.0  # seconds; 15-min product cadence + retry
+# E4-v0 prospective cutover: the spec commit (7b4d3e7). Never capture earlier days.
+CUTOVER = date(2026, 10, 19)
 
 
 def _load_seen() -> dict[tuple, str]:
@@ -136,16 +138,20 @@ def main() -> int:
     run = 0
     while args.cycles == 0 or run < args.cycles:
         now = datetime.now(UTC)
-        today = now.astimezone(CENTRAL).date().isoformat()
-        # Also catch late-published intervals from the previous operating day.
-        prev = (now.astimezone(CENTRAL).date() - timedelta(days=1)).isoformat()
+        today = now.astimezone(CENTRAL).date()
+        # Future-only: never capture a delivery date before the E4 cutover.
+        days = []
+        for d in (today - timedelta(days=1), today):
+            if d >= CUTOVER:
+                days.append(d.isoformat())
         try:
             appended = 0
-            for delivery_date in (prev, today):
+            for delivery_date in days:
                 raw = client.fetch_raw(delivery_date)
                 raw_sha = hashlib.sha256(raw).hexdigest()
                 raw_path = RAW_DIR / f"{delivery_date}_{raw_sha[:12]}.json"
                 if not raw_path.exists():
+                    RAW_DIR.mkdir(parents=True, exist_ok=True)
                     raw_path.write_bytes(raw)
                 obs_list = parse_spp(raw)
                 received_at = datetime.now(UTC).isoformat()
