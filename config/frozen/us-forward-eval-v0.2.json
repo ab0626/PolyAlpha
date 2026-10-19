@@ -1,8 +1,8 @@
 {
   "version": "us-forward-eval-v0.2",
-  "anchor_commit": "eb3ee260c4c60d9cecbfac4f5691b73f743d4b6f",
-  "runtime_sha256": "ce5dbceddc26cb7f7f3da1cc1eda819bf9f394d20d897d2378c46bd2f7cd8d6d",
-  "tests_sha256": "fcac5cbed0105a5a5470a016634e902c722811ed5d433f579a74874ce7531bfe",
+  "anchor_commit": "ba3b9d32524c8d62ea7a9ce36754346c802eb259",
+  "runtime_sha256": "47bcf6c1d352abd5e95c6435938bfa98f9146bdad88fb374b6ed36bef4d6c99a",
+  "tests_sha256": "c13f6ba488e85c69fcbb1467605aae4b9a92f9c00a21a3dfbb09efe68c2c5889",
   "spec": "docs/RESEARCH_AGENDA.md v2.0 + v2.1 + v2.2 + v2.3 + v2.3.1",
   "runtime_files": [
     "src/polyalpha/us/families.py",
@@ -12,5 +12,5 @@
     "src/polyalpha/statistical_tests.py",
     "docs/RESEARCH_AGENDA.md"
   ],
-  "frozen_at": "2026-10-19T04:56:45.919325+00:00"
+  "frozen_at": "2026-10-19T04:59:40.717190+00:00"
 }
