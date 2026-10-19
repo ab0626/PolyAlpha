@@ -1,0 +1,27 @@
+{
+  "version": "live-calibration-v0",
+  "anchor_commit": "080db806fe4454c45e3290da1ee3d48caa499365",
+  "runtime_sha256": "8c5ee9ccfd32bd15b138d5c086074bf101b9eadb182f5a9c939109214352ba83",
+  "tests_sha256": "d8a5c8d28fbb36ed3a190cb96e8fc962b8c441bba1a5871ff27781713c250a72",
+  "environment": "production",
+  "production_execution": true,
+  "signal": "E3",
+  "api_family": "kalshi_trade_api_v2",
+  "caps": {
+    "max_notional_per_order": "2.00",
+    "min_conservative_edge_per_contract": "0.05",
+    "daily_loss_stop": "10.00",
+    "bankroll_cap": "50.00"
+  },
+  "runtime_files": [
+    "src/polyalpha/kalshi_exec_prod.py",
+    "src/polyalpha/kalshi_oms_prod.py",
+    "src/polyalpha/kalshi_auth.py",
+    "src/polyalpha/kill_switch.py",
+    "src/polyalpha/process_lease.py",
+    "src/polyalpha/execution_journal.py",
+    "src/polyalpha/kalshi_exec.py",
+    "src/polyalpha/kalshi_oms.py"
+  ],
+  "frozen_at": "2026-10-19T02:26:54.285334+00:00"
+}
