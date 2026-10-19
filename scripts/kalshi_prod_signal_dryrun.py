@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from energy_e3_runner import ACTUALS, FORECAST_VINTAGES, _load_actuals, _load_forecast  # noqa: E402
 
+from polyalpha.energy.intraday_actuals import fetch_intraday_actuals, running_max  # noqa: E402
 from polyalpha.energy.kalshi import KalshiPublicClient, ercot_operating_day  # noqa: E402
 from polyalpha.energy.physical import ForecastErrorModel  # noqa: E402
 from polyalpha.energy.shadow_observation import MAX_LEAD, MIN_RESIDUALS  # noqa: E402
@@ -107,16 +108,21 @@ def main() -> int:
     day, day_markets = _pick_upcoming_day(markets, as_of)
     _, ladder = build_single_day_ladder(day_markets, SERIES, target_day=day)
 
+    # Intraday realized-path feed (fail-closed pre-trade gate).
+    snap = fetch_intraday_actuals()
+    realized = running_max(snap.rows, day) if snap is not None else None
+
     # Fail-closed: unverified fee => 0 tradeable intents.
-    intents = build_signal_intents(model, ladder, unverified, as_of)
+    intents = build_signal_intents(model, ladder, unverified, as_of, realized_running_max=realized)
 
     # Display-only: a verified copy of the inferred rule so the table is readable.
     display_rule = verify_fee_rule(unverified)
-    evals = evaluate_ladder(model, ladder, display_rule, as_of)
+    evals = evaluate_ladder(model, ladder, display_rule, as_of, realized_running_max=realized)
 
     print("=== E3 -> SCREEN-EDGE DRY-RUN (log-only, taker calibration) ===")
     print(f"operating_day: {day}")
     print(f"rungs: {len(ladder.rungs)}")
+    print(f"realized running max: {realized if realized is not None else 'FEED UNVERIFIED (fail-closed)'}")
     print(f"fee rule verified (live): {unverified.verified}")
     print(f"tradeable intents (fail-closed): {len(intents)}")
     print()

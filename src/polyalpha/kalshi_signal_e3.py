@@ -55,6 +55,14 @@ REASON_FEE_UNVERIFIED = "FEE_UNVERIFIED"
 REASON_EDGE_BELOW = "EDGE_BELOW_MIN"
 REASON_NO_MODEL = "NO_MODEL_PROBABILITY"
 REASON_STALE = "STALE_MARKET"
+REASON_REALIZED_CROSSED = "REALIZED_PATH_ALREADY_CROSSED"
+REASON_FEED_UNVERIFIED = "FEED_UNVERIFIED"
+REASON_SIGNAL_STALE = "SIGNAL_STALE"
+
+# Frozen signal-age window (LIVE_CALIBRATION_V0): a forecast-only E3 probability
+# is only tradable shortly after the forecast vintage that produced it. Placeholder
+# value; review before trade #2.
+MAX_SIGNAL_AGE_SECONDS = 6 * 3600  # 6 hours
 
 
 @dataclass(frozen=True)
@@ -114,6 +122,27 @@ def _market_open(ladder: EnergyLadder, as_of: datetime) -> bool:
     return (start is None or as_of >= start) and (end is None or as_of < end)
 
 
+def _feed_status(
+    realized_running_max: Decimal | None,
+    signal_timestamp: datetime | None,
+    max_signal_age_seconds: float | None,
+    as_of: datetime,
+) -> str | None:
+    """Return a blocking reason, or None if the live feed + signal age are valid.
+
+    Fail-closed: an unverified realized-path feed blocks every side (the signal
+    must never silently fall back to the forecast-only probability).
+    """
+    if realized_running_max is None:
+        return REASON_FEED_UNVERIFIED
+    if signal_timestamp is not None:
+        age = (as_of - signal_timestamp).total_seconds()
+        limit = max_signal_age_seconds if max_signal_age_seconds is not None else MAX_SIGNAL_AGE_SECONDS
+        if age > limit:
+            return REASON_SIGNAL_STALE
+    return None
+
+
 def _eval_side(
     ladder: EnergyLadder,
     rung: LadderRung,
@@ -126,6 +155,8 @@ def _eval_side(
     min_edge: Decimal,
     max_notional: Decimal,
     buffer: Decimal,
+    feed_status: str | None = None,
+    realized_running_max: Decimal | None = None,
 ) -> SignalEval:
     target_day = ladder.underlying.operating_day or ""
     close_iso = (
@@ -165,6 +196,10 @@ def _eval_side(
             intent=intent,
         )
 
+    if feed_status is not None:
+        return make(feed_status)
+    if side == "NO" and realized_running_max is not None and realized_running_max > rung.threshold:
+        return make(REASON_REALIZED_CROSSED)
     if p_model is None:
         return make(REASON_NO_MODEL)
     if not market_open:
@@ -215,22 +250,30 @@ def evaluate_ladder(
     min_edge: Decimal = MIN_SCREEN_EDGE,
     max_notional: Decimal = MAX_NOTIONAL_PER_ORDER,
     buffer: Decimal = SLIPPAGE_ADVERSE_SELECTION_BUFFER,
+    realized_running_max: Decimal | None = None,
+    signal_timestamp: datetime | None = None,
+    max_signal_age_seconds: float | None = None,
 ) -> list[SignalEval]:
     """One SignalEval per (strike, side), with the full fail-closed reason."""
     target_day = ladder.underlying.operating_day or ""
     if not target_day:
         raise ValueError("ladder has no operating_day (single-day scope required)")
     market_open = _market_open(ladder, as_of)
+    feed_status = _feed_status(
+        realized_running_max, signal_timestamp, max_signal_age_seconds, as_of
+    )
     evals: list[SignalEval] = []
     for rung in ladder.rungs:
         p_model = model.p_peak_gt(target_day, as_of, rung.threshold)
         evals.append(
             _eval_side(ladder, rung, "YES", p_model, fee_rule, market_open, as_of,
-                       min_edge=min_edge, max_notional=max_notional, buffer=buffer)
+                       min_edge=min_edge, max_notional=max_notional, buffer=buffer,
+                       feed_status=feed_status, realized_running_max=realized_running_max)
         )
         evals.append(
             _eval_side(ladder, rung, "NO", p_model, fee_rule, market_open, as_of,
-                       min_edge=min_edge, max_notional=max_notional, buffer=buffer)
+                       min_edge=min_edge, max_notional=max_notional, buffer=buffer,
+                       feed_status=feed_status, realized_running_max=realized_running_max)
         )
     return evals
 
@@ -244,13 +287,19 @@ def build_signal_intents(
     min_edge: Decimal = MIN_SCREEN_EDGE,
     max_notional: Decimal = MAX_NOTIONAL_PER_ORDER,
     buffer: Decimal = SLIPPAGE_ADVERSE_SELECTION_BUFFER,
+    realized_running_max: Decimal | None = None,
+    signal_timestamp: datetime | None = None,
+    max_signal_age_seconds: float | None = None,
 ) -> list[ProdOrderIntent]:
-    """Emit only ELIGIBLE taker intents (unverified fee => [])."""
+    """Emit only ELIGIBLE taker intents (unverified fee/feed => [])."""
     return [
         e.intent
         for e in evaluate_ladder(
             model, ladder, fee_rule, as_of,
             min_edge=min_edge, max_notional=max_notional, buffer=buffer,
+            realized_running_max=realized_running_max,
+            signal_timestamp=signal_timestamp,
+            max_signal_age_seconds=max_signal_age_seconds,
         )
         if e.intent is not None
     ]

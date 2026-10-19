@@ -42,6 +42,7 @@ RUNTIME_FILES = (
     "src/polyalpha/execution_journal_prod.py",
     "src/polyalpha/kalshi_fees.py",
     "src/polyalpha/kalshi_signal_e3.py",
+    "src/polyalpha/energy/intraday_actuals.py",
     "src/polyalpha/kalshi_auth.py",
     "src/polyalpha/kill_switch.py",
     "src/polyalpha/process_lease.py",
@@ -55,6 +56,7 @@ TESTS_FILES = (
     "tests/test_kalshi_oms_prod.py",
     "tests/test_kalshi_fees.py",
     "tests/test_kalshi_signal_e3.py",
+    "tests/test_intraday_actuals.py",
 )
 
 

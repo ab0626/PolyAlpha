@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -16,7 +16,10 @@ from polyalpha.kalshi_oms_prod import ProdOrderIntent
 from polyalpha.kalshi_signal_e3 import (
     REASON_EDGE_BELOW,
     REASON_ELIGIBLE,
+    REASON_FEED_UNVERIFIED,
     REASON_NO_QUOTE,
+    REASON_REALIZED_CROSSED,
+    REASON_SIGNAL_STALE,
     REASON_ZERO_SIZE,
     build_signal_intents,
     build_single_day_ladder,
@@ -71,10 +74,13 @@ def ercot_rule(verified=True):
     return verify_fee_rule(rule) if verified else rule
 
 
-def eval_one(rung, p="0.60", fee_rule=None, as_of=AS_OF):
+def eval_one(rung, p="0.60", fee_rule=None, as_of=AS_OF, realized_running_max=Decimal("0")):
     model = FakeModel(p)
     ladder = make_ladder(rung)
-    return evaluate_ladder(model, ladder, fee_rule if fee_rule is not None else ercot_rule(), as_of)
+    return evaluate_ladder(
+        model, ladder, fee_rule if fee_rule is not None else ercot_rule(), as_of,
+        realized_running_max=realized_running_max,
+    )
 
 
 # ── Single operating-day scope ────────────────────────────────────────────
@@ -104,7 +110,8 @@ def test_ladder_without_operating_day_rejected():
 def test_unverified_rule_emits_nothing():
     model = FakeModel("0.60")
     ladder = make_ladder(make_rung())
-    assert build_signal_intents(model, ladder, ercot_rule(verified=False), AS_OF) == []
+    assert build_signal_intents(model, ladder, ercot_rule(verified=False), AS_OF,
+                                realized_running_max=Decimal("0")) == []
 
 
 def test_yes_taker_intent_is_bid_at_ask_not_post_only():
@@ -194,3 +201,34 @@ def test_revalidate_rejects_degenerate_quote():
     assert revalidate_quote(intent, D("0.00")) is False
     assert revalidate_quote(intent, D("1.00")) is False
     assert revalidate_quote(intent, D("0.50"), fresh_size=D("0")) is False
+
+
+# ── Realized-path dominance + signal-age gates ────────────────────────────
+
+def test_feed_unverified_blocks_all():
+    evals = eval_one(make_rung(), p="0.60", realized_running_max=None)
+    assert all(e.eligibility_reason == REASON_FEED_UNVERIFIED for e in evals)
+    assert all(e.intent is None for e in evals)
+
+
+def test_realized_crossing_blocks_no_but_not_yes():
+    evals = eval_one(make_rung(), p="0.60", realized_running_max=Decimal("150"))
+    e_yes = [e for e in evals if e.side == "YES"][0]
+    e_no = [e for e in evals if e.side == "NO"][0]
+    assert e_yes.eligibility_reason == REASON_ELIGIBLE
+    assert e_no.eligibility_reason == REASON_REALIZED_CROSSED
+    assert e_no.intent is None
+
+
+def test_signal_stale_blocks_all():
+    stale_ts = AS_OF - timedelta(hours=7)  # > 6h frozen window
+    model = FakeModel("0.60")
+    ladder = make_ladder(make_rung())
+    evals = evaluate_ladder(
+        model, ladder, ercot_rule(), AS_OF,
+        realized_running_max=Decimal("0"),
+        signal_timestamp=stale_ts,
+        max_signal_age_seconds=6 * 3600,
+    )
+    assert all(e.eligibility_reason == REASON_SIGNAL_STALE for e in evals)
+    assert all(e.intent is None for e in evals)

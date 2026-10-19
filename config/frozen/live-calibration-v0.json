@@ -1,8 +1,8 @@
 {
   "version": "live-calibration-v0",
-  "anchor_commit": "b038f698d43e8ebd1b93eea7e0c5143d64880b58",
-  "runtime_sha256": "3a95184a70572a31023093a5a90e8b79079ccea2dcb90da3c8f791bf876d7c0e",
-  "tests_sha256": "e3df8ae82efd28ef2012546c7ceb4bd05d5ce94bd641ad804031a60d7ad149eb",
+  "anchor_commit": "8bcd4c2c930fc553d2e7244946ffddee277bbe4d",
+  "runtime_sha256": "3c2b0983a0fa3042458085391830c92c8f2a1792fdad0abf129a6941ba5184ed",
+  "tests_sha256": "07c6c290d4addde73d67ef1cb293cad7cf21ad20745f29a2ff548533e5a1a12d",
   "environment": "production",
   "production_execution": true,
   "signal": "E3",
@@ -20,6 +20,7 @@
     "src/polyalpha/execution_journal_prod.py",
     "src/polyalpha/kalshi_fees.py",
     "src/polyalpha/kalshi_signal_e3.py",
+    "src/polyalpha/energy/intraday_actuals.py",
     "src/polyalpha/kalshi_auth.py",
     "src/polyalpha/kill_switch.py",
     "src/polyalpha/process_lease.py",
@@ -27,5 +28,5 @@
     "src/polyalpha/kalshi_exec.py",
     "src/polyalpha/kalshi_oms.py"
   ],
-  "frozen_at": "2026-10-19T03:15:00.418761+00:00"
+  "frozen_at": "2026-10-19T03:56:32.643415+00:00"
 }
