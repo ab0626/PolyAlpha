@@ -448,6 +448,34 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _quote_content_hash(
+    source: str,
+    ts_ms: int | None,
+    yes_bid: str | None,
+    yes_ask: str | None,
+    yes_ask_size: str | None,
+) -> str | None:
+    """Hash of ALL raw quote inputs used by the markout derivation.
+
+    Invariant (the "source hash = all raw inputs" rule): NO prices and NO
+    liquidity are reconstructed from the YES BBO — ``no_bid = 1 - yes_ask``,
+    ``no_mid = 1 - (yes_bid+yes_ask)/2``, ``no_ask = 1 - yes_bid``, and the exit
+    liquidity verdict depends only on ``yes_ask`` + ``yes_ask_size``. Therefore
+    the COMPLETE raw input set is exactly {source, ts_ms, yes_bid, yes_ask,
+    yes_ask_size}. If any no_* field is ever read directly from a source
+    snapshot, it MUST be added here as well.
+    """
+    if ts_ms is None:
+        return None
+    return _sha256(json.dumps({
+        "source": source,
+        "ts_ms": ts_ms,
+        "yes_bid": yes_bid,
+        "yes_ask": yes_ask,
+        "yes_ask_size": yes_ask_size,
+    }, sort_keys=True))
+
+
 def markout_measurement_id(
     trade_id: str,
     horizon: str,
@@ -490,17 +518,11 @@ def build_markout_measurements(
         else:
             liquidity_status = "LIQUID"
 
-        # Source content hash over the QUOTE INPUTS only (never the derived
-        # markout), so the input snapshot is independently verifiable.
-        content_hash = None
-        if ts is not None:
-            content_hash = _sha256(json.dumps({
-                "source": source,
-                "ts_ms": ts,
-                "yes_bid": m.get("yes_bid"),
-                "yes_ask": m.get("yes_ask"),
-                "yes_ask_size": m.get("yes_ask_size"),
-            }, sort_keys=True))
+        # Source content hash over ALL raw quote inputs (never the derived markout
+        # or the reconstructed NO fields), so the input snapshot is verifiable.
+        content_hash = _quote_content_hash(
+            source, ts, m.get("yes_bid"), m.get("yes_ask"), m.get("yes_ask_size"),
+        )
 
         exit_price = m.get("no_bid") if liquidity_status == "LIQUID" else None
         records.append({
