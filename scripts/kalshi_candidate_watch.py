@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from kalshi_prod_submit import _build_context, _verified_ercot_rule  # noqa: E402
 
 from polyalpha.kalshi_signal_e3 import MAX_SIGNAL_AGE_SECONDS, evaluate_ladder  # noqa: E402
+from polyalpha.process_lease import ProcessLease  # noqa: E402
 
 
 def _alert(candidates, day, signal_ts, realized, as_of, toaster) -> None:
@@ -77,6 +78,12 @@ def main() -> int:
     ap.add_argument("--notify", action="store_true", help="pop desktop toasts on alert")
     args = ap.parse_args()
 
+    # Watcher-only singleton guard: prevent duplicate polling/notifications.
+    lease = ProcessLease(ROOT / "data" / "energy" / "kalshi" / "candidate_watch.lock")
+    if not lease.acquire():
+        print("another watcher instance holds the lease; exiting", flush=True)
+        return 0
+
     toaster = None
     if args.notify:
         from polyalpha.notify import ThrottledToaster  # noqa: E402
@@ -109,6 +116,7 @@ def main() -> int:
         if args.once:
             break
         time.sleep(args.interval)
+    lease.release()
     return 0
 
 
