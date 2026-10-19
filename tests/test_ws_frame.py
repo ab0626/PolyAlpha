@@ -69,7 +69,7 @@ def test_frame_store_cutover_and_append(tmp_path):
     s = WsSession()
     s.on_connect()
     f = capture_frame("src", s, "hello")
-    store.append(f, day="2026-10-19")
+    store.append(f)
     assert (tmp_path / "CUTOVER.json").exists()
     rows = [json.loads(line) for line in (tmp_path / "2026-10-19.jsonl").read_text().splitlines()]
     assert rows[0]["wire"] == "hello"

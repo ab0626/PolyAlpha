@@ -27,7 +27,19 @@ from pathlib import Path
 from typing import Any
 
 from ..rawstore import RawStore
-from ..ws_frame import WsFrameStore, WsSession, capture_frame, frame_text
+from ..ws_frame import (
+    GAP_DRAIN_TIMEOUT,
+    GAP_QUEUE_OVERFLOW,
+    GAP_WRITER_FAILURE,
+    DataGapError,
+    DerivedRecordWriter,
+    WsFrameStore,
+    WsFrameWriter,
+    WsSession,
+    capture_frame,
+    fail_closed,
+    frame_text,
+)
 from .adapter import amount_to_decimal
 from .execution import UsExecutionNotConfigured, UsRetailAuth
 from .states import UsMarketState
@@ -37,6 +49,10 @@ D = Decimal
 MARKET_DATA_ENDPOINT = "wss://api.polymarket.us/v1/ws/markets"
 SOURCE_US_MARKET_DATA = "polymarket_us_retail_market_data"
 DEFAULT_MARKET_DATA_FRAMES = Path("data/us/market_data/ws_frames_v2")
+
+
+class _DeadlineReached(Exception):
+    """Internal sentinel: break the reconnect loop at the run deadline."""
 
 
 @dataclass(frozen=True)
@@ -179,64 +195,107 @@ class MarketDataWsCollector:
         session = WsSession()
         self.frame_store.mark_cutover()
 
-        while True:
-            # Recompute the signed headers per connection: the signature embeds
-            # a timestamp that must be fresh at handshake time.
-            headers = self._handshake_headers()
-            try:
-                async with websockets.connect(
-                    self.endpoint, additional_headers=headers
-                ) as ws:
-                    self.stream.on_reconnect(session.on_connect())
-                    await ws.send(json.dumps(subscribe))
-                    async for message in ws:
-                        # Immutable transport frame at recv, BEFORE decode/parse.
-                        wall_ns = time.time_ns()
-                        mono_ns = time.monotonic_ns()
-                        frame = capture_frame(SOURCE_US_MARKET_DATA, session, message, wall_ns, mono_ns)
-                        self.frame_store.append(frame)
+        frame_writer = WsFrameWriter(self.frame_store)
+        frame_writer.start()
 
-                        try:
-                            payload = json.loads(frame_text(frame))
-                        except (json.JSONDecodeError, UnicodeDecodeError):
-                            self.stats["errors"] += 1
-                            continue  # frame already persisted; no parsed record
+        def _persist(record: dict) -> None:
+            self.raw.append(
+                record["source"],
+                record["session_id"],
+                record["payload"],
+                wire=record["wire"],
+                received_at_ns=record["received_at_ns"],
+                received_monotonic_ns=record["received_monotonic_ns"],
+                message_sequence_local=record["session_seq"],
+                exchange_timestamp_ms=record["exchange_timestamp_ms"],
+            )
 
-                        now_wall = datetime.fromtimestamp(wall_ns / 1e9, UTC)
-                        if "heartbeat" in payload:
-                            self.stream.on_heartbeat(now_wall)
-                            continue  # control frame persisted at transport layer
+        derived_writer = DerivedRecordWriter(_persist)
+        derived_writer.start()
 
-                        update = self.stream.ingest(payload, now_wall)
-                        if update is None:
-                            continue
+        try:
+            while True:
+                # Recompute the signed headers per connection: the signature embeds
+                # a timestamp that must be fresh at handshake time.
+                headers = self._handshake_headers()
+                try:
+                    async with websockets.connect(
+                        self.endpoint, additional_headers=headers
+                    ) as ws:
+                        self.stream.on_reconnect(session.on_connect())
+                        await ws.send(json.dumps(subscribe))
+                        while True:
+                            try:
+                                message = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                            except asyncio.TimeoutError:
+                                # Bounded poll: notice a dead writer promptly.
+                                if frame_writer.health()["fatal"]:
+                                    fail_closed(self.frame_store, frame_writer, None, GAP_WRITER_FAILURE)
+                                if derived_writer.health()["fatal"]:
+                                    fail_closed(self.frame_store, derived_writer, None, GAP_WRITER_FAILURE)
+                                continue
 
-                        # Three clocks: venue time (ms), wall ns, monotonic ns.
-                        venue_ms = (
-                            int(update.transact_time.timestamp() * 1000)
-                            if update.transact_time is not None
-                            else None
-                        )
-                        payload["frame_id"] = frame.frame_id
-                        self.raw.append(
-                            SOURCE_US_MARKET_DATA,
-                            frame.session_id,
-                            payload,
-                            wire=message,
-                            received_at_ns=wall_ns,
-                            received_monotonic_ns=mono_ns,
-                            message_sequence_local=frame.session_seq,
-                            exchange_timestamp_ms=venue_ms,
-                        )
-                        self.stats["updates"] += 1
-                        if deadline is not None and time.monotonic() >= deadline:
-                            return dict(self.stats)
-            except Exception:  # noqa: BLE001
-                self.stats["errors"] += 1
-            if deadline is not None and time.monotonic() >= deadline:
-                return dict(self.stats)
-            self.stats["reconnects"] += 1
-            await asyncio.sleep(reconnect_seconds)
+                            # Immutable transport frame at recv, BEFORE decode/parse.
+                            wall_ns = time.time_ns()
+                            mono_ns = time.monotonic_ns()
+                            frame = capture_frame(SOURCE_US_MARKET_DATA, session, message, wall_ns, mono_ns)
+                            if not frame_writer.try_submit(frame):
+                                fail_closed(self.frame_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
+
+                            try:
+                                payload = json.loads(frame_text(frame))
+                            except (json.JSONDecodeError, UnicodeDecodeError):
+                                self.stats["errors"] += 1
+                                continue  # frame already enqueued; no parsed record
+
+                            now_wall = datetime.fromtimestamp(wall_ns / 1e9, UTC)
+                            if "heartbeat" in payload:
+                                self.stream.on_heartbeat(now_wall)
+                                continue  # control frame enqueued at transport layer
+
+                            update = self.stream.ingest(payload, now_wall)
+                            if update is None:
+                                continue
+
+                            # Three clocks: venue time (ms), wall ns, monotonic ns.
+                            venue_ms = (
+                                int(update.transact_time.timestamp() * 1000)
+                                if update.transact_time is not None
+                                else None
+                            )
+                            payload["frame_id"] = frame.frame_id
+                            if not derived_writer.try_submit({
+                                "frame_id": frame.frame_id,
+                                "source": SOURCE_US_MARKET_DATA,
+                                "session_id": frame.session_id,
+                                "session_seq": frame.session_seq,
+                                "payload": payload,
+                                "wire": message,
+                                "received_at_ns": wall_ns,
+                                "received_monotonic_ns": mono_ns,
+                                "exchange_timestamp_ms": venue_ms,
+                            }):
+                                fail_closed(self.frame_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
+                            self.stats["updates"] += 1
+                            if deadline is not None and time.monotonic() >= deadline:
+                                raise _DeadlineReached
+                except _DeadlineReached:
+                    break
+                except DataGapError:
+                    raise
+                except Exception:  # noqa: BLE001
+                    self.stats["errors"] += 1
+                if deadline is not None and time.monotonic() >= deadline:
+                    break
+                self.stats["reconnects"] += 1
+                await asyncio.sleep(reconnect_seconds)
+        finally:
+            if not frame_writer.close(drain=True):
+                fail_closed(self.frame_store, frame_writer, None, GAP_DRAIN_TIMEOUT)
+            if not derived_writer.close(drain=True):
+                fail_closed(self.frame_store, derived_writer, None, GAP_DRAIN_TIMEOUT)
+            self.frame_store.close()
+        return dict(self.stats)
 
     @classmethod
     def from_env(cls, raw: RawStore, **kwargs: Any) -> "MarketDataWsCollector":

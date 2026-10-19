@@ -41,7 +41,18 @@ from polyalpha.energy.kalshi_ws import (  # noqa: E402
     ws_auth_headers,
 )
 from polyalpha.kalshi_auth import load_env_file, load_private_key  # noqa: E402
-from polyalpha.ws_frame import WsFrameStore, WsSession, capture_frame, frame_text  # noqa: E402
+from polyalpha.ws_frame import (  # noqa: E402
+    GAP_QUEUE_OVERFLOW,
+    GAP_WRITER_FAILURE,
+    DataGapError,
+    DerivedRecordWriter,
+    WsFrameStore,
+    WsFrameWriter,
+    WsSession,
+    capture_frame,
+    fail_closed,
+    frame_text,
+)
 
 DEFAULT_ENV_FILE = r"C:\Users\adith\powermarkets.env"
 STATUS_INTERVAL_SECONDS = 30.0
@@ -68,6 +79,7 @@ class DayWriter:
             path.parent.mkdir(parents=True, exist_ok=True)
             self.fh = path.open("a", encoding="utf-8")
         self.fh.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+        self.fh.flush()
 
     def flush(self) -> None:
         if self.fh is not None:
@@ -127,6 +139,10 @@ async def run(args: argparse.Namespace) -> int:
     frames_store = WsFrameStore(root / "frames_v2", SOURCE_ENERGY_WS)
     frames_store.mark_cutover()
     session = WsSession()
+    frame_writer = WsFrameWriter(frames_store)
+    frame_writer.start()
+    derived_writer = DerivedRecordWriter(writer.write)
+    derived_writer.start()
 
     status = {
         "started_at": datetime.now(UTC).isoformat(),
@@ -209,6 +225,11 @@ async def run(args: argparse.Namespace) -> int:
                         try:
                             message = await asyncio.wait_for(ws.recv(), timeout=1.0)
                         except asyncio.TimeoutError:
+                            # Bounded poll: notice a dead writer promptly.
+                            if frame_writer.health()["fatal"]:
+                                fail_closed(frames_store, frame_writer, None, GAP_WRITER_FAILURE)
+                            if derived_writer.health()["fatal"]:
+                                fail_closed(frames_store, derived_writer, None, GAP_WRITER_FAILURE)
                             # Heartbeat: confirm alive + connected even when no
                             # messages are flowing (quiet market).
                             if time.monotonic() - last_status_write >= STATUS_INTERVAL_SECONDS:
@@ -239,7 +260,8 @@ async def run(args: argparse.Namespace) -> int:
                         wall_ns = time.time_ns()
                         mono_ns = time.monotonic_ns()
                         frame = capture_frame(SOURCE_ENERGY_WS, session, message, wall_ns, mono_ns)
-                        frames_store.append(frame)
+                        if not frame_writer.try_submit(frame):
+                            fail_closed(frames_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
 
                         received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                         try:
@@ -258,7 +280,7 @@ async def run(args: argparse.Namespace) -> int:
                         # exchange-wide non-energy lifecycle frames, but the SCOPED
                         # analytical lineage stays energy-only (Oct-12 fix preserved).
                         if _is_energy_scoped(data, subscribed):
-                            writer.write({
+                            if not derived_writer.try_submit({
                                 "received_at": received.isoformat(),
                                 "received_at_ns": wall_ns,
                                 "received_monotonic_ns": mono_ns,
@@ -267,15 +289,15 @@ async def run(args: argparse.Namespace) -> int:
                                 "frame_id": frame.frame_id,
                                 "type": data.get("type"),
                                 "message": data,
-                            })
-
-                        if frame.session_seq % FLUSH_EVERY_MESSAGES == 0:
-                            writer.flush()
+                            }):
+                                fail_closed(frames_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
                         now = time.monotonic()
                         if now - last_status_write >= STATUS_INTERVAL_SECONDS:
                             last_status_write = now
                             write_status(status_path, status)
 
+            except DataGapError:
+                raise
             except Exception as exc:  # noqa: BLE001 — reconnect with backoff
                 status["last_error"] = f"{type(exc).__name__}: {exc}"
                 status["last_error_at"] = datetime.now(UTC).isoformat()
