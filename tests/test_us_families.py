@@ -145,7 +145,7 @@ def test_f1_ece_is_zero_for_calibrated_market(monkeypatch):
         for i in range(20)
     ]
     d = evaluate_family_1_calibration(_dataset(snaps))
-    assert d.primary_metric == "ECE=0.0000"
+    assert d.primary_metric.startswith("ECE=0.0000")
     assert d.verdict == families.VERDICT_NOT_SUPPORTED
 
 

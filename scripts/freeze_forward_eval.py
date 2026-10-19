@@ -71,7 +71,7 @@ def freeze(version: str, commit: str | None, config: Path) -> None:
         "anchor_commit": commit or _git_head(),
         "runtime_sha256": _sha256_of_files(RUNTIME_FILES),
         "tests_sha256": _sha256_of_files(TESTS_FILES),
-        "spec": "docs/RESEARCH_AGENDA.md v2.0 + v2.1 + v2.2 + v2.3",
+        "spec": "docs/RESEARCH_AGENDA.md v2.0 + v2.1 + v2.2 + v2.3 + v2.3.1",
         "runtime_files": list(RUNTIME_FILES),
         "frozen_at": datetime.now(UTC).isoformat(),
     }

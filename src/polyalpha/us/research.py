@@ -312,7 +312,7 @@ def build_us_research_dataset(
                 yes_depth_5=bbo["yes_depth_5"],
                 yes_depth_10=bbo["yes_depth_10"],
                 volume=_amount(stats.get("sharesTraded")) or D(0),
-                liquidity=_amount(stats.get("openInterest")) or D(0),
+                liquidity=_amount(stats.get("openInterest")),
                 hours_to_resolution=hours,
                 days_to_resolution=(hours / 24.0) if hours is not None else None,
                 event_cluster=cluster,

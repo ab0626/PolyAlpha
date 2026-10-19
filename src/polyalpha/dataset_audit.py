@@ -196,7 +196,7 @@ class DatasetAuditor:
     def _check_negative_volume_liquidity(self, ds: ResearchDataset, reject: set) -> AuditCheck:
         count = 0
         for i, s in enumerate(ds.snapshots):
-            if s.volume < 0 or s.liquidity < 0:
+            if s.volume < 0 or (s.liquidity is not None and s.liquidity < 0):
                 count += 1
                 reject.add(i)
         return AuditCheck(
