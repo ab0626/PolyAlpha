@@ -23,9 +23,11 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from ..rawstore import RawStore
+from ..ws_frame import WsFrameStore, WsSession, capture_frame, frame_text
 from .adapter import amount_to_decimal
 from .execution import UsExecutionNotConfigured, UsRetailAuth
 from .states import UsMarketState
@@ -34,6 +36,7 @@ D = Decimal
 
 MARKET_DATA_ENDPOINT = "wss://api.polymarket.us/v1/ws/markets"
 SOURCE_US_MARKET_DATA = "polymarket_us_retail_market_data"
+DEFAULT_MARKET_DATA_FRAMES = Path("data/us/market_data/ws_frames_v2")
 
 
 @dataclass(frozen=True)
@@ -143,11 +146,13 @@ class MarketDataWsCollector:
         auth: UsRetailAuth,
         raw: RawStore,
         endpoint: str = MARKET_DATA_ENDPOINT,
+        frames_dir: str | Path | None = None,
     ):
         self.auth = auth
         self.raw = raw
         self.endpoint = endpoint
         self.stream = MarketDataStream()
+        self.frame_store = WsFrameStore(frames_dir or DEFAULT_MARKET_DATA_FRAMES, SOURCE_US_MARKET_DATA)
         self.stats = {"updates": 0, "reconnects": 0, "errors": 0}
 
     def _handshake_headers(self) -> dict[str, str]:
@@ -171,10 +176,10 @@ class MarketDataWsCollector:
 
         deadline = time.monotonic() + duration if duration else None
         subscribe = self._subscribe_message(markets, lite)
-        session = 0
+        session = WsSession()
+        self.frame_store.mark_cutover()
 
         while True:
-            session += 1
             # Recompute the signed headers per connection: the signature embeds
             # a timestamp that must be fresh at handshake time.
             headers = self._handshake_headers()
@@ -182,22 +187,25 @@ class MarketDataWsCollector:
                 async with websockets.connect(
                     self.endpoint, additional_headers=headers
                 ) as ws:
-                    self.stream.on_reconnect(f"session-{session}")
+                    self.stream.on_reconnect(session.on_connect())
                     await ws.send(json.dumps(subscribe))
                     async for message in ws:
-                        now_wall = datetime.now(UTC)
-                        now_mono = time.monotonic_ns()
-                        if isinstance(message, bytes):
-                            message = message.decode("utf-8")
-                        try:
-                            payload = json.loads(message)
-                        except json.JSONDecodeError:
-                            self.stats["errors"] += 1
-                            continue
+                        # Immutable transport frame at recv, BEFORE decode/parse.
+                        wall_ns = time.time_ns()
+                        mono_ns = time.monotonic_ns()
+                        frame = capture_frame(SOURCE_US_MARKET_DATA, session, message, wall_ns, mono_ns)
+                        self.frame_store.append(frame)
 
+                        try:
+                            payload = json.loads(frame_text(frame))
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            self.stats["errors"] += 1
+                            continue  # frame already persisted; no parsed record
+
+                        now_wall = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                         if "heartbeat" in payload:
                             self.stream.on_heartbeat(now_wall)
-                            continue
+                            continue  # control frame persisted at transport layer
 
                         update = self.stream.ingest(payload, now_wall)
                         if update is None:
@@ -209,13 +217,15 @@ class MarketDataWsCollector:
                             if update.transact_time is not None
                             else None
                         )
+                        payload["frame_id"] = frame.frame_id
                         self.raw.append(
                             SOURCE_US_MARKET_DATA,
-                            update.market_slug,
+                            frame.session_id,
                             payload,
                             wire=message,
-                            received_at_ns=time.time_ns(),
-                            received_monotonic_ns=now_mono,
+                            received_at_ns=wall_ns,
+                            received_monotonic_ns=mono_ns,
+                            message_sequence_local=frame.session_seq,
                             exchange_timestamp_ms=venue_ms,
                         )
                         self.stats["updates"] += 1

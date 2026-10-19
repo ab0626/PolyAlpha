@@ -23,14 +23,17 @@ import json
 import time
 from collections import deque
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from ..rawstore import RawStore
+from ..ws_frame import WsFrameStore, WsSession, capture_frame, frame_text
 from .execution import UsExecutionNotConfigured, UsRetailAuth
 from .fills import FillRecord, parse_us_trade
 
 TRADE_ENDPOINT = "wss://api.polymarket.us/v1/ws/markets"
 SOURCE_US_TRADE = "polymarket_us_retail_trade"
+DEFAULT_TRADE_FRAMES = Path("data/us/trade/ws_frames_v2")
 
 
 class UsTradeStream:
@@ -69,11 +72,13 @@ class UsTradeWsCollector:
         raw: RawStore,
         endpoint: str = TRADE_ENDPOINT,
         dedupe_window: int = 100_000,
+        frames_dir: str | Path | None = None,
     ):
         self.auth = auth
         self.raw = raw
         self.endpoint = endpoint
         self.stream = UsTradeStream(dedupe_window=dedupe_window)
+        self.frame_store = WsFrameStore(frames_dir or DEFAULT_TRADE_FRAMES, SOURCE_US_TRADE)
         self.stats = {"trades": 0, "duplicates": 0, "errors": 0}
 
     def _handshake_headers(self) -> dict[str, str]:
@@ -103,6 +108,8 @@ class UsTradeWsCollector:
 
         deadline = time.monotonic() + duration if duration else None
         subscribe = self._subscribe_message(markets)
+        session = WsSession()
+        self.frame_store.mark_cutover()
 
         while True:
             # Recompute the signed headers per connection: the signature embeds
@@ -113,22 +120,35 @@ class UsTradeWsCollector:
                 async with websockets.connect(
                     self.endpoint, additional_headers=headers
                 ) as ws:
+                    session.on_connect()
                     await ws.send(json.dumps(subscribe))
                     async for message in ws:
-                        received = datetime.now(UTC)
-                        if isinstance(message, bytes):
-                            message = message.decode("utf-8")
+                        # Immutable transport frame at recv (BEFORE dedupe/parse).
+                        wall_ns = time.time_ns()
+                        mono_ns = time.monotonic_ns()
+                        frame = capture_frame(SOURCE_US_TRADE, session, message, wall_ns, mono_ns)
+                        self.frame_store.append(frame)  # duplicates survive here
+
+                        received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                         try:
-                            payload = json.loads(message)
-                        except json.JSONDecodeError:
+                            payload = json.loads(frame_text(frame))
+                        except (json.JSONDecodeError, UnicodeDecodeError):
                             self.stats["errors"] += 1
                             continue
-                        record = self.stream.ingest(payload, received)
+
+                        record = self.stream.ingest(payload, received)  # dedupe is DERIVED
                         if record is None:
                             self.stats["duplicates"] += 1
                             continue
+                        payload["frame_id"] = frame.frame_id
                         self.raw.append(
-                            SOURCE_US_TRADE, "trade_ws", payload, wire=message
+                            SOURCE_US_TRADE,
+                            frame.session_id,
+                            payload,
+                            wire=message,
+                            received_at_ns=wall_ns,
+                            received_monotonic_ns=mono_ns,
+                            message_sequence_local=frame.session_seq,
                         )
                         self.stats["trades"] += 1
                         if deadline is not None and time.monotonic() >= deadline:

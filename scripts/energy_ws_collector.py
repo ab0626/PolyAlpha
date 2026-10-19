@@ -41,10 +41,12 @@ from polyalpha.energy.kalshi_ws import (  # noqa: E402
     ws_auth_headers,
 )
 from polyalpha.kalshi_auth import load_env_file, load_private_key  # noqa: E402
+from polyalpha.ws_frame import WsFrameStore, WsSession, capture_frame, frame_text  # noqa: E402
 
 DEFAULT_ENV_FILE = r"C:\Users\adith\powermarkets.env"
 STATUS_INTERVAL_SECONDS = 30.0
 FLUSH_EVERY_MESSAGES = 50
+SOURCE_ENERGY_WS = "kalshi_energy_ws"
 MAX_BACKOFF_SECONDS = 60.0
 
 
@@ -98,6 +100,17 @@ def _market_ticker_of(message: dict) -> str | None:
     return msg.get("market_ticker") or message.get("market_ticker")
 
 
+def _is_energy_scoped(data: dict, subscribed: set[str]) -> bool:
+    """Whether a parsed WS message may enter the energy-SCOPED analytical lineage.
+
+    A ticker outside the subscribed energy set (e.g. an exchange-wide
+    market_lifecycle_v2 frame for a non-energy market) is dropped from the scoped
+    lineage; the transport lineage still carries it.
+    """
+    ticker = _market_ticker_of(data)
+    return ticker is None or ticker in subscribed
+
+
 async def run(args: argparse.Namespace) -> int:
     key_id = os.environ["KALSHI_API_KEY_ID"]
     private_key = load_private_key(os.environ["KALSHI_PRIVATE_KEY_PATH"])
@@ -110,6 +123,10 @@ async def run(args: argparse.Namespace) -> int:
     root = Path(args.root)
     status_path = Path(args.status_file)
     writer = DayWriter(root)
+    # Transport lineage (pre-parse, may contain exchange-wide non-energy frames).
+    frames_store = WsFrameStore(root / "frames_v2", SOURCE_ENERGY_WS)
+    frames_store.mark_cutover()
+    session = WsSession()
 
     status = {
         "started_at": datetime.now(UTC).isoformat(),
@@ -129,7 +146,6 @@ async def run(args: argparse.Namespace) -> int:
 
     backoff = 1.0
     msg_id = 0
-    seq = 0
     last_status_write = time.monotonic()
     started = time.monotonic()
 
@@ -165,6 +181,7 @@ async def run(args: argparse.Namespace) -> int:
                 headers = ws_auth_headers(key_id, private_key)
                 async with websockets.connect(ws_url, additional_headers=headers) as ws:
                     backoff = 1.0
+                    session.on_connect()
                     status["connected_at"] = datetime.now(UTC).isoformat()
                     status["last_error"] = None
                     status["last_error_at"] = None
@@ -218,12 +235,17 @@ async def run(args: argparse.Namespace) -> int:
                                     break
                             continue
 
-                        seq += 1
-                        received = datetime.now(UTC)
+                        # Immutable transport frame at recv (BEFORE parse/scope).
+                        wall_ns = time.time_ns()
+                        mono_ns = time.monotonic_ns()
+                        frame = capture_frame(SOURCE_ENERGY_WS, session, message, wall_ns, mono_ns)
+                        frames_store.append(frame)
+
+                        received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                         try:
-                            data = json.loads(message)
-                        except json.JSONDecodeError:
-                            data = {"raw": message}
+                            data = json.loads(frame_text(frame))
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            data = {"raw": frame_text(frame)}
 
                         status["last_message_at"] = received.isoformat()
                         status["heartbeat_at"] = received.isoformat()  # alive + connected + data flowing
@@ -232,21 +254,22 @@ async def run(args: argparse.Namespace) -> int:
                         status["last_error"] = None
                         status["last_error_at"] = None
 
-                        # Scope guard: some channels (e.g. market_lifecycle_v2) are
-                        # delivered exchange-wide regardless of the ticker filter in
-                        # the subscribe message. Drop any message whose market_ticker
-                        # is outside the subscribed energy set so this lineage stays
-                        # energy-only. Liveness counters above still reflect raw flow.
-                        ticker = _market_ticker_of(data)
-                        if ticker is None or ticker in subscribed:
+                        # Scope guard: the transport lineage may legitimately carry
+                        # exchange-wide non-energy lifecycle frames, but the SCOPED
+                        # analytical lineage stays energy-only (Oct-12 fix preserved).
+                        if _is_energy_scoped(data, subscribed):
                             writer.write({
                                 "received_at": received.isoformat(),
-                                "seq": seq,
+                                "received_at_ns": wall_ns,
+                                "received_monotonic_ns": mono_ns,
+                                "session_id": frame.session_id,
+                                "session_seq": frame.session_seq,
+                                "frame_id": frame.frame_id,
                                 "type": data.get("type"),
                                 "message": data,
                             })
 
-                        if seq % FLUSH_EVERY_MESSAGES == 0:
+                        if frame.session_seq % FLUSH_EVERY_MESSAGES == 0:
                             writer.flush()
                         now = time.monotonic()
                         if now - last_status_write >= STATUS_INTERVAL_SECONDS:
