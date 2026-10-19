@@ -13,14 +13,20 @@ sys.path.insert(0, "src")
 from polyalpha.research_dataset import MarketSnapshot, ResearchDataset
 from polyalpha.us import families
 from polyalpha.us.families import (
+    _binned_ece,
     _cluster_bootstrap_p,
+    _price_bucket,
     _resolved_eval,
     default_split_date,
     evaluate_family_1_calibration,
+    evaluate_family_1_ttr,
+    evaluate_family_2_longshot,
+    evaluate_family_3_microstructure,
 )
 from polyalpha.us.forward_evidence import forward_evidence_report
 
 NOW = datetime(2026, 9, 21, 12, 0, tzinfo=UTC)
+NEAR_SPLIT = datetime(2026, 10, 31, 0, 0, tzinfo=UTC)
 
 
 def _snap(market_id, mid, outcome, cluster, observed, hours=None, res_ts=None):
@@ -86,6 +92,7 @@ def test_resolved_eval_temporal_split():
 
 def test_family_1_supported_on_biased_data(monkeypatch):
     monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
     snaps = [
         _snap("m1", 0.40, 1, "c1", NOW, hours=2000, res_ts=NOW + timedelta(days=90)),
         _snap("m2", 0.40, 1, "c2", NOW, hours=2000, res_ts=NOW + timedelta(days=90)),
@@ -98,6 +105,7 @@ def test_family_1_supported_on_biased_data(monkeypatch):
 
 def test_family_1_not_supported_on_calibrated_data(monkeypatch):
     monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
     snaps = [
         _snap("m1", 0.50, 1, "c1", NOW, hours=2000, res_ts=NOW + timedelta(days=90)),
         _snap("m2", 0.50, 0, "c2", NOW, hours=2000, res_ts=NOW + timedelta(days=90)),
@@ -117,3 +125,108 @@ def test_forward_evidence_pending_on_small_sample():
     assert report["status"] == "PENDING_EVIDENCE"
     assert report["families"] == []
     assert report["gates"]["settled_markets"]["met"] is False
+
+
+# ── Adversarial tests (would have caught the v2.3-corrected bugs) ───────────
+
+def _n_snaps(n, mid, outcome, hours=2000):
+    return [
+        _snap(f"m{i}", mid, outcome, f"c{i}", NOW, hours=hours, res_ts=NOW + timedelta(days=90))
+        for i in range(n)
+    ]
+
+
+def test_f1_ece_is_zero_for_calibrated_market(monkeypatch):
+    # A perfectly calibrated 50/50 market must report ECE ~ 0, not mean|Y-p| = 0.5.
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = [
+        _snap(f"m{i}", 0.50, i % 2, f"c{i}", NOW, hours=2000, res_ts=NOW + timedelta(days=90))
+        for i in range(20)
+    ]
+    d = evaluate_family_1_calibration(_dataset(snaps))
+    assert d.primary_metric == "ECE=0.0000"
+    assert d.verdict == families.VERDICT_NOT_SUPPORTED
+
+
+def test_f1_binned_ece_not_row_mae():
+    snaps = [
+        _snap("a", 0.50, 1, "c1", NOW, hours=2000),
+        _snap("b", 0.50, 0, "c2", NOW, hours=2000),
+    ]
+    ece = _binned_ece(snaps, lambda s: _price_bucket(float(s.yes_mid)))
+    # mean|Y-p| would be 0.5; binned ECE (both in same cell) is 0.0.
+    assert abs(ece) < 1e-9
+
+
+def test_f2_positive_low_price_does_not_support_flb(monkeypatch):
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = _n_snaps(20, 0.05, 1)  # low price resolves YES => positive residual
+    d = evaluate_family_2_longshot(_dataset(snaps))
+    assert d.verdict == families.VERDICT_NOT_SUPPORTED
+
+
+def test_f2_negative_low_price_supports_flb(monkeypatch):
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = _n_snaps(20, 0.05, 0)  # low price resolves NO => negative residual
+    d = evaluate_family_2_longshot(_dataset(snaps))
+    assert d.verdict == families.VERDICT_SUPPORTED
+
+
+def test_f2_high_price_residual_does_not_support_flb(monkeypatch):
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = _n_snaps(20, 0.70, 1)  # high price resolves YES => positive residual
+    d = evaluate_family_2_longshot(_dataset(snaps))
+    assert d.verdict == families.VERDICT_NOT_SUPPORTED
+
+
+def test_ttr_decreasing_does_not_support(monkeypatch):
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = []
+    # near (<1h): large |residual|; far (>7d): small |residual| => decreasing.
+    for i in range(20):
+        snaps.append(_snap(f"n{i}", 0.90, 0, f"cn{i}", NEAR_SPLIT, hours=0.5, res_ts=NEAR_SPLIT + timedelta(days=1)))
+    for i in range(20):
+        snaps.append(_snap(f"f{i}", 0.20, 0, f"cf{i}", NEAR_SPLIT, hours=200, res_ts=NEAR_SPLIT + timedelta(days=10)))
+    d = evaluate_family_1_ttr(_dataset(snaps))
+    assert d.verdict == families.VERDICT_NOT_SUPPORTED
+
+
+def test_ttr_increasing_supports(monkeypatch):
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = []
+    # near (<1h): small |residual|; far (>7d): large |residual| => increasing.
+    for i in range(20):
+        snaps.append(_snap(f"n{i}", 0.20, 0, f"cn{i}", NEAR_SPLIT, hours=0.5, res_ts=NEAR_SPLIT + timedelta(days=1)))
+    for i in range(20):
+        snaps.append(_snap(f"f{i}", 0.90, 0, f"cf{i}", NEAR_SPLIT, hours=200, res_ts=NEAR_SPLIT + timedelta(days=10)))
+    d = evaluate_family_1_ttr(_dataset(snaps))
+    assert d.verdict == families.VERDICT_SUPPORTED
+
+
+def test_ttr_empty_bucket_is_insufficient(monkeypatch):
+    monkeypatch.setattr(families, "MIN_EFFECTIVE_N", 2)
+    monkeypatch.setattr(families, "MIN_CELL_CLUSTERS", 2)
+    snaps = _n_snaps(20, 0.20, 0, hours=0.5)  # only <1h present
+    d = evaluate_family_1_ttr(_dataset(snaps))
+    assert d.verdict == families.VERDICT_INSUFFICIENT
+
+
+def test_f3_is_not_run():
+    d = evaluate_family_3_microstructure(_dataset([]))
+    assert d.verdict == families.VERDICT_NOT_RUN
+
+
+def test_settled_gate_counts_eval_set_not_all_resolved():
+    # 5 resolved TRAIN markets (endDate < split), zero eval-period resolved.
+    snaps = [
+        _snap(f"m{i}", 0.5, 1, f"c{i}", NOW, hours=-100, res_ts=NOW + timedelta(days=90))
+        for i in range(5)
+    ]
+    report = forward_evidence_report(_dataset(snaps), as_of=NOW)
+    assert report["gates"]["settled_markets"]["value"] == 0
