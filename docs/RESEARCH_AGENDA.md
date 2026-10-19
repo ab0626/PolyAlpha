@@ -546,3 +546,101 @@ preregistered in a future version before F3 can be evaluated.
   direction, FDR scope, F1 primary binned-ECE metric, sparse-cell floor, F3
   deferral. v2.0/v2.1/v2.2 bodies unchanged. Written while ALPHA: UNKNOWN and
   before any family evaluation.
+
+---
+
+# v2.3.1 addendum — F1/F2 cell construction (spec-only)
+
+Appended after v2.3. **The v2.0–v2.3 bodies above are unchanged.** This addendum
+resolves the last ambiguities in F1's cell construction and F2's pooled
+hypothesis so the evaluator is a mechanical translation of the preregistration.
+Written while ALPHA: UNKNOWN and before any family evaluation.
+
+## Price deciles (frozen)
+
+Ten bins: `[0, .10), [.10, .20), ..., [.90, 1.00)`. `p = 1.00` falls in the final
+bin `[.90, 1.00]` (never dropped).
+
+## Cell sampling hierarchy (frozen)
+
+Every F1/F2 cell statistic is computed over the registered sampling hierarchy,
+never over raw snapshots:
+
+```
+raw snapshots
+  -> (slug, cell) mean              collapse repeated observations of one market
+  -> (parent cluster, cell) mean    collapse child markets of one event
+  -> cross-cluster statistic
+```
+
+A market sampled thousands of times, or an event with 30 child contracts,
+contributes ONE cluster-level unit — never thousands of observations.
+
+## F1 ECE weighting (frozen)
+
+```
+ECE = Σ_c (n_clusters_c / N_clusters) · |mean_residual_c|
+```
+
+where `n_clusters_c` is the number of parent-event clusters in cell c and
+`mean_residual_c` is the mean over clusters of the cluster-level mean residual.
+Raw snapshot counts are never weights.
+
+## Spread cells (frozen)
+
+`tight`: `yes_spread <= 2¢`; `wide`: `yes_spread > 2¢`. Missing spread is
+assigned to NO spread cell (never treated as zero, never as wide).
+
+## openInterest liquidity cells (frozen)
+
+Three cells: `low / mid / high`. The two cutpoints are the empirical q(1/3) and
+q(2/3) of openInterest, computed ONCE from the pre-split TRAINING sample over the
+aggregated PIT observations, and recorded as numeric constants in the evaluation
+freeze. The eval set is binned by those frozen cutpoints. Missing openInterest is
+MISSING (`None`), never zero. If the two quantiles collapse (ties/zeros), the
+liquidity dimension is INSUFFICIENT_DATA.
+
+This requires the dataset to preserve openInterest missingness: `us/research.py`
+must set `liquidity=None` (not `D(0)`) when openInterest is absent.
+
+## TTR buckets (frozen)
+
+`<1h`, `[1h, 24h)`, `[24h, 168h)`, `>=168h`.
+
+## Category cells (frozen)
+
+The exact point-in-time venue category, with deterministic string normalization
+only (trim / ASCII-lowercase). No manual semantic regrouping after outcomes are
+seen. `category == "unknown"` is reported but does NOT generate an inference cell.
+
+## F1 verdict (frozen)
+
+ECE is the primary DESCRIPTIVE calibration magnitude, reported with a
+cluster-bootstrap CI — it is NOT a p-value and is not a test statistic. The
+"ECE reduction >= 0.5pp" model-comparison arm is NOT_RUN for v1 (no
+correction/calibration model was preregistered). F1 = SUPPORTED iff at least one
+eligible cell shows an FDR-significant residual with |mean residual| >= 1pp in the
+single family-wide BH universe:
+
+```
+H_F1 = {eligible price cells} ∪ {eligible categories}
+       ∪ {2 spread cells} ∪ {3 OI cells} ∪ {4 TTR cells}
+```
+
+A cell with fewer than 20 clusters is INSUFFICIENT before BH and contributes no
+p-value.
+
+## F2 pooled hypothesis (frozen)
+
+`H_FLB` is the pooled low-price hypothesis: `E[Y − p | p < 0.10] < 0`. F2 =
+SUPPORTED iff the POOLED `p<0.10` cell effect (over all categories) is negative,
+|effect| >= 1pp, and BH-significant, within the single F2 BH universe that also
+contains all eligible category×price cells. A negative category×longshot cell is
+reported as a category-specific finding but does not by itself make F2 SUPPORTED.
+
+## v2.3.1 version history entry
+
+- **v2.3.1** — F1/F2 cell construction: price bins, sampling hierarchy, ECE
+  weighting, spread missingness, openInterest training-only terciles, TTR
+  boundaries, category normalization, F1 verdict + BH universe, F2 pooled
+  hypothesis. v2.0–v2.3 bodies unchanged. Written while ALPHA: UNKNOWN.
