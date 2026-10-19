@@ -41,6 +41,7 @@ RUNTIME_FILES = (
     "src/polyalpha/kalshi_oms_prod.py",
     "src/polyalpha/execution_journal_prod.py",
     "src/polyalpha/kalshi_fees.py",
+    "src/polyalpha/kalshi_signal_e3.py",
     "src/polyalpha/kalshi_auth.py",
     "src/polyalpha/kill_switch.py",
     "src/polyalpha/process_lease.py",
@@ -53,6 +54,7 @@ TESTS_FILES = (
     "tests/test_kalshi_exec_prod.py",
     "tests/test_kalshi_oms_prod.py",
     "tests/test_kalshi_fees.py",
+    "tests/test_kalshi_signal_e3.py",
 )
 
 
@@ -86,7 +88,8 @@ def freeze(version: str, commit: str | None, config: Path) -> None:
         "api_family": "kalshi_trade_api_v2",
         "caps": {
             "max_notional_per_order": "2.00",
-            "min_conservative_edge_per_contract": "0.05",
+            "min_screen_edge_per_contract": "0.05",
+            "slippage_adverse_selection_buffer_per_contract": "0.02",
             "daily_loss_stop": "10.00",
             "bankroll_cap": "50.00",
         },

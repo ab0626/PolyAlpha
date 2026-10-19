@@ -7,7 +7,7 @@ distinguish an intended resting order from execution ambiguity.
 
 Durability: a write-ahead ``ProdExecutionJournal`` persists the FULL order intent
 (calibration version, ticker, side, limit price, quantity, signal timestamp,
-conservative edge, cancel/expiry deadline) BEFORE each venue side effect, plus
+screen edge, cancel/expiry deadline) BEFORE each venue side effect, plus
 observed filled/remaining counts. On restart the harness reconciles the
 ``client_order_id`` and branches DETERMINISTICALLY:
 
@@ -71,7 +71,7 @@ class ProdOrderIntent:
     client_order_id: str
     calibration_version: str = CALIBRATION_PROTOCOL_VERSION
     signal_timestamp: str | None = None
-    conservative_edge: Decimal | None = None
+    screen_edge: Decimal | None = None
     expiry_deadline: str | None = None
     time_in_force: TimeInForce = TimeInForce.GOOD_TILL_CANCELED
     post_only: bool = False
@@ -172,7 +172,7 @@ class ProdExecutionHarness:
                 client_order_id=latest.client_order_id or "",
                 calibration_version=latest.calibration_version or CALIBRATION_PROTOCOL_VERSION,
                 signal_timestamp=latest.signal_timestamp,
-                conservative_edge=Decimal(latest.conservative_edge) if latest.conservative_edge else None,
+                screen_edge=Decimal(latest.screen_edge) if latest.screen_edge else None,
                 expiry_deadline=latest.expiry_deadline,
             )
         self._recovery_pending = True
@@ -214,8 +214,8 @@ class ProdExecutionHarness:
                     price=_fmt(self.intent.price) if self.intent else None,
                     count=_fmt(self.intent.count) if self.intent else None,
                     signal_timestamp=self.intent.signal_timestamp if self.intent else None,
-                    conservative_edge=_fmt(self.intent.conservative_edge)
-                    if self.intent and self.intent.conservative_edge is not None
+                    screen_edge=_fmt(self.intent.screen_edge)
+                    if self.intent and self.intent.screen_edge is not None
                     else None,
                     expiry_deadline=self.intent.expiry_deadline if self.intent else None,
                     filled_count=_fmt(filled_count) if filled_count is not None else None,

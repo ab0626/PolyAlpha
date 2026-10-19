@@ -108,7 +108,7 @@ def write_working_episode(tmp_path, *, cid="cid-1", order_id="order-1", expiry=N
             price="0.10",
             count="1",
             signal_timestamp="2026-10-18T00:00:00+00:00",
-            conservative_edge="0.05",
+            screen_edge="0.05",
             expiry_deadline=expiry,
         )
     )

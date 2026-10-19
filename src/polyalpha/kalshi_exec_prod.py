@@ -75,7 +75,7 @@ CALIBRATION_PROTOCOL_VERSION = "live-calibration-v0"
 # Contracts == dollars of notional (1 contract pays $1). Capping notional at 2
 # contracts bounds worst-case loss strictly below $2 because price in (0,1).
 MAX_NOTIONAL_PER_ORDER = Decimal("2.00")
-MIN_CONSERVATIVE_EDGE = Decimal("0.05")  # per contract
+MIN_SCREEN_EDGE = Decimal("0.05")  # per contract (operational screen, not a confidence bound)
 DAILY_LOSS_STOP = Decimal("10.00")
 BANKROLL_CAP = Decimal("50.00")
 

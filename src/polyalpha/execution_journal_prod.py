@@ -9,7 +9,7 @@ before its response leaves a recoverable (client_order_id, state, intent) row.
 On recovery the harness must be able to distinguish an intended resting order
 from execution ambiguity, so each record carries the full order intent:
 calibration version, ticker, side, limit price, quantity, signal timestamp,
-conservative edge at submission, and the cancel/expiry deadline — plus the
+screen edge at submission, and the cancel/expiry deadline — plus the
 observed filled/remaining counts.
 
 Reading tolerates a truncated trailing line (crash mid-write); a malformed line
@@ -41,7 +41,7 @@ class ProdJournalRecord:
     price: str | None = None
     count: str | None = None
     signal_timestamp: str | None = None
-    conservative_edge: str | None = None
+    screen_edge: str | None = None
     expiry_deadline: str | None = None
     filled_count: str | None = None
     remaining_count: str | None = None
@@ -61,7 +61,7 @@ class ProdJournalRecord:
             "price": self.price,
             "count": self.count,
             "signal_timestamp": self.signal_timestamp,
-            "conservative_edge": self.conservative_edge,
+            "screen_edge": self.screen_edge,
             "expiry_deadline": self.expiry_deadline,
             "filled_count": self.filled_count,
             "remaining_count": self.remaining_count,
@@ -83,7 +83,7 @@ class ProdJournalRecord:
             price=d.get("price"),
             count=d.get("count"),
             signal_timestamp=d.get("signal_timestamp"),
-            conservative_edge=d.get("conservative_edge"),
+            screen_edge=d.get("screen_edge"),
             expiry_deadline=d.get("expiry_deadline"),
             filled_count=d.get("filled_count"),
             remaining_count=d.get("remaining_count"),
