@@ -1,0 +1,33 @@
+{
+  "version": "live-calibration-v0.1",
+  "anchor_commit": "ba4895afc85c791a770315009abae59aba1ccceb",
+  "runtime_sha256": "fa2cc75fa0a8a11177255df967f78116b088d038ba50d1ca45cc040986d06b3e",
+  "tests_sha256": "ad61a97e7d0382c3e2c606d9e61a93ca74192ac0f2f76352e41d54b46194a92e",
+  "environment": "production",
+  "production_execution": true,
+  "signal": "E3",
+  "api_family": "kalshi_trade_api_v2",
+  "caps": {
+    "max_notional_per_order": "2.00",
+    "min_screen_edge_per_contract": "0.05",
+    "slippage_adverse_selection_buffer_per_contract": "0.02",
+    "daily_loss_stop": "10.00",
+    "bankroll_cap": "50.00"
+  },
+  "runtime_files": [
+    "src/polyalpha/kalshi_exec_prod.py",
+    "src/polyalpha/kalshi_oms_prod.py",
+    "src/polyalpha/execution_journal_prod.py",
+    "src/polyalpha/kalshi_fees.py",
+    "src/polyalpha/kalshi_signal_e3.py",
+    "src/polyalpha/energy/intraday_actuals.py",
+    "scripts/kalshi_prod_submit.py",
+    "src/polyalpha/kalshi_auth.py",
+    "src/polyalpha/kill_switch.py",
+    "src/polyalpha/process_lease.py",
+    "src/polyalpha/execution_journal.py",
+    "src/polyalpha/kalshi_exec.py",
+    "src/polyalpha/kalshi_oms.py"
+  ],
+  "frozen_at": "2026-10-19T18:48:32.229126+00:00"
+}
