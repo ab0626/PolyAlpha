@@ -39,6 +39,7 @@ from polyalpha.energy.ercot_spp import (  # noqa: E402
     natural_interval_key,
     parse_spp,
 )
+from polyalpha.process_lease import ProcessLease  # noqa: E402
 
 DATA = ROOT / "data" / "energy" / "e4" / "ercot_spp"
 RAW_DIR = DATA / "raw"
@@ -120,6 +121,12 @@ def main() -> int:
     if not (sub_key and username and password):
         print("ERROR: ERCOT_SUBSCRIPTION_KEY/ERCOT_USERNAME/ERCOT_PASSWORD required (fail closed)", file=sys.stderr)
         return 1
+
+    # Singleton guard: a second poller is refused (no duplicate API traffic/lineage).
+    lease = ProcessLease(DATA / "collector.lock")
+    if not lease.acquire():
+        print("another E4 SPP collector instance holds the lease; exiting", file=sys.stderr)
+        return 0
 
     client = SppClient(sub_key, username, password)
     seen = _load_seen()
