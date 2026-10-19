@@ -1,7 +1,7 @@
 {
   "version": "energy-e3-research-v0.2",
-  "anchor_commit": "5514e8e14af6ecfef2b25fe9c07a459f12d9a356",
-  "runtime_sha256": "0b31ee43ea5f33335db2d3f82c7b0e6c8b715b130cac4d58729362ae0b2af0bc",
+  "anchor_commit": "ac43f40cd23d9ffb3575520e7b3a73a7b4956e74",
+  "runtime_sha256": "44469b03532fa0cb6dd886a58f7f2ab49d1cea6b5bb415d1d56b8b8db4937fbe",
   "model_version": "e3-baseline-v0.2",
   "research_spec": "docs/ENERGY_E3_SPEC.md (v3)",
   "runtime_files": [
@@ -11,5 +11,5 @@
     "src/polyalpha/energy/e3.py",
     "src/polyalpha/energy/kalshi.py"
   ],
-  "frozen_at": "2026-10-19T04:53:48.560836+00:00"
+  "frozen_at": "2026-10-19T18:50:49.041910+00:00"
 }
