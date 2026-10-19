@@ -465,7 +465,13 @@ Family | Primary Metric (e.g. ΔBrier) | Net Edge | PnL | N_eff | CI | Verdict
 
 Appended after v2.2. **The v2.0/v2.1/v2.2 bodies above are unchanged.** This
 addendum resolves pre-registration ambiguities identified during implementation
-review, BEFORE any family evaluation has run (ALPHA: UNKNOWN, holdout unopened).
+review. Written while:
+
+    MODEL PERFORMANCE:             LOCKED
+    ALPHA:                         UNKNOWN
+    GLOBAL FORWARD-EVIDENCE GATE:  NOT MET
+    FAMILIES EVALUATED:            0
+
 It is an implementation clarification, not a new hypothesis and not a change to
 any frozen threshold.
 
@@ -528,11 +534,11 @@ cells.
 
 ## Family 3 — deferral (frozen)
 
-Family 3 is NOT RUN for v1. The v2.0 spec names "a fixed horizon (e.g. 60s,
-300s)" but does not freeze an exact horizon, and the current round-robin
-collection cadence provides no fixed horizon. "Next observed book" is not a
-microstructure horizon. An exact horizon must be preregistered in a future
-version before F3 can be evaluated.
+Family 3 is NOT_RUN / INSUFFICIENT_SPECIFICATION for v1. The v2.0 spec names
+"a fixed horizon (e.g. 60s, 300s)" but does not freeze an exact horizon, and
+the current round-robin collection cadence provides no fixed horizon. "Next
+observed book" is not a microstructure horizon. An exact horizon must be
+preregistered in a future version before F3 can be evaluated.
 
 ## v2.3 version history entry
 
