@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ..latency_trace import LatencyTracer
 from ..rawstore import RawStore
 from ..ws_frame import (
     GAP_DRAIN_TIMEOUT,
@@ -95,6 +96,7 @@ class UsTradeWsCollector:
         self.endpoint = endpoint
         self.stream = UsTradeStream(dedupe_window=dedupe_window)
         self.frame_store = WsFrameStore(frames_dir or DEFAULT_TRADE_FRAMES, SOURCE_US_TRADE)
+        self.tracer = LatencyTracer()
         self.stats = {"trades": 0, "duplicates": 0, "errors": 0}
 
     def _handshake_headers(self) -> dict[str, str]:
@@ -127,7 +129,7 @@ class UsTradeWsCollector:
         session = WsSession()
         self.frame_store.mark_cutover()
 
-        frame_writer = WsFrameWriter(self.frame_store)
+        frame_writer = WsFrameWriter(self.frame_store, tracer=self.tracer)
         frame_writer.start()
 
         def _persist(record: dict) -> None:
@@ -143,6 +145,7 @@ class UsTradeWsCollector:
 
         derived_writer = DerivedRecordWriter(_persist)
         derived_writer.start()
+        self.tracer.start()
 
         try:
             while True:
@@ -169,8 +172,10 @@ class UsTradeWsCollector:
                             wall_ns = time.time_ns()
                             mono_ns = time.monotonic_ns()
                             frame = capture_frame(SOURCE_US_TRADE, session, message, wall_ns, mono_ns)
+                            r1 = time.monotonic_ns()
                             if not frame_writer.try_submit(frame):  # duplicates survive here
                                 fail_closed(self.frame_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
+                            r2 = time.monotonic_ns()
 
                             received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                             try:
@@ -178,11 +183,13 @@ class UsTradeWsCollector:
                             except (json.JSONDecodeError, UnicodeDecodeError):
                                 self.stats["errors"] += 1
                                 continue
+                            r3 = time.monotonic_ns()
 
                             record = self.stream.ingest(payload, received)  # dedupe is DERIVED
                             if record is None:
                                 self.stats["duplicates"] += 1
                                 continue
+                            r4 = time.monotonic_ns()
                             payload["frame_id"] = frame.frame_id
                             if not derived_writer.try_submit({
                                 "frame_id": frame.frame_id,
@@ -195,6 +202,14 @@ class UsTradeWsCollector:
                                 "received_monotonic_ns": mono_ns,
                             }):
                                 fail_closed(self.frame_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
+                            r5 = time.monotonic_ns()
+                            self.tracer.trace(
+                                "ws_ingest", SOURCE_US_TRADE,
+                                {"r0": frame.received_monotonic_ns, "r1": r1, "r2": r2,
+                                 "r3": r3, "r4": r4, "r5": r5},
+                                session_id=frame.session_id, seq=frame.session_seq,
+                                message_type="trade",
+                            )
                             self.stats["trades"] += 1
                             if deadline is not None and time.monotonic() >= deadline:
                                 raise _DeadlineReached
@@ -214,6 +229,7 @@ class UsTradeWsCollector:
             if not derived_writer.close(drain=True):
                 fail_closed(self.frame_store, derived_writer, None, GAP_DRAIN_TIMEOUT)
             self.frame_store.close()
+            self.tracer.close(drain=True)
         return dict(self.stats)
 
     @classmethod

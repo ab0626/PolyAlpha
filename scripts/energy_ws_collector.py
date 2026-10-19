@@ -41,6 +41,7 @@ from polyalpha.energy.kalshi_ws import (  # noqa: E402
     ws_auth_headers,
 )
 from polyalpha.kalshi_auth import load_env_file, load_private_key  # noqa: E402
+from polyalpha.latency_trace import LatencyTracer  # noqa: E402
 from polyalpha.ws_frame import (  # noqa: E402
     GAP_QUEUE_OVERFLOW,
     GAP_WRITER_FAILURE,
@@ -139,7 +140,9 @@ async def run(args: argparse.Namespace) -> int:
     frames_store = WsFrameStore(root / "frames_v2", SOURCE_ENERGY_WS)
     frames_store.mark_cutover()
     session = WsSession()
-    frame_writer = WsFrameWriter(frames_store)
+    tracer = LatencyTracer()
+    tracer.start()
+    frame_writer = WsFrameWriter(frames_store, tracer=tracer)
     frame_writer.start()
     derived_writer = DerivedRecordWriter(writer.write)
     derived_writer.start()
@@ -260,14 +263,17 @@ async def run(args: argparse.Namespace) -> int:
                         wall_ns = time.time_ns()
                         mono_ns = time.monotonic_ns()
                         frame = capture_frame(SOURCE_ENERGY_WS, session, message, wall_ns, mono_ns)
+                        r1 = time.monotonic_ns()
                         if not frame_writer.try_submit(frame):
                             fail_closed(frames_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
+                        r2 = time.monotonic_ns()
 
                         received = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                         try:
                             data = json.loads(frame_text(frame))
                         except (json.JSONDecodeError, UnicodeDecodeError):
                             data = {"raw": frame_text(frame)}
+                        r3 = time.monotonic_ns()
 
                         status["last_message_at"] = received.isoformat()
                         status["heartbeat_at"] = received.isoformat()  # alive + connected + data flowing
@@ -291,6 +297,15 @@ async def run(args: argparse.Namespace) -> int:
                                 "message": data,
                             }):
                                 fail_closed(frames_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
+                            r4 = time.monotonic_ns()
+                            r5 = time.monotonic_ns()
+                            tracer.trace(
+                                "ws_ingest", SOURCE_ENERGY_WS,
+                                {"r0": frame.received_monotonic_ns, "r1": r1, "r2": r2,
+                                 "r3": r3, "r4": r4, "r5": r5},
+                                session_id=frame.session_id, seq=frame.session_seq,
+                                message_type=data.get("type"),
+                            )
                         now = time.monotonic()
                         if now - last_status_write >= STATUS_INTERVAL_SECONDS:
                             last_status_write = now

@@ -243,8 +243,10 @@ class WsFrameWriter:
         batch_age_seconds: float = 1.0,
         fsync_seconds: float = 5.0,
         drain_timeout_seconds: float = 10.0,
+        tracer=None,
     ) -> None:
         self.store = store
+        self.tracer = tracer  # optional LatencyTracer (writer telemetry)
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
         self.batch_age_seconds = batch_age_seconds
@@ -291,9 +293,12 @@ class WsFrameWriter:
         return True
 
     def _write_batch(self, batch: list[WsTransportFrame]) -> None:
+        w0 = self._pending[0][0] if self._pending else time.monotonic_ns()
+        w1 = time.monotonic_ns()
         for frame in batch:
             self.store.write(frame)
         self.store.flush()
+        w2 = time.monotonic_ns()
         with self._lock:
             for _ in batch:
                 if self._pending:
@@ -303,6 +308,15 @@ class WsFrameWriter:
                 self.last_persisted_frame_id = batch[-1].frame_id
                 self.last_persisted_session_id = batch[-1].session_id
                 self.last_persisted_session_seq = batch[-1].session_seq
+        if self.tracer is not None and batch:
+            oldest = batch[0]
+            self.tracer.trace(
+                "ws_writer", self.store.source,
+                {"r0": oldest.received_monotonic_ns, "w0": w0, "w1": w1, "w2": w2},
+                session_id=oldest.session_id, seq=oldest.session_seq,
+                message_type="batch",
+                metadata={"batch_size": len(batch)},
+            )
 
     def _run(self) -> None:
         try:

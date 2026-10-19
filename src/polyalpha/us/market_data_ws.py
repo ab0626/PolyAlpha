@@ -26,6 +26,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from ..latency_trace import LatencyTracer
 from ..rawstore import RawStore
 from ..ws_frame import (
     GAP_DRAIN_TIMEOUT,
@@ -169,6 +170,7 @@ class MarketDataWsCollector:
         self.endpoint = endpoint
         self.stream = MarketDataStream()
         self.frame_store = WsFrameStore(frames_dir or DEFAULT_MARKET_DATA_FRAMES, SOURCE_US_MARKET_DATA)
+        self.tracer = LatencyTracer()
         self.stats = {"updates": 0, "reconnects": 0, "errors": 0}
 
     def _handshake_headers(self) -> dict[str, str]:
@@ -195,7 +197,7 @@ class MarketDataWsCollector:
         session = WsSession()
         self.frame_store.mark_cutover()
 
-        frame_writer = WsFrameWriter(self.frame_store)
+        frame_writer = WsFrameWriter(self.frame_store, tracer=self.tracer)
         frame_writer.start()
 
         def _persist(record: dict) -> None:
@@ -212,6 +214,7 @@ class MarketDataWsCollector:
 
         derived_writer = DerivedRecordWriter(_persist)
         derived_writer.start()
+        self.tracer.start()
 
         try:
             while True:
@@ -239,14 +242,17 @@ class MarketDataWsCollector:
                             wall_ns = time.time_ns()
                             mono_ns = time.monotonic_ns()
                             frame = capture_frame(SOURCE_US_MARKET_DATA, session, message, wall_ns, mono_ns)
+                            r1 = time.monotonic_ns()
                             if not frame_writer.try_submit(frame):
                                 fail_closed(self.frame_store, frame_writer, frame, GAP_QUEUE_OVERFLOW)
+                            r2 = time.monotonic_ns()
 
                             try:
                                 payload = json.loads(frame_text(frame))
                             except (json.JSONDecodeError, UnicodeDecodeError):
                                 self.stats["errors"] += 1
                                 continue  # frame already enqueued; no parsed record
+                            r3 = time.monotonic_ns()
 
                             now_wall = datetime.fromtimestamp(wall_ns / 1e9, UTC)
                             if "heartbeat" in payload:
@@ -256,6 +262,7 @@ class MarketDataWsCollector:
                             update = self.stream.ingest(payload, now_wall)
                             if update is None:
                                 continue
+                            r4 = time.monotonic_ns()
 
                             # Three clocks: venue time (ms), wall ns, monotonic ns.
                             venue_ms = (
@@ -276,6 +283,14 @@ class MarketDataWsCollector:
                                 "exchange_timestamp_ms": venue_ms,
                             }):
                                 fail_closed(self.frame_store, derived_writer, frame, GAP_QUEUE_OVERFLOW)
+                            r5 = time.monotonic_ns()
+                            self.tracer.trace(
+                                "ws_ingest", SOURCE_US_MARKET_DATA,
+                                {"r0": frame.received_monotonic_ns, "r1": r1, "r2": r2,
+                                 "r3": r3, "r4": r4, "r5": r5},
+                                session_id=frame.session_id, seq=frame.session_seq,
+                                message_type=update.kind,
+                            )
                             self.stats["updates"] += 1
                             if deadline is not None and time.monotonic() >= deadline:
                                 raise _DeadlineReached
@@ -295,6 +310,7 @@ class MarketDataWsCollector:
             if not derived_writer.close(drain=True):
                 fail_closed(self.frame_store, derived_writer, None, GAP_DRAIN_TIMEOUT)
             self.frame_store.close()
+            self.tracer.close(drain=True)
         return dict(self.stats)
 
     @classmethod
