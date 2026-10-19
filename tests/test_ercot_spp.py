@@ -28,16 +28,16 @@ def _dict_payload() -> bytes:
     return json.dumps({
         "data": [
             {
-                "deliveryDate": "2026-10-19", "deliveryHour": "16", "deliveryInterval": "15",
-                "dstFlag": "N", "settlementPointName": "HB_WEST", "spp": "25.43",
+                "deliveryDate": "2026-10-19", "deliveryHour": 16, "deliveryInterval": 15,
+                "DSTFlag": False, "settlementPoint": "HB_WEST", "settlementPointPrice": 25.43,
             },
             {
-                "deliveryDate": "2026-10-19", "deliveryHour": "16", "deliveryInterval": "15",
-                "dstFlag": "N", "settlementPointName": "HB_NORTH", "spp": "26.00",
+                "deliveryDate": "2026-10-19", "deliveryHour": 16, "deliveryInterval": 15,
+                "DSTFlag": False, "settlementPoint": "HB_NORTH", "settlementPointPrice": 26.00,
             },
             {
-                "deliveryDate": "2026-10-19", "deliveryHour": "16", "deliveryInterval": "15",
-                "dstFlag": "N", "settlementPointName": "LZ_HOUSTON", "spp": "24.00",
+                "deliveryDate": "2026-10-19", "deliveryHour": 16, "deliveryInterval": 15,
+                "DSTFlag": False, "settlementPoint": "LZ_HOUSTON", "settlementPointPrice": 24.00,
             },
         ]
     }).encode()
@@ -47,11 +47,11 @@ def _rows_payload() -> bytes:
     return json.dumps({
         "fields": [
             {"name": "deliveryDate"}, {"name": "deliveryHour"}, {"name": "deliveryInterval"},
-            {"name": "dstFlag"}, {"name": "settlementPointName"}, {"name": "spp"},
+            {"name": "DSTFlag"}, {"name": "settlementPoint"}, {"name": "settlementPointPrice"},
         ],
         "data": [
-            ["2026-10-19", "16", "15", "N", "HB_WEST", "25.43"],
-            ["2026-10-19", "16", "15", "N", "HB_NORTH", "26.00"],
+            ["2026-10-19", 16, 15, False, "HB_WEST", 25.43],
+            ["2026-10-19", 16, 15, False, "HB_NORTH", 26.00],
         ],
     }).encode()
 

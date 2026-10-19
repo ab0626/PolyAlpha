@@ -82,21 +82,19 @@ class SppClient:
         self._token_expires = time.time() + 3600.0
         return self._token
 
-    def fetch_raw(self, delivery_date: str, hour_ending: str | None = None) -> bytes:
-        """Fetch the raw JSON payload for one delivery date (optionally one hour).
+    def fetch_raw(self, delivery_date: str) -> bytes:
+        """Fetch the raw JSON payload for one delivery date, filtered to the hub.
 
-        Returns the raw response bytes (NOT parsed) so the collector can hash the
-        exact bytes before parsing. Filtering to HB_WEST happens client-side in
-        :func:`parse_spp`, so we never depend on server-side filter semantics.
+        ``settlementPoint=HB_WEST`` is applied server-side so we pull only the hub's
+        intervals (<= 96 rows) rather than the entire settlement-point universe,
+        which would require pagination.
         """
         token = self._ensure_token()
         params = {
             "deliveryDateFrom": delivery_date,
             "deliveryDateTo": delivery_date,
+            "settlementPoint": HUB,
         }
-        if hour_ending is not None:
-            params["hourEndingFrom"] = hour_ending
-            params["hourEndingTo"] = hour_ending
         url = f"{BASE_URL}/{SPP_PATH}?{urllib.parse.urlencode(params)}"
         headers = dict(_UA)
         headers["Ocp-Apim-Subscription-Key"] = self.subscription_key
@@ -104,10 +102,6 @@ class SppClient:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=60) as resp:
             return resp.read()
-
-
-def _norm_field_name(name: str) -> str:
-    return name.strip().lower().replace(" ", "_").replace("-", "_")
 
 
 def parse_spp(raw: bytes) -> list[dict]:
@@ -127,12 +121,12 @@ def parse_spp(raw: bytes) -> list[dict]:
         raise ValueError("NP6-905-CD payload has no data[] rows")
 
     fields = payload.get("fields") or []
-    field_names = [f.get("name") if isinstance(f, dict) else str(f) for f in fields]
+    field_names = [str(f.get("name") if isinstance(f, dict) else f).lower() for f in fields]
 
     out: list[dict] = []
     for row in rows:
         if isinstance(row, dict):
-            obs = row
+            obs = {str(k).lower(): v for k, v in row.items()}
         elif isinstance(row, list):
             if not field_names or len(field_names) != len(row):
                 continue
@@ -140,35 +134,23 @@ def parse_spp(raw: bytes) -> list[dict]:
         else:
             continue
 
-        hub = str(
-            obs.get("settlementPointName")
-            or obs.get("settlementPoint")
-            or obs.get("settlement_point")
-            or ""
-        ).strip().upper()
-        if hub != HUB:
+        point = str(obs.get("settlementpoint") or "").strip().upper()
+        if point != HUB:
             continue
 
+        dst = obs.get("dstflag")
+        if isinstance(dst, bool):
+            dst_str = "Y" if dst else "N"
+        else:
+            dst_str = str(dst) if dst is not None else ""
+
         out.append({
-            "operating_day": str(obs.get("deliveryDate") or obs.get("delivery_date") or ""),
-            "delivery_hour": str(obs.get("deliveryHour") or obs.get("delivery_hour") or ""),
-            "delivery_interval": str(
-                obs.get("deliveryInterval") or obs.get("delivery_interval") or ""
-            ),
-            "repeated_hour_flag": str(
-                obs.get("dstFlag")
-                or obs.get("repeatHourFlag")
-                or obs.get("repeat_hour_flag")
-                or obs.get("dst_flag")
-                or ""
-            ),
+            "operating_day": str(obs.get("deliverydate") or ""),
+            "delivery_hour": str(obs.get("deliveryhour") or ""),
+            "delivery_interval": str(obs.get("deliveryinterval") or ""),
+            "repeated_hour_flag": dst_str,
             "hub": HUB,
-            "price": str(
-                obs.get("spp")
-                or obs.get("settlementPointPrice")
-                or obs.get("settlement_point_price")
-                or ""
-            ),
+            "price": str(obs.get("settlementpointprice") or ""),
         })
     return out
 
