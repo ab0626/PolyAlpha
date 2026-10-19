@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """E3 -> screen-edge dry-run (LOG-ONLY, never submits).
 
-Builds the frozen E3 model from local ERCOT data and the current Kalshi energy
-ladder, computes screen edges, and logs the FULL denominator (every strike,
-whether or not it would be traded). It never places an order.
+Builds the frozen E3 model from local ERCOT data and a SINGLE operating day's
+Kalshi ERCOT ladder, evaluates every (strike, side) with the full fail-closed
+checks, and prints the per-strike table. It never places an order.
 
-The fee rule is UNVERIFIED by default, so ``build_signal_intents`` emits nothing
-(fail-closed). The diagnostic table below shows the pre-fee raw edge and the
-would-be screen edge under the *inferred* (unverified) ERCOT fee rule, so one
-eligible candidate can be inspected end-to-end WITHOUT any money moving.
+The fee rule is UNVERIFIED, so ``build_signal_intents`` emits ZERO intents
+(fail-closed). The table below is computed with a display-only verified copy of
+the inferred ERCOT rule so ``taker_fee`` / ``screen_edge`` are visible for
+inspection — those rows are ILLUSTRATIVE and not tradeable until the fee rule is
+verified against the live venue.
 
 Usage:
     .venv/Scripts/python.exe scripts/kalshi_prod_signal_dryrun.py
@@ -17,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import sys
+from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -27,7 +29,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from energy_e3_runner import ACTUALS, FORECAST_VINTAGES, _load_actuals, _load_forecast  # noqa: E402
 
-from polyalpha.energy.kalshi import KalshiPublicClient, build_ladder  # noqa: E402
+from polyalpha.energy.kalshi import KalshiPublicClient, ercot_operating_day  # noqa: E402
 from polyalpha.energy.physical import ForecastErrorModel  # noqa: E402
 from polyalpha.energy.shadow_observation import MAX_LEAD, MIN_RESIDUALS  # noqa: E402
 from polyalpha.kalshi_exec_prod import MAX_NOTIONAL_PER_ORDER, MIN_SCREEN_EDGE  # noqa: E402
@@ -36,20 +38,48 @@ from polyalpha.kalshi_fees import (  # noqa: E402
     FEE_TAKER_RATE_PUBLISHED,
     SLIPPAGE_ADVERSE_SELECTION_BUFFER,
     FeeRule,
-    fee_per_contract,
+    verify_fee_rule,
 )
-from polyalpha.kalshi_signal_e3 import build_signal_intents  # noqa: E402
+from polyalpha.kalshi_signal_e3 import (  # noqa: E402
+    build_signal_intents,
+    build_single_day_ladder,
+    evaluate_ladder,
+)
 
 SERIES = "KXTXERCOTPEAKD"
-D = Decimal
+
+
+def _pick_upcoming_day(markets: list[dict], now: datetime) -> tuple[str, list[dict]]:
+    """Pick the operating day with the nearest future close time (active day)."""
+    by_day: dict[str, list[dict]] = defaultdict(list)
+    day_close: dict[str, datetime] = {}
+    for m in markets:
+        close = m.get("close_time")
+        if not close:
+            continue
+        day = ercot_operating_day(close)
+        by_day[day].append(m)
+        try:
+            dt = datetime.fromisoformat(close.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        day_close[day] = max(day_close.get(day, dt), dt)
+    future = [d for d in day_close if day_close[d] > now]
+    if future:
+        day = min(future, key=lambda d: day_close[d])
+    elif day_close:
+        day = max(day_close, key=lambda d: day_close[d])
+    else:
+        raise ValueError("no markets with a close_time")
+    return day, by_day[day]
 
 
 def inferred_ercot_rule() -> FeeRule:
     """UNVERIFIED inferred ERCOT fee rule: taker M=1, maker M=0 (default)."""
     return FeeRule(
         series_ticker=SERIES,
-        taker_rate=FEE_TAKER_RATE_PUBLISHED * D(1),
-        maker_rate=FEE_MAKER_RATE_PUBLISHED * D(0),
+        taker_rate=FEE_TAKER_RATE_PUBLISHED,
+        maker_rate=FEE_MAKER_RATE_PUBLISHED * Decimal(0),
         source="docs.kalshi.com fee schedule (inferred; NOT verified against live venue)",
     )
 
@@ -68,51 +98,46 @@ def main() -> int:
         print(f"ladder fetch failed: {exc}")
         return 1
     if not markets:
-        print("no active ERCOT markets found.")
+        print("no ERCOT markets found.")
         return 1
 
-    ladder = build_ladder(SERIES, markets)
-    fee_rule = inferred_ercot_rule()
+    unverified = inferred_ercot_rule()
+    day, day_markets = _pick_upcoming_day(markets, as_of)
+    _, ladder = build_single_day_ladder(day_markets, SERIES, target_day=day)
 
-    # Fail-closed path: unverified fee rule => no intents.
-    intents = build_signal_intents(model, ladder, fee_rule, as_of)
-    print("=== E3 -> SCREEN-EDGE DRY-RUN (log-only) ===")
-    print(f"operating_day: {ladder.underlying.operating_day or '?'}")
+    # Fail-closed: unverified fee => 0 tradeable intents.
+    intents = build_signal_intents(model, ladder, unverified, as_of)
+
+    # Display-only: a verified copy of the inferred rule so the table is readable.
+    display_rule = verify_fee_rule(unverified)
+    evals = evaluate_ladder(model, ladder, display_rule, as_of)
+
+    print("=== E3 -> SCREEN-EDGE DRY-RUN (log-only, taker calibration) ===")
+    print(f"operating_day: {day}")
     print(f"rungs: {len(ladder.rungs)}")
-    print(f"fee rule verified: {fee_rule.verified}  (unverified => 0 tradeable intents)")
+    print(f"fee rule verified (live): {unverified.verified}")
     print(f"tradeable intents (fail-closed): {len(intents)}")
     print()
-
-    print("diagnostic (pre-fee raw edge + would-be screen edge, UNVERIFIED — not tradeable):")
-    print(f"{'strike':>8} {'p_model':>8} {'yes_ask':>8} {'raw_yes':>8} {'screen_yes':>10} {'no_ask':>8} {'raw_no':>8}")
-    maker_rate = fee_rule.maker_rate
-    any_eligible = False
-    for r in ladder.rungs:
-        p_model = model.p_peak_gt(ladder.underlying.operating_day or "", as_of, r.threshold)
-        if p_model is None:
-            continue
-        raw_yes = p_model - r.yes_ask if r.yes_ask is not None else None
-        raw_no = (D(1) - p_model) - r.no_ask if r.no_ask is not None else None
-        screen_yes = (
-            p_model - r.yes_ask - fee_per_contract(r.yes_ask, maker_rate) - SLIPPAGE_ADVERSE_SELECTION_BUFFER
-            if r.yes_ask is not None
-            else None
-        )
-        if (screen_yes is not None and screen_yes >= MIN_SCREEN_EDGE) or (
-            raw_no is not None and (D(1) - p_model) - r.no_ask - SLIPPAGE_ADVERSE_SELECTION_BUFFER >= MIN_SCREEN_EDGE
-        ):
-            any_eligible = True
-        def f(v):  # noqa: E306
-            return "      -" if v is None else f"{v:8.4f}"
+    print("NOTE: table uses a display-only verified copy of the inferred fee rule.")
+    print("      ELIGIBLE rows are ILLUSTRATIVE and NOT tradeable until live verification.")
+    print()
+    hdr = (
+        f"{'strike':>8} {'side':>4} {'p_hat':>7} {'exec_px':>8} {'size':>8} "
+        f"{'fee':>6} {'buffer':>6} {'edge':>8}  reason"
+    )
+    print(hdr)
+    for e in evals:
+        def f(v, w=7):
+            return "     -" if v is None else f"{v:{w}.4f}"
         print(
-            f"{r.threshold:>8} {f(p_model)} {f(r.yes_ask)} {f(raw_yes)} {f(screen_yes)} {f(r.no_ask)} {f(raw_no)}"
+            f"{e.strike:>8} {e.side:>4} {f(e.p_hat_e3, 7)} {f(e.executable_price, 8)} "
+            f"{f(e.executable_size, 8)} {f(e.taker_fee, 6)} {f(e.buffer, 6)} "
+            f"{f(e.screen_edge, 8)}  {e.eligibility_reason}"
         )
 
     print()
-    print(f"min screen edge: ${MIN_SCREEN_EDGE}/contract  "
-          f"buffer B: ${SLIPPAGE_ADVERSE_SELECTION_BUFFER}/contract  "
+    print(f"min screen edge: ${MIN_SCREEN_EDGE}/contract  buffer B: ${SLIPPAGE_ADVERSE_SELECTION_BUFFER}/contract  "
           f"max notional: ${MAX_NOTIONAL_PER_ORDER}")
-    print(f"eligible under inferred (unverified) rule: {'YES' if any_eligible else 'no'}")
     print("\nNo order placed. Verify the fee rule against the live venue before any intent is tradeable.")
     return 0
 
