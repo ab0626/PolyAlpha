@@ -12,6 +12,7 @@ runs nothing (MODEL PERFORMANCE: LOCKED, ALPHA: UNKNOWN).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -41,9 +42,10 @@ DEFAULT_KNOWN_GAPS = (
 def _load_known_gaps(path: str | Path | None) -> list[dict] | None:
     """Load known-gap provenance; ``None`` means missing/unreadable/malformed.
 
-    Fail-closed: a missing or corrupt gap ledger must NOT silently read as "no
-    gaps" (which would compute 100% observed coverage). Return ``None`` so the
-    coverage gate can fail rather than assume full coverage.
+    Fail-closed at TWO levels: a missing/corrupt ledger returns ``None``, AND a
+    single malformed row (non-dict, missing/unparseable/naive timestamp, or
+    ``end <= start``) rejects the ENTIRE ledger. A malformed row must produce
+    coverage=UNKNOWN / gate=FAIL, never silently disappear from the numerator.
     """
     if path is None:
         return None
@@ -57,6 +59,13 @@ def _load_known_gaps(path: str | Path | None) -> list[dict] | None:
     gaps = data.get("gaps") if isinstance(data, dict) else None
     if not isinstance(gaps, list):
         return None
+    for gap in gaps:
+        if not isinstance(gap, dict):
+            return None
+        start = _parse_gap_ts(gap.get("start"))
+        end = _parse_gap_ts(gap.get("end"))
+        if start is None or end is None or end <= start:
+            return None
     return gaps
 
 
@@ -103,21 +112,21 @@ def _parse_gap_ts(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if dt.tzinfo is None:
+        return None  # naive timestamp is malformed
+    return dt
 
 
-def _observed_coverage(as_of: datetime, known_gaps: list[dict]) -> float:
-    """Fraction of the nominal forward window that actually has observations.
+def _union_unobserved_seconds(as_of: datetime, known_gaps: list[dict]) -> float:
+    """Union of unobserved seconds from gap overlaps with [REAL_DATA_START_US, as_of].
 
-    The nominal window is [REAL_DATA_START_US, as_of]; the UNION of each known
-    gap's overlap with that window counts as unobserved (overlapping gaps are
-    merged, never double-counted). 1.0 means no recorded outages.
+    Overlapping intervals are merged, never double-counted. Gaps before the start
+    clip to REAL_DATA_START_US; gaps after ``as_of`` clip to ``as_of`` (future gaps
+    never reduce today's coverage).
     """
-    elapsed = (as_of - REAL_DATA_START_US).total_seconds()
-    if elapsed <= 0:
-        return 1.0
     intervals: list[tuple[float, float]] = []
     for gap in known_gaps:
         start = _parse_gap_ts(gap.get("start"))
@@ -129,10 +138,7 @@ def _observed_coverage(as_of: datetime, known_gaps: list[dict]) -> float:
         if hi > lo:
             intervals.append((lo, hi))
     if not intervals:
-        return 1.0
-
-    # Merge overlapping intervals so a second record spanning part of a prior
-    # one never double-counts the shared seconds.
+        return 0.0
     intervals.sort()
     merged: list[tuple[float, float]] = []
     for lo, hi in intervals:
@@ -140,8 +146,31 @@ def _observed_coverage(as_of: datetime, known_gaps: list[dict]) -> float:
             merged.append((lo, hi))
         else:
             merged[-1] = (merged[-1][0], max(merged[-1][1], hi))
-    gap_seconds = sum(hi - lo for lo, hi in merged)
+    return sum(hi - lo for lo, hi in merged)
+
+
+def _observed_coverage(as_of: datetime, known_gaps: list[dict]) -> float:
+    """Fraction of the nominal forward window that actually has observations.
+
+    The nominal window is [REAL_DATA_START_US, as_of]; the UNION of each known
+    gap's overlap with that window counts as unobserved. 1.0 means no recorded
+    outages.
+    """
+    elapsed = (as_of - REAL_DATA_START_US).total_seconds()
+    if elapsed <= 0:
+        return 1.0
+    gap_seconds = _union_unobserved_seconds(as_of, known_gaps)
     return max(0.0, 1.0 - gap_seconds / elapsed)
+
+
+def _ledger_sha256(path: str | Path) -> str | None:
+    """SHA-256 of the canonical gap-ledger bytes (LF-normalized)."""
+    try:
+        return hashlib.sha256(
+            Path(path).read_bytes().replace(b"\r\n", b"\n")
+        ).hexdigest()
+    except OSError:
+        return None
 
 
 def evaluation_boundary(as_of: datetime | None = None) -> dict:
@@ -172,6 +201,8 @@ def forward_evidence_report(
     # Fail-closed: missing/corrupt gap provenance must never read as full coverage.
     coverage_unknown = known_gaps is None
     coverage = None if coverage_unknown else _observed_coverage(now, known_gaps)
+    unobserved_seconds = None if coverage_unknown else _union_unobserved_seconds(now, known_gaps)
+    ledger_sha = _ledger_sha256(DEFAULT_KNOWN_GAPS)
     coverage_gate: dict = {
         "met": (not coverage_unknown) and coverage >= MIN_COVERAGE,
         "value": None if coverage_unknown else round(coverage, 4),
@@ -217,6 +248,11 @@ def forward_evidence_report(
         "sampling_hierarchy": hierarchy,
         "settlement_completeness": completeness,
         "data_gaps": known_gaps or [],
+        "gap_count": len(known_gaps) if known_gaps is not None else None,
+        "ledger_sha256": ledger_sha,
+        "unobserved_seconds": unobserved_seconds,
+        "unobserved_days": (unobserved_seconds / 86400.0) if unobserved_seconds is not None else None,
+        "coverage_as_of": now.isoformat(),
         "coverage_provenance": "missing" if coverage_unknown else "ok",
     }
     if coverage_unknown:

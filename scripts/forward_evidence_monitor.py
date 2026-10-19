@@ -27,6 +27,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "us"
+sys.path.insert(0, str(ROOT / "src"))
+
+from polyalpha.us.forward_evidence import (  # noqa: E402
+    DEFAULT_KNOWN_GAPS,
+    _ledger_sha256,
+    _load_known_gaps,
+    _observed_coverage,
+    _union_unobserved_seconds,
+)
+
 REAL_DATA_START_US = datetime(2026, 9, 16, 2, 49, 12, tzinfo=UTC)
 MIN_DAYS = 30
 MIN_SETTLED = 200
@@ -100,30 +110,32 @@ def _build_summary(now: datetime) -> dict:
     settled = _membership_count(DATA / "settled_membership.jsonl")
     days = (now - REAL_DATA_START_US).days
 
-    gates = {"days": days, "clusters": None, "settled": None, "coverage": None, "as_of": None}
+    # Live coverage from the CURRENT canonical gap ledger + now (not the stale
+    # daily replay snapshot). Malformed ledger => None => coverage UNKNOWN.
+    live_gaps = _load_known_gaps(DEFAULT_KNOWN_GAPS)
+    live_coverage = None if live_gaps is None else _observed_coverage(now, live_gaps)
+    live_unobserved_seconds = (
+        None if live_gaps is None else _union_unobserved_seconds(now, live_gaps)
+    )
+    live_gap_count = len(live_gaps) if live_gaps is not None else None
+    live_ledger_sha = _ledger_sha256(DEFAULT_KNOWN_GAPS)
+
+    gates = {"days": days, "clusters": None, "settled": None, "coverage": live_coverage, "as_of": None}
     coverage_required = MIN_COVERAGE
     status = None
     families_evaluated = 0
-    gap_count = 0
-    gap_walltime_seconds = 0.0
+    snapshot_as_of = None
     if snap:
         g = snap.get("gates", {})
         gates["clusters"] = g.get("independent_clusters", {}).get("value")
         gates["settled"] = g.get("settled_markets", {}).get("value")
-        gates["coverage"] = g.get("observed_coverage", {}).get("value")
         cov_required = g.get("observed_coverage", {}).get("required")
         if cov_required is not None:
             coverage_required = float(cov_required)
         gates["as_of"] = snap.get("as_of")
+        snapshot_as_of = snap.get("as_of")
         status = snap.get("status")
         families_evaluated = len(snap.get("families", []) or [])
-        gaps = snap.get("data_gaps", []) or []
-        gap_count = len(gaps)
-        for gap in gaps:
-            lo = _parse_iso(gap.get("start"))
-            hi = _parse_iso(gap.get("end"))
-            if lo is not None and hi is not None and hi > lo:
-                gap_walltime_seconds += (hi - lo).total_seconds()
 
     upcoming = [r for r in _release_calendar(now) if not r["resolved"]]
     return {
@@ -133,6 +145,13 @@ def _build_summary(now: datetime) -> dict:
         "settled_membership": settled,
         "gates": gates,
         "snapshot": snap_name,
+        "snapshot_as_of": snapshot_as_of,
+        "coverage_live": True,
+        "coverage_gap_count": live_gap_count,
+        "coverage_ledger_sha256": live_ledger_sha,
+        "coverage_unobserved_days": (
+            live_unobserved_seconds / 86400.0 if live_unobserved_seconds is not None else None
+        ),
         "upcoming_releases": upcoming,
         "required": {
             "days": MIN_DAYS,
@@ -142,8 +161,8 @@ def _build_summary(now: datetime) -> dict:
         },
         "status": status,
         "families_evaluated": families_evaluated,
-        "gap_count": gap_count,
-        "gap_walltime_seconds": gap_walltime_seconds,
+        "gap_count": live_gap_count,
+        "gap_walltime_seconds": live_unobserved_seconds or 0.0,
     }
 
 
@@ -174,15 +193,17 @@ def _render(s: dict) -> str:
         "Forward evidence",
         "----------------",
         _gate("Days:", str(s["days"]), str(req["days"]), days_met),
-        _gate("Settled markets:", _v(g["settled"]), str(req["settled"]), settled_met),
-        _gate("Independent clusters:", _v(g["clusters"]), str(req["clusters"]), clusters_met),
-        _gate("Observed coverage:", cov_val, cov_req, coverage_met, binding=not coverage_met),
+        _gate("Settled (snapshot):", _v(g["settled"]), str(req["settled"]), settled_met),
+        _gate("Clusters (snapshot):", _v(g["clusters"]), str(req["clusters"]), clusters_met),
+        _gate("Observed coverage (LIVE):", cov_val, cov_req, coverage_met, binding=not coverage_met),
         "",
         f"  Status: {s['status'] or 'NO_SNAPSHOT'}",
         f"  Alpha:  {alpha}",
         f"  Families evaluated: {s['families_evaluated']}",
-        f"  Known gaps: {s['gap_count']} interval(s), "
-        f"~{s['gap_walltime_seconds'] / 86400.0:.1f} days unobserved",
+        f"  Coverage: LIVE  ({s['gap_count']}-gap ledger, "
+        f"sha {s['coverage_ledger_sha256'][:12] if s['coverage_ledger_sha256'] else '?'}…), "
+        f"~{s['gap_walltime_seconds'] / 86400.0:.2f} days unobserved",
+        f"  Settled/clusters: SNAPSHOT as-of {s['snapshot_as_of'] or 'n/a'}",
         "",
         f"  now:                            {s['now']}",
         f"  tracked universe (additive):    {s['tracked_universe']}   <- leading indicator for clusters",

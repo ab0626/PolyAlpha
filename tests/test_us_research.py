@@ -206,8 +206,18 @@ def test_load_known_gaps_fails_closed(tmp_path):
     assert _load_known_gaps(ok) == []
 
     ok2 = tmp_path / "ok2.json"
+    # A malformed (unparseable) timestamp now rejects the ENTIRE ledger (v0.2).
     ok2.write_text('{"gaps": [{"start": "x", "end": "y"}]}', encoding="utf-8")
-    assert _load_known_gaps(ok2) == [{"start": "x", "end": "y"}]
+    assert _load_known_gaps(ok2) is None
+
+    ok3 = tmp_path / "ok3.json"
+    ok3.write_text(
+        '{"gaps": [{"start": "2026-10-14T05:00:00Z", "end": "2026-10-14T06:00:00Z"}]}',
+        encoding="utf-8",
+    )
+    assert _load_known_gaps(ok3) == [
+        {"start": "2026-10-14T05:00:00Z", "end": "2026-10-14T06:00:00Z"}
+    ]
 
 
 def test_forward_evidence_coverage_fails_closed():
