@@ -84,6 +84,8 @@ H4 adverse selection    CONTINUE (26/40 clusters)
 H5 liquidity withdrawal KILL
 
 promoted families       0
+killed families         3
+unresolved              2
 new hypotheses          0
 post-hoc tuning         0
 ```
