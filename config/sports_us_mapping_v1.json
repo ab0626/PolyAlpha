@@ -1,0 +1,7015 @@
+{
+  "markets": [
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Tennessee",
+      "slug": "aec-nfl-lac-ten-2025-11-02",
+      "teams": [
+        "lac",
+        "ten",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Carolina vs. Green Bay",
+      "slug": "aec-nfl-car-gb-2025-11-02",
+      "teams": [
+        "car",
+        "gb",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Detroit",
+      "slug": "aec-nfl-min-det-2025-11-02",
+      "teams": [
+        "min",
+        "det",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. New England",
+      "slug": "aec-nfl-atl-ne-2025-11-02",
+      "teams": [
+        "atl",
+        "ne",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Los Angeles",
+      "slug": "aec-nfl-no-lar-2025-11-02",
+      "teams": [
+        "no",
+        "lar",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-10-31T00:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Baltimore vs. Miami",
+      "slug": "aec-nfl-bal-mia-2025-10-30",
+      "teams": [
+        "bal",
+        "mia",
+        "2025",
+        "10",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Cincinnati",
+      "slug": "aec-nfl-chi-cin-2025-11-02",
+      "teams": [
+        "chi",
+        "cin",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "San Francisco vs. New York",
+      "slug": "aec-nfl-sf-nyg-2025-11-02",
+      "teams": [
+        "sf",
+        "nyg",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Denver vs. Houston",
+      "slug": "aec-nfl-den-hou-2025-11-02",
+      "teams": [
+        "den",
+        "hou",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Indianapolis vs. Pittsburgh",
+      "slug": "aec-nfl-ind-pit-2025-11-02",
+      "teams": [
+        "ind",
+        "pit",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Jacksonville vs. Las Vegas",
+      "slug": "aec-nfl-jax-lv-2025-11-02",
+      "teams": [
+        "jax",
+        "lv",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-02T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Kansas City vs. Buffalo",
+      "slug": "aec-nfl-kc-buf-2025-11-02",
+      "teams": [
+        "kc",
+        "buf",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-03T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Seattle vs. Washington",
+      "slug": "aec-nfl-sea-was-2025-11-02",
+      "teams": [
+        "sea",
+        "was",
+        "2025",
+        "11",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-04T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Arizona vs. Dallas",
+      "slug": "aec-nfl-ari-dal-2025-11-03",
+      "teams": [
+        "ari",
+        "dal",
+        "2025",
+        "11",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-07T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Las Vegas vs. Denver",
+      "slug": "aec-nfl-lv-den-2025-11-06",
+      "teams": [
+        "lv",
+        "den",
+        "2025",
+        "11",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Carolina",
+      "slug": "aec-nfl-no-car-2025-11-09",
+      "teams": [
+        "no",
+        "car",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T14:30:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Indianapolis",
+      "slug": "aec-nfl-atl-ind-2025-11-09",
+      "teams": [
+        "atl",
+        "ind",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Baltimore vs. Minnesota",
+      "slug": "aec-nfl-bal-min-2025-11-09",
+      "teams": [
+        "bal",
+        "min",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New York vs. Chicago",
+      "slug": "aec-nfl-nyg-chi-2025-11-09",
+      "teams": [
+        "nyg",
+        "chi",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Jacksonville vs. Houston",
+      "slug": "aec-nfl-jax-hou-2025-11-09",
+      "teams": [
+        "jax",
+        "hou",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. New York",
+      "slug": "aec-nfl-cle-nyj-2025-11-09",
+      "teams": [
+        "cle",
+        "nyj",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Buffalo vs. Miami",
+      "slug": "aec-nfl-buf-mia-2025-11-09",
+      "teams": [
+        "buf",
+        "mia",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New England vs. Tampa Bay",
+      "slug": "aec-nfl-ne-tb-2025-11-09",
+      "teams": [
+        "ne",
+        "tb",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Washington",
+      "slug": "aec-nfl-det-was-2025-11-09",
+      "teams": [
+        "det",
+        "was",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Arizona vs. Seattle",
+      "slug": "aec-nfl-ari-sea-2025-11-09",
+      "teams": [
+        "ari",
+        "sea",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. San Francisco",
+      "slug": "aec-nfl-lar-sf-2025-11-09",
+      "teams": [
+        "lar",
+        "sf",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-10T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Pittsburgh vs. Los Angeles",
+      "slug": "aec-nfl-pit-lac-2025-11-09",
+      "teams": [
+        "pit",
+        "lac",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Green Bay",
+      "slug": "aec-nfl-phi-gb-2025-11-10",
+      "teams": [
+        "phi",
+        "gb",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-14T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New York vs. New England",
+      "slug": "aec-nfl-nyj-ne-2025-11-13",
+      "teams": [
+        "nyj",
+        "ne",
+        "2025",
+        "11",
+        "13"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Chicago",
+      "slug": "aec-nba-sa-chi-2025-11-10",
+      "teams": [
+        "sa",
+        "chi",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-10T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Golden State",
+      "slug": "aec-nba-ind-gs-2025-11-09",
+      "teams": [
+        "ind",
+        "gs",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Utah",
+      "slug": "aec-nba-min-uta-2025-11-10",
+      "teams": [
+        "min",
+        "uta",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Detroit",
+      "slug": "aec-nba-was-det-2025-11-10",
+      "teams": [
+        "was",
+        "det",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-10T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Sacramento",
+      "slug": "aec-nba-min-sac-2025-11-09",
+      "teams": [
+        "min",
+        "sac",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Phoenix",
+      "slug": "aec-nba-no-pho-2025-11-10",
+      "teams": [
+        "no",
+        "pho",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T03:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Los Angeles",
+      "slug": "aec-nba-atl-lac-2025-11-10",
+      "teams": [
+        "atl",
+        "lac",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T20:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Milwaukee",
+      "slug": "aec-nba-hou-mil-2025-11-09",
+      "teams": [
+        "hou",
+        "mil",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. Miami",
+      "slug": "aec-nba-cle-mia-2025-11-10",
+      "teams": [
+        "cle",
+        "mia",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Orlando",
+      "slug": "aec-nba-por-orl-2025-11-10",
+      "teams": [
+        "por",
+        "orl",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Charlotte",
+      "slug": "aec-nba-lal-cha-2025-11-10",
+      "teams": [
+        "lal",
+        "cha",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. New York",
+      "slug": "aec-nba-bkn-ny-2025-11-09",
+      "teams": [
+        "bkn",
+        "ny",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Cleveland",
+      "slug": "aec-nba-chi-cle-2025-11-08",
+      "teams": [
+        "chi",
+        "cle",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Atlanta",
+      "slug": "aec-nba-lal-atl-2025-11-08",
+      "teams": [
+        "lal",
+        "atl",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Boston vs. Orlando",
+      "slug": "aec-nba-bos-orl-2025-11-09",
+      "teams": [
+        "bos",
+        "orl",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Washington",
+      "slug": "aec-nba-dal-was-2025-11-08",
+      "teams": [
+        "dal",
+        "was",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T03:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Los Angeles",
+      "slug": "aec-nba-pho-lac-2025-11-08",
+      "teams": [
+        "pho",
+        "lac",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-10T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Philadelphia",
+      "slug": "aec-nba-det-phi-2025-11-09",
+      "teams": [
+        "det",
+        "phi",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-11T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. Dallas",
+      "slug": "aec-nba-mil-dal-2025-11-10",
+      "teams": [
+        "mil",
+        "dal",
+        "2025",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Denver",
+      "slug": "aec-nba-ind-den-2025-11-08",
+      "teams": [
+        "ind",
+        "den",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. Philadelphia",
+      "slug": "aec-nba-tor-phi-2025-11-08",
+      "teams": [
+        "tor",
+        "phi",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Miami",
+      "slug": "aec-nba-por-mia-2025-11-08",
+      "teams": [
+        "por",
+        "mia",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. San Antonio",
+      "slug": "aec-nba-no-sa-2025-11-08",
+      "teams": [
+        "no",
+        "sa",
+        "2025",
+        "11",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-09T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Oklahoma City vs. Memphis",
+      "slug": "aec-nba-okc-mem-2025-11-09",
+      "teams": [
+        "okc",
+        "mem",
+        "2025",
+        "11",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T14:30:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Washington vs. Miami",
+      "slug": "aec-nfl-was-mia-2025-11-16",
+      "teams": [
+        "was",
+        "mia",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Tampa Bay vs. Buffalo",
+      "slug": "aec-nfl-tb-buf-2025-11-16",
+      "teams": [
+        "tb",
+        "buf",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Jacksonville",
+      "slug": "aec-nfl-lac-jax-2025-11-16",
+      "teams": [
+        "lac",
+        "jax",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Carolina vs. Atlanta",
+      "slug": "aec-nfl-car-atl-2025-11-16",
+      "teams": [
+        "car",
+        "atl",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Houston vs. Tennessee",
+      "slug": "aec-nfl-hou-ten-2025-11-16",
+      "teams": [
+        "hou",
+        "ten",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Cincinnati vs. Pittsburgh",
+      "slug": "aec-nfl-cin-pit-2025-11-16",
+      "teams": [
+        "cin",
+        "pit",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Green Bay vs. New York",
+      "slug": "aec-nfl-gb-nyg-2025-11-16",
+      "teams": [
+        "gb",
+        "nyg",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Minnesota",
+      "slug": "aec-nfl-chi-min-2025-11-16",
+      "teams": [
+        "chi",
+        "min",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-12T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. Oklahoma City",
+      "slug": "aec-nba-gs-okc-2025-11-11",
+      "teams": [
+        "gs",
+        "okc",
+        "2025",
+        "11",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-12T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. Brooklyn",
+      "slug": "aec-nba-tor-bkn-2025-11-11",
+      "teams": [
+        "tor",
+        "bkn",
+        "2025",
+        "11",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-12T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Utah",
+      "slug": "aec-nba-ind-uta-2025-11-11",
+      "teams": [
+        "ind",
+        "uta",
+        "2025",
+        "11",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-12T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Boston vs. Philadelphia",
+      "slug": "aec-nba-bos-phi-2025-11-11",
+      "teams": [
+        "bos",
+        "phi",
+        "2025",
+        "11",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-12T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. New York",
+      "slug": "aec-nba-mem-ny-2025-11-11",
+      "teams": [
+        "mem",
+        "ny",
+        "2025",
+        "11",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Kansas City vs. Denver",
+      "slug": "aec-nfl-kc-den-2025-11-16",
+      "teams": [
+        "kc",
+        "den",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-17T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Philadelphia",
+      "slug": "aec-nfl-det-phi-2025-11-16",
+      "teams": [
+        "det",
+        "phi",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "San Francisco vs. Arizona",
+      "slug": "aec-nfl-sf-ari-2025-11-16",
+      "teams": [
+        "sf",
+        "ari",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Baltimore vs. Cleveland",
+      "slug": "aec-nfl-bal-cle-2025-11-16",
+      "teams": [
+        "bal",
+        "cle",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Seattle vs. Los Angeles",
+      "slug": "aec-nfl-sea-lar-2025-11-16",
+      "teams": [
+        "sea",
+        "lar",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-12T04:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Sacramento",
+      "slug": "aec-nba-den-sac-2025-11-11",
+      "teams": [
+        "den",
+        "sac",
+        "2025",
+        "11",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Dallas",
+      "slug": "aec-nba-pho-dal-2025-11-12",
+      "teams": [
+        "pho",
+        "dal",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Houston",
+      "slug": "aec-nba-was-hou-2025-11-12",
+      "teams": [
+        "was",
+        "hou",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. San Antonio",
+      "slug": "aec-nba-gs-sa-2025-11-12",
+      "teams": [
+        "gs",
+        "sa",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. Miami",
+      "slug": "aec-nba-cle-mia-2025-11-12",
+      "teams": [
+        "cle",
+        "mia",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. Boston",
+      "slug": "aec-nba-mem-bos-2025-11-12",
+      "teams": [
+        "mem",
+        "bos",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. New Orleans",
+      "slug": "aec-nba-por-no-2025-11-12",
+      "teams": [
+        "por",
+        "no",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. Charlotte",
+      "slug": "aec-nba-mil-cha-2025-11-12",
+      "teams": [
+        "mil",
+        "cha",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Orlando vs. New York",
+      "slug": "aec-nba-orl-ny-2025-11-12",
+      "teams": [
+        "orl",
+        "ny",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Detroit",
+      "slug": "aec-nba-chi-det-2025-11-12",
+      "teams": [
+        "chi",
+        "det",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Las Vegas",
+      "slug": "aec-nfl-dal-lv-2025-11-17",
+      "teams": [
+        "dal",
+        "lv",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Sacramento",
+      "slug": "aec-nba-atl-sac-2025-11-12",
+      "teams": [
+        "atl",
+        "sac",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T03:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Los Angeles",
+      "slug": "aec-nba-den-lac-2025-11-12",
+      "teams": [
+        "den",
+        "lac",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-13T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Oklahoma City",
+      "slug": "aec-nba-lal-okc-2025-11-12",
+      "teams": [
+        "lal",
+        "okc",
+        "2025",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-14T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Utah",
+      "slug": "aec-nba-atl-uta-2025-11-13",
+      "teams": [
+        "atl",
+        "uta",
+        "2025",
+        "11",
+        "13"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-14T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Phoenix",
+      "slug": "aec-nba-ind-pho-2025-11-13",
+      "teams": [
+        "ind",
+        "pho",
+        "2025",
+        "11",
+        "13"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-14T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. Cleveland",
+      "slug": "aec-nba-tor-cle-2025-11-13",
+      "teams": [
+        "tor",
+        "cle",
+        "2025",
+        "11",
+        "13"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Miami vs. New York",
+      "slug": "aec-nba-mia-ny-2025-11-14",
+      "teams": [
+        "mia",
+        "ny",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. Orlando",
+      "slug": "aec-nba-bkn-orl-2025-11-14",
+      "teams": [
+        "bkn",
+        "orl",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Dallas",
+      "slug": "aec-nba-lac-dal-2025-11-14",
+      "teams": [
+        "lac",
+        "dal",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. New Orleans",
+      "slug": "aec-nba-lal-no-2025-11-14",
+      "teams": [
+        "lal",
+        "no",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. Milwaukee",
+      "slug": "aec-nba-cha-mil-2025-11-14",
+      "teams": [
+        "cha",
+        "mil",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Minnesota",
+      "slug": "aec-nba-sac-min-2025-11-14",
+      "teams": [
+        "sac",
+        "min",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Houston",
+      "slug": "aec-nba-por-hou-2025-11-14",
+      "teams": [
+        "por",
+        "hou",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Detroit",
+      "slug": "aec-nba-phi-det-2025-11-14",
+      "teams": [
+        "phi",
+        "det",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. San Antonio",
+      "slug": "aec-nba-gs-sa-2025-11-14",
+      "teams": [
+        "gs",
+        "sa",
+        "2025",
+        "11",
+        "14"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Milwaukee",
+      "slug": "aec-nba-lal-mil-2025-11-15",
+      "teams": [
+        "lal",
+        "mil",
+        "2025",
+        "11",
+        "15"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Minnesota",
+      "slug": "aec-nba-den-min-2025-11-15",
+      "teams": [
+        "den",
+        "min",
+        "2025",
+        "11",
+        "15"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. Indiana",
+      "slug": "aec-nba-tor-ind-2025-11-15",
+      "teams": [
+        "tor",
+        "ind",
+        "2025",
+        "11",
+        "15"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Oklahoma City vs. Charlotte",
+      "slug": "aec-nba-okc-cha-2025-11-15",
+      "teams": [
+        "okc",
+        "cha",
+        "2025",
+        "11",
+        "15"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-15T22:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. Cleveland",
+      "slug": "aec-nba-mem-cle-2025-11-15",
+      "teams": [
+        "mem",
+        "cle",
+        "2025",
+        "11",
+        "15"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-21T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Buffalo vs. Houston",
+      "slug": "aec-nfl-buf-hou-2025-11-20",
+      "teams": [
+        "buf",
+        "hou",
+        "2025",
+        "11",
+        "20"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T20:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Boston",
+      "slug": "aec-nba-lac-bos-2025-11-16",
+      "teams": [
+        "lac",
+        "bos",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. Washington",
+      "slug": "aec-nba-bkn-was-2025-11-16",
+      "teams": [
+        "bkn",
+        "was",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-16T21:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. San Antonio",
+      "slug": "aec-nba-sac-sa-2025-11-16",
+      "teams": [
+        "sac",
+        "sa",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-17T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Orlando vs. Houston",
+      "slug": "aec-nba-orl-hou-2025-11-16",
+      "teams": [
+        "orl",
+        "hou",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-17T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Dallas",
+      "slug": "aec-nba-por-dal-2025-11-16",
+      "teams": [
+        "por",
+        "dal",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-17T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Phoenix",
+      "slug": "aec-nba-atl-pho-2025-11-16",
+      "teams": [
+        "atl",
+        "pho",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-17T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Utah",
+      "slug": "aec-nba-chi-uta-2025-11-16",
+      "teams": [
+        "chi",
+        "uta",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-17T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. New Orleans",
+      "slug": "aec-nba-gs-no-2025-11-16",
+      "teams": [
+        "gs",
+        "no",
+        "2025",
+        "11",
+        "16"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. Toronto",
+      "slug": "aec-nba-cha-tor-2025-11-17",
+      "teams": [
+        "cha",
+        "tor",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Philadelphia",
+      "slug": "aec-nba-lac-phi-2025-11-17",
+      "teams": [
+        "lac",
+        "phi",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Denver",
+      "slug": "aec-nba-chi-den-2025-11-17",
+      "teams": [
+        "chi",
+        "den",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Detroit",
+      "slug": "aec-nba-ind-det-2025-11-17",
+      "teams": [
+        "ind",
+        "det",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New York vs. Miami",
+      "slug": "aec-nba-ny-mia-2025-11-17",
+      "teams": [
+        "ny",
+        "mia",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Minnesota",
+      "slug": "aec-nba-dal-min-2025-11-17",
+      "teams": [
+        "dal",
+        "min",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Oklahoma City vs. New Orleans",
+      "slug": "aec-nba-okc-no-2025-11-17",
+      "teams": [
+        "okc",
+        "no",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-18T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. Cleveland",
+      "slug": "aec-nba-mil-cle-2025-11-17",
+      "teams": [
+        "mil",
+        "cle",
+        "2025",
+        "11",
+        "17"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Indianapolis vs. Kansas City",
+      "slug": "aec-nfl-ind-kc-2025-11-23",
+      "teams": [
+        "ind",
+        "kc",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New York vs. Detroit",
+      "slug": "aec-nfl-nyg-det-2025-11-23",
+      "teams": [
+        "nyg",
+        "det",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New England vs. Cincinnati",
+      "slug": "aec-nfl-ne-cin-2025-11-23",
+      "teams": [
+        "ne",
+        "cin",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Green Bay",
+      "slug": "aec-nfl-min-gb-2025-11-23",
+      "teams": [
+        "min",
+        "gb",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Pittsburgh vs. Chicago",
+      "slug": "aec-nfl-pit-chi-2025-11-23",
+      "teams": [
+        "pit",
+        "chi",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New York vs. Baltimore",
+      "slug": "aec-nfl-nyj-bal-2025-11-23",
+      "teams": [
+        "nyj",
+        "bal",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Seattle vs. Tennessee",
+      "slug": "aec-nfl-sea-ten-2025-11-23",
+      "teams": [
+        "sea",
+        "ten",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. New Orleans",
+      "slug": "aec-nfl-atl-no-2025-11-23",
+      "teams": [
+        "atl",
+        "no",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. Las Vegas",
+      "slug": "aec-nfl-cle-lv-2025-11-23",
+      "teams": [
+        "cle",
+        "lv",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Jacksonville vs. Arizona",
+      "slug": "aec-nfl-jax-ari-2025-11-23",
+      "teams": [
+        "jax",
+        "ari",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-19T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. San Antonio",
+      "slug": "aec-nba-mem-sa-2025-11-18",
+      "teams": [
+        "mem",
+        "sa",
+        "2025",
+        "11",
+        "18"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-19T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. Orlando",
+      "slug": "aec-nba-gs-orl-2025-11-18",
+      "teams": [
+        "gs",
+        "orl",
+        "2025",
+        "11",
+        "18"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-24T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Tampa Bay vs. Los Angeles",
+      "slug": "aec-nfl-tb-lar-2025-11-23",
+      "teams": [
+        "tb",
+        "lar",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Dallas",
+      "slug": "aec-nfl-phi-dal-2025-11-23",
+      "teams": [
+        "phi",
+        "dal",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-19T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Atlanta",
+      "slug": "aec-nba-det-atl-2025-11-18",
+      "teams": [
+        "det",
+        "atl",
+        "2025",
+        "11",
+        "18"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-19T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Boston vs. Brooklyn",
+      "slug": "aec-nba-bos-bkn-2025-11-18",
+      "teams": [
+        "bos",
+        "bkn",
+        "2025",
+        "11",
+        "18"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-19T04:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Portland",
+      "slug": "aec-nba-pho-por-2025-11-18",
+      "teams": [
+        "pho",
+        "por",
+        "2025",
+        "11",
+        "18"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-19T03:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Utah vs. Los Angeles",
+      "slug": "aec-nba-uta-lal-2025-11-18",
+      "teams": [
+        "uta",
+        "lal",
+        "2025",
+        "11",
+        "18"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Oklahoma City",
+      "slug": "aec-nba-sac-okc-2025-11-19",
+      "teams": [
+        "sac",
+        "okc",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. Indiana",
+      "slug": "aec-nba-cha-ind-2025-11-19",
+      "teams": [
+        "cha",
+        "ind",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. New Orleans",
+      "slug": "aec-nba-den-no-2025-11-19",
+      "teams": [
+        "den",
+        "no",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. Philadelphia",
+      "slug": "aec-nba-tor-phi-2025-11-19",
+      "teams": [
+        "tor",
+        "phi",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Minnesota",
+      "slug": "aec-nba-was-min-2025-11-19",
+      "teams": [
+        "was",
+        "min",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Cleveland",
+      "slug": "aec-nba-hou-cle-2025-11-19",
+      "teams": [
+        "hou",
+        "cle",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. Miami",
+      "slug": "aec-nba-gs-mia-2025-11-19",
+      "teams": [
+        "gs",
+        "mia",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Carolina vs. San Francisco",
+      "slug": "aec-nfl-car-sf-2025-11-24",
+      "teams": [
+        "car",
+        "sf",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Portland",
+      "slug": "aec-nba-chi-por-2025-11-19",
+      "teams": [
+        "chi",
+        "por",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-20T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New York vs. Dallas",
+      "slug": "aec-nba-ny-dal-2025-11-19",
+      "teams": [
+        "ny",
+        "dal",
+        "2025",
+        "11",
+        "19"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-21T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Milwaukee",
+      "slug": "aec-nba-phi-mil-2025-11-20",
+      "teams": [
+        "phi",
+        "mil",
+        "2025",
+        "11",
+        "20"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-21T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Memphis",
+      "slug": "aec-nba-sac-mem-2025-11-20",
+      "teams": [
+        "sac",
+        "mem",
+        "2025",
+        "11",
+        "20"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-21T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Orlando",
+      "slug": "aec-nba-lac-orl-2025-11-20",
+      "teams": [
+        "lac",
+        "orl",
+        "2025",
+        "11",
+        "20"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-21T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. San Antonio",
+      "slug": "aec-nba-atl-sa-2025-11-20",
+      "teams": [
+        "atl",
+        "sa",
+        "2025",
+        "11",
+        "20"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Phoenix",
+      "slug": "aec-nba-min-pho-2025-11-21",
+      "teams": [
+        "min",
+        "pho",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Cleveland",
+      "slug": "aec-nba-ind-cle-2025-11-21",
+      "teams": [
+        "ind",
+        "cle",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Miami vs. Chicago",
+      "slug": "aec-nba-mia-chi-2025-11-21",
+      "teams": [
+        "mia",
+        "chi",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Dallas",
+      "slug": "aec-nba-no-dal-2025-11-21",
+      "teams": [
+        "no",
+        "dal",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Toronto",
+      "slug": "aec-nba-was-tor-2025-11-21",
+      "teams": [
+        "was",
+        "tor",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. Boston",
+      "slug": "aec-nba-bkn-bos-2025-11-21",
+      "teams": [
+        "bkn",
+        "bos",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Oklahoma City vs. Utah",
+      "slug": "aec-nba-okc-uta-2025-11-21",
+      "teams": [
+        "okc",
+        "uta",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Golden State",
+      "slug": "aec-nba-por-gs-2025-11-21",
+      "teams": [
+        "por",
+        "gs",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Houston",
+      "slug": "aec-nba-den-hou-2025-11-21",
+      "teams": [
+        "den",
+        "hou",
+        "2025",
+        "11",
+        "21"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Green Bay vs. Detroit",
+      "slug": "aec-nfl-gb-det-2025-11-27",
+      "teams": [
+        "gb",
+        "det",
+        "2025",
+        "11",
+        "27"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T18:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Charlotte",
+      "slug": "aec-nba-lac-cha-2025-11-22",
+      "teams": [
+        "lac",
+        "cha",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-22T22:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New York vs. Orlando",
+      "slug": "aec-nba-ny-orl-2025-11-22",
+      "teams": [
+        "ny",
+        "orl",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. Dallas",
+      "slug": "aec-nba-mem-dal-2025-11-22",
+      "teams": [
+        "mem",
+        "dal",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Milwaukee",
+      "slug": "aec-nba-det-mil-2025-11-22",
+      "teams": [
+        "det",
+        "mil",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Chicago",
+      "slug": "aec-nba-was-chi-2025-11-22",
+      "teams": [
+        "was",
+        "chi",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. New Orleans",
+      "slug": "aec-nba-atl-no-2025-11-22",
+      "teams": [
+        "atl",
+        "no",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-28T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Cincinnati vs. Baltimore",
+      "slug": "aec-nfl-cin-bal-2025-11-27",
+      "teams": [
+        "cin",
+        "bal",
+        "2025",
+        "11",
+        "27"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T21:30:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Kansas City vs. Dallas",
+      "slug": "aec-nfl-kc-dal-2025-11-27",
+      "teams": [
+        "kc",
+        "dal",
+        "2025",
+        "11",
+        "27"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Denver",
+      "slug": "aec-nba-sac-den-2025-11-22",
+      "teams": [
+        "sac",
+        "den",
+        "2025",
+        "11",
+        "22"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-28T20:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Philadelphia",
+      "slug": "aec-nfl-chi-phi-2025-11-28",
+      "teams": [
+        "chi",
+        "phi",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T18:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Miami vs. Philadelphia",
+      "slug": "aec-nba-mia-phi-2025-11-23",
+      "teams": [
+        "mia",
+        "phi",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-24T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Phoenix",
+      "slug": "aec-nba-sa-pho-2025-11-23",
+      "teams": [
+        "sa",
+        "pho",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-24T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Utah",
+      "slug": "aec-nba-lal-uta-2025-11-23",
+      "teams": [
+        "lal",
+        "uta",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-24T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Oklahoma City",
+      "slug": "aec-nba-por-okc-2025-11-23",
+      "teams": [
+        "por",
+        "okc",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Cleveland",
+      "slug": "aec-nba-lac-cle-2025-11-23",
+      "teams": [
+        "lac",
+        "cle",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. Toronto",
+      "slug": "aec-nba-bkn-tor-2025-11-23",
+      "teams": [
+        "bkn",
+        "tor",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Orlando vs. Boston",
+      "slug": "aec-nba-orl-bos-2025-11-23",
+      "teams": [
+        "orl",
+        "bos",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-23T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. Atlanta",
+      "slug": "aec-nba-cha-atl-2025-11-23",
+      "teams": [
+        "cha",
+        "atl",
+        "2025",
+        "11",
+        "23"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Memphis",
+      "slug": "aec-nba-den-mem-2025-11-24",
+      "teams": [
+        "den",
+        "mem",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. New Orleans",
+      "slug": "aec-nba-chi-no-2025-11-24",
+      "teams": [
+        "chi",
+        "no",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Miami",
+      "slug": "aec-nba-dal-mia-2025-11-24",
+      "teams": [
+        "dal",
+        "mia",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. Toronto",
+      "slug": "aec-nba-cle-tor-2025-11-24",
+      "teams": [
+        "cle",
+        "tor",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Milwaukee",
+      "slug": "aec-nba-por-mil-2025-11-24",
+      "teams": [
+        "por",
+        "mil",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Indiana",
+      "slug": "aec-nba-det-ind-2025-11-24",
+      "teams": [
+        "det",
+        "ind",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New York vs. Brooklyn",
+      "slug": "aec-nba-ny-bkn-2025-11-24",
+      "teams": [
+        "ny",
+        "bkn",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Sacramento",
+      "slug": "aec-nba-min-sac-2025-11-24",
+      "teams": [
+        "min",
+        "sac",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Utah vs. Golden State",
+      "slug": "aec-nba-uta-gs-2025-11-24",
+      "teams": [
+        "uta",
+        "gs",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-25T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Phoenix",
+      "slug": "aec-nba-hou-pho-2025-11-24",
+      "teams": [
+        "hou",
+        "pho",
+        "2025",
+        "11",
+        "24"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "San Francisco vs. Cleveland",
+      "slug": "aec-nfl-sf-cle-2025-11-30",
+      "teams": [
+        "sf",
+        "cle",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Houston vs. Indianapolis",
+      "slug": "aec-nfl-hou-ind-2025-11-30",
+      "teams": [
+        "hou",
+        "ind",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Arizona vs. Tampa Bay",
+      "slug": "aec-nfl-ari-tb-2025-11-30",
+      "teams": [
+        "ari",
+        "tb",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. New York",
+      "slug": "aec-nfl-atl-nyj-2025-11-30",
+      "teams": [
+        "atl",
+        "nyj",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Carolina",
+      "slug": "aec-nfl-lar-car-2025-11-30",
+      "teams": [
+        "lar",
+        "car",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Jacksonville vs. Tennessee",
+      "slug": "aec-nfl-jax-ten-2025-11-30",
+      "teams": [
+        "jax",
+        "ten",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Miami",
+      "slug": "aec-nfl-no-mia-2025-11-30",
+      "teams": [
+        "no",
+        "mia",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Seattle",
+      "slug": "aec-nfl-min-sea-2025-11-30",
+      "teams": [
+        "min",
+        "sea",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-26T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Washington",
+      "slug": "aec-nba-atl-was-2025-11-25",
+      "teams": [
+        "atl",
+        "was",
+        "2025",
+        "11",
+        "25"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-26T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Orlando vs. Philadelphia",
+      "slug": "aec-nba-orl-phi-2025-11-25",
+      "teams": [
+        "orl",
+        "phi",
+        "2025",
+        "11",
+        "25"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-01T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Denver vs. Washington",
+      "slug": "aec-nfl-den-was-2025-11-30",
+      "teams": [
+        "den",
+        "was",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Buffalo vs. Pittsburgh",
+      "slug": "aec-nfl-buf-pit-2025-11-30",
+      "teams": [
+        "buf",
+        "pit",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Las Vegas vs. Los Angeles",
+      "slug": "aec-nfl-lv-lac-2025-11-30",
+      "teams": [
+        "lv",
+        "lac",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-26T04:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Los Angeles",
+      "slug": "aec-nba-lac-lal-2025-11-25",
+      "teams": [
+        "lac",
+        "lal",
+        "2025",
+        "11",
+        "25"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-26T22:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Boston",
+      "slug": "aec-nba-det-bos-2025-11-26",
+      "teams": [
+        "det",
+        "bos",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. Miami",
+      "slug": "aec-nba-mil-mia-2025-11-26",
+      "teams": [
+        "mil",
+        "mia",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. New Orleans",
+      "slug": "aec-nba-mem-no-2025-11-26",
+      "teams": [
+        "mem",
+        "no",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New York vs. Charlotte",
+      "slug": "aec-nba-ny-cha-2025-11-26",
+      "teams": [
+        "ny",
+        "cha",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. Oklahoma City",
+      "slug": "aec-nba-min-okc-2025-11-26",
+      "teams": [
+        "min",
+        "okc",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Toronto",
+      "slug": "aec-nba-ind-tor-2025-11-26",
+      "teams": [
+        "ind",
+        "tor",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New York vs. New England",
+      "slug": "aec-nfl-nyg-ne-2025-12-01",
+      "teams": [
+        "nyg",
+        "ne",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Golden State",
+      "slug": "aec-nba-hou-gs-2025-11-26",
+      "teams": [
+        "hou",
+        "gs",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Portland",
+      "slug": "aec-nba-sa-por-2025-11-26",
+      "teams": [
+        "sa",
+        "por",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-27T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Sacramento",
+      "slug": "aec-nba-pho-sac-2025-11-26",
+      "teams": [
+        "pho",
+        "sac",
+        "2025",
+        "11",
+        "26"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Indiana",
+      "slug": "aec-nba-was-ind-2025-11-28",
+      "teams": [
+        "was",
+        "ind",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. New York",
+      "slug": "aec-nba-mil-ny-2025-11-28",
+      "teams": [
+        "mil",
+        "ny",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Brooklyn",
+      "slug": "aec-nba-phi-bkn-2025-11-28",
+      "teams": [
+        "phi",
+        "bkn",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Orlando vs. Detroit",
+      "slug": "aec-nba-orl-det-2025-11-28",
+      "teams": [
+        "orl",
+        "det",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Charlotte",
+      "slug": "aec-nba-chi-cha-2025-11-28",
+      "teams": [
+        "chi",
+        "cha",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. Atlanta",
+      "slug": "aec-nba-cle-atl-2025-11-28",
+      "teams": [
+        "cle",
+        "atl",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. Los Angeles",
+      "slug": "aec-nba-mem-lac-2025-11-28",
+      "teams": [
+        "mem",
+        "lac",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Oklahoma City",
+      "slug": "aec-nba-pho-okc-2025-11-28",
+      "teams": [
+        "pho",
+        "okc",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Utah",
+      "slug": "aec-nba-sac-uta-2025-11-28",
+      "teams": [
+        "sac",
+        "uta",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Denver",
+      "slug": "aec-nba-sa-den-2025-11-28",
+      "teams": [
+        "sa",
+        "den",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Los Angeles",
+      "slug": "aec-nba-dal-lal-2025-11-28",
+      "teams": [
+        "dal",
+        "lal",
+        "2025",
+        "11",
+        "28"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. Charlotte",
+      "slug": "aec-nba-tor-cha-2025-11-29",
+      "teams": [
+        "tor",
+        "cha",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-29T22:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Boston vs. Minnesota",
+      "slug": "aec-nba-bos-min-2025-11-29",
+      "teams": [
+        "bos",
+        "min",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-05T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Detroit",
+      "slug": "aec-nfl-dal-det-2025-12-04",
+      "teams": [
+        "dal",
+        "det",
+        "2025",
+        "12",
+        "04"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Miami",
+      "slug": "aec-nba-det-mia-2025-11-29",
+      "teams": [
+        "det",
+        "mia",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Indiana",
+      "slug": "aec-nba-chi-ind-2025-11-29",
+      "teams": [
+        "chi",
+        "ind",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Golden State",
+      "slug": "aec-nba-no-gs-2025-11-29",
+      "teams": [
+        "no",
+        "gs",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. Milwaukee",
+      "slug": "aec-nba-bkn-mil-2025-11-29",
+      "teams": [
+        "bkn",
+        "mil",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Phoenix",
+      "slug": "aec-nba-den-pho-2025-11-29",
+      "teams": [
+        "den",
+        "pho",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Los Angeles",
+      "slug": "aec-nba-dal-lac-2025-11-29",
+      "teams": [
+        "dal",
+        "lac",
+        "2025",
+        "11",
+        "29"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T20:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Utah",
+      "slug": "aec-nba-hou-uta-2025-11-30",
+      "teams": [
+        "hou",
+        "uta",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-01T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Minnesota",
+      "slug": "aec-nba-sa-min-2025-11-30",
+      "teams": [
+        "sa",
+        "min",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-01T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. Sacramento",
+      "slug": "aec-nba-mem-sac-2025-11-30",
+      "teams": [
+        "mem",
+        "sac",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Philadelphia",
+      "slug": "aec-nba-atl-phi-2025-11-30",
+      "teams": [
+        "atl",
+        "phi",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Oklahoma City vs. Portland",
+      "slug": "aec-nba-okc-por-2025-11-30",
+      "teams": [
+        "okc",
+        "por",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Toronto vs. New York",
+      "slug": "aec-nba-tor-ny-2025-11-30",
+      "teams": [
+        "tor",
+        "ny",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-11-30T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Boston vs. Cleveland",
+      "slug": "aec-nba-bos-cle-2025-11-30",
+      "teams": [
+        "bos",
+        "cle",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-01T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Los Angeles",
+      "slug": "aec-nba-no-lal-2025-11-30",
+      "teams": [
+        "no",
+        "lal",
+        "2025",
+        "11",
+        "30"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Denver",
+      "slug": "aec-nba-dal-den-2025-12-01",
+      "teams": [
+        "dal",
+        "den",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Detroit",
+      "slug": "aec-nba-atl-det-2025-12-01",
+      "teams": [
+        "atl",
+        "det",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T02:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Utah",
+      "slug": "aec-nba-hou-uta-2025-12-01",
+      "teams": [
+        "hou",
+        "uta",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. Brooklyn",
+      "slug": "aec-nba-cha-bkn-2025-12-01",
+      "teams": [
+        "cha",
+        "bkn",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Orlando",
+      "slug": "aec-nba-chi-orl-2025-12-01",
+      "teams": [
+        "chi",
+        "orl",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Cleveland vs. Indiana",
+      "slug": "aec-nba-cle-ind-2025-12-01",
+      "teams": [
+        "cle",
+        "ind",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. Washington",
+      "slug": "aec-nba-mil-was-2025-12-01",
+      "teams": [
+        "mil",
+        "was",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Miami",
+      "slug": "aec-nba-lac-mia-2025-12-01",
+      "teams": [
+        "lac",
+        "mia",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-02T03:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Los Angeles",
+      "slug": "aec-nba-pho-lal-2025-12-01",
+      "teams": [
+        "pho",
+        "lal",
+        "2025",
+        "12",
+        "01"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Cincinnati vs. Buffalo",
+      "slug": "aec-nfl-cin-buf-2025-12-07",
+      "teams": [
+        "cin",
+        "buf",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Seattle vs. Atlanta",
+      "slug": "aec-nfl-sea-atl-2025-12-07",
+      "teams": [
+        "sea",
+        "atl",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Tampa Bay",
+      "slug": "aec-nfl-no-tb-2025-12-07",
+      "teams": [
+        "no",
+        "tb",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Tennessee vs. Cleveland",
+      "slug": "aec-nfl-ten-cle-2025-12-07",
+      "teams": [
+        "ten",
+        "cle",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Miami vs. New York",
+      "slug": "aec-nfl-mia-nyj-2025-12-07",
+      "teams": [
+        "mia",
+        "nyj",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Pittsburgh vs. Baltimore",
+      "slug": "aec-nfl-pit-bal-2025-12-07",
+      "teams": [
+        "pit",
+        "bal",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Washington vs. Minnesota",
+      "slug": "aec-nfl-was-min-2025-12-07",
+      "teams": [
+        "was",
+        "min",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Indianapolis vs. Jacksonville",
+      "slug": "aec-nfl-ind-jax-2025-12-07",
+      "teams": [
+        "ind",
+        "jax",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-03T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Memphis vs. San Antonio",
+      "slug": "aec-nba-mem-sa-2025-12-02",
+      "teams": [
+        "mem",
+        "sa",
+        "2025",
+        "12",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-03T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New York vs. Boston",
+      "slug": "aec-nba-ny-bos-2025-12-02",
+      "teams": [
+        "ny",
+        "bos",
+        "2025",
+        "12",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-03T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Toronto",
+      "slug": "aec-nba-por-tor-2025-12-02",
+      "teams": [
+        "por",
+        "tor",
+        "2025",
+        "12",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-03T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Washington vs. Philadelphia",
+      "slug": "aec-nba-was-phi-2025-12-02",
+      "teams": [
+        "was",
+        "phi",
+        "2025",
+        "12",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-03T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. New Orleans",
+      "slug": "aec-nba-min-no-2025-12-02",
+      "teams": [
+        "min",
+        "no",
+        "2025",
+        "12",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T01:20:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Houston vs. Kansas City",
+      "slug": "aec-nfl-hou-kc-2025-12-07",
+      "teams": [
+        "hou",
+        "kc",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Chicago vs. Green Bay",
+      "slug": "aec-nfl-chi-gb-2025-12-07",
+      "teams": [
+        "chi",
+        "gb",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T21:05:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Denver vs. Las Vegas",
+      "slug": "aec-nfl-den-lv-2025-12-07",
+      "teams": [
+        "den",
+        "lv",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T21:25:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Arizona",
+      "slug": "aec-nfl-lar-ari-2025-12-07",
+      "teams": [
+        "lar",
+        "ari",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-03T04:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Oklahoma City vs. Golden State",
+      "slug": "aec-nba-okc-gs-2025-12-02",
+      "teams": [
+        "okc",
+        "gs",
+        "2025",
+        "12",
+        "02"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Houston",
+      "slug": "aec-nba-sac-hou-2025-12-03",
+      "teams": [
+        "sac",
+        "hou",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Atlanta",
+      "slug": "aec-nba-lac-atl-2025-12-03",
+      "teams": [
+        "lac",
+        "atl",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Milwaukee",
+      "slug": "aec-nba-det-mil-2025-12-03",
+      "teams": [
+        "det",
+        "mil",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Indiana",
+      "slug": "aec-nba-den-ind-2025-12-03",
+      "teams": [
+        "den",
+        "ind",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Brooklyn vs. Chicago",
+      "slug": "aec-nba-bkn-chi-2025-12-03",
+      "teams": [
+        "bkn",
+        "chi",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Cleveland",
+      "slug": "aec-nba-por-cle-2025-12-03",
+      "teams": [
+        "por",
+        "cle",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Orlando",
+      "slug": "aec-nba-sa-orl-2025-12-03",
+      "teams": [
+        "sa",
+        "orl",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Miami vs. Dallas",
+      "slug": "aec-nba-mia-dal-2025-12-03",
+      "teams": [
+        "mia",
+        "dal",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-04T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. New York",
+      "slug": "aec-nba-cha-ny-2025-12-03",
+      "teams": [
+        "cha",
+        "ny",
+        "2025",
+        "12",
+        "03"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-09T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Los Angeles",
+      "slug": "aec-nfl-phi-lac-2025-12-08",
+      "teams": [
+        "phi",
+        "lac",
+        "2025",
+        "12",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-05T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Minnesota vs. New Orleans",
+      "slug": "aec-nba-min-no-2025-12-04",
+      "teams": [
+        "min",
+        "no",
+        "2025",
+        "12",
+        "04"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-05T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. Philadelphia",
+      "slug": "aec-nba-gs-phi-2025-12-04",
+      "teams": [
+        "gs",
+        "phi",
+        "2025",
+        "12",
+        "04"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-05T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Utah vs. Brooklyn",
+      "slug": "aec-nba-uta-bkn-2025-12-04",
+      "teams": [
+        "uta",
+        "bkn",
+        "2025",
+        "12",
+        "04"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-05T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Boston vs. Washington",
+      "slug": "aec-nba-bos-was-2025-12-04",
+      "teams": [
+        "bos",
+        "was",
+        "2025",
+        "12",
+        "04"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-05T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Toronto",
+      "slug": "aec-nba-lal-tor-2025-12-04",
+      "teams": [
+        "lal",
+        "tor",
+        "2025",
+        "12",
+        "04"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Philadelphia vs. Milwaukee",
+      "slug": "aec-nba-phi-mil-2025-12-05",
+      "teams": [
+        "phi",
+        "mil",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Indiana vs. Chicago",
+      "slug": "aec-nba-ind-chi-2025-12-05",
+      "teams": [
+        "ind",
+        "chi",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Phoenix vs. Houston",
+      "slug": "aec-nba-pho-hou-2025-12-05",
+      "teams": [
+        "pho",
+        "hou",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Boston",
+      "slug": "aec-nba-lal-bos-2025-12-05",
+      "teams": [
+        "lal",
+        "bos",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Memphis",
+      "slug": "aec-nba-lac-mem-2025-12-05",
+      "teams": [
+        "lac",
+        "mem",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Utah vs. New York",
+      "slug": "aec-nba-uta-ny-2025-12-05",
+      "teams": [
+        "uta",
+        "ny",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "San Antonio vs. Cleveland",
+      "slug": "aec-nba-sa-cle-2025-12-05",
+      "teams": [
+        "sa",
+        "cle",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Denver vs. Atlanta",
+      "slug": "aec-nba-den-atl-2025-12-05",
+      "teams": [
+        "den",
+        "atl",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Portland vs. Detroit",
+      "slug": "aec-nba-por-det-2025-12-05",
+      "teams": [
+        "por",
+        "det",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Miami vs. Orlando",
+      "slug": "aec-nba-mia-orl-2025-12-05",
+      "teams": [
+        "mia",
+        "orl",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Charlotte vs. Toronto",
+      "slug": "aec-nba-cha-tor-2025-12-05",
+      "teams": [
+        "cha",
+        "tor",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T02:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Dallas vs. Oklahoma City",
+      "slug": "aec-nba-dal-okc-2025-12-05",
+      "teams": [
+        "dal",
+        "okc",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "New Orleans vs. Brooklyn",
+      "slug": "aec-nba-no-bkn-2025-12-06",
+      "teams": [
+        "no",
+        "bkn",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T01:15:00Z",
+      "league": "nfl",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Tampa Bay",
+      "slug": "aec-nfl-atl-tb-2025-12-11",
+      "teams": [
+        "atl",
+        "tb",
+        "2025",
+        "12",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Milwaukee vs. Detroit",
+      "slug": "aec-nba-mil-det-2025-12-06",
+      "teams": [
+        "mil",
+        "det",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Atlanta vs. Washington",
+      "slug": "aec-nba-atl-was-2025-12-06",
+      "teams": [
+        "atl",
+        "was",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Sacramento vs. Miami",
+      "slug": "aec-nba-sac-mia-2025-12-06",
+      "teams": [
+        "sac",
+        "mia",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Golden State vs. Cleveland",
+      "slug": "aec-nba-gs-cle-2025-12-06",
+      "teams": [
+        "gs",
+        "cle",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Los Angeles vs. Minnesota",
+      "slug": "aec-nba-lac-min-2025-12-06",
+      "teams": [
+        "lac",
+        "min",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Houston vs. Dallas",
+      "slug": "aec-nba-hou-dal-2025-12-06",
+      "teams": [
+        "hou",
+        "dal",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Bulldogs vs. Crimson Tide",
+      "slug": "aec-cfb-ga-ala-2025-12-06",
+      "teams": [
+        "cfb",
+        "ga",
+        "ala",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Mean Green vs. Green Wave",
+      "slug": "aec-cfb-ntx-tulane-2025-12-05",
+      "teams": [
+        "cfb",
+        "ntx",
+        "tulane",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Cougars vs. Red Raiders",
+      "slug": "aec-cfb-byu-txtech-2025-12-06",
+      "teams": [
+        "cfb",
+        "byu",
+        "txtech",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Trojans vs. Dukes",
+      "slug": "aec-cfb-troy-jmad-2025-12-05",
+      "teams": [
+        "cfb",
+        "troy",
+        "jmad",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Blue Devils vs. Cavaliers",
+      "slug": "aec-cfb-duke-vir-2025-12-06",
+      "teams": [
+        "cfb",
+        "duke",
+        "vir",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "RedHawks vs. Broncos",
+      "slug": "aec-cfb-miaoh-wmich-2025-12-06",
+      "teams": [
+        "cfb",
+        "miaoh",
+        "wmich",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Buckeyes vs. Hoosiers",
+      "slug": "aec-cfb-ohiost-ind-2025-12-06",
+      "teams": [
+        "cfb",
+        "ohiost",
+        "ind",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Owls vs. Gamecocks",
+      "slug": "aec-cfb-kenest-jaxst-2025-12-05",
+      "teams": [
+        "cfb",
+        "kenest",
+        "jaxst",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "other",
+      "marketType": "moneyline",
+      "question": "Runnin' Rebels vs. Broncos",
+      "slug": "aec-cfb-unlv-boise-2025-12-05",
+      "teams": [
+        "cfb",
+        "unlv",
+        "boise",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T17:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Magic vs. Knicks",
+      "slug": "aec-nba-orl-ny-2025-12-07",
+      "teams": [
+        "orl",
+        "ny",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T20:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Celtics vs. Raptors",
+      "slug": "aec-nba-bos-tor-2025-12-07",
+      "teams": [
+        "bos",
+        "tor",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Trail Blazers vs. Grizzlies",
+      "slug": "aec-nba-por-mem-2025-12-07",
+      "teams": [
+        "por",
+        "mem",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T23:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Nuggets vs. Hornets",
+      "slug": "aec-nba-den-cha-2025-12-07",
+      "teams": [
+        "den",
+        "cha",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T00:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Warriors vs. Bulls",
+      "slug": "aec-nba-gs-chi-2025-12-07",
+      "teams": [
+        "gs",
+        "chi",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T00:30:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Lakers vs. 76ers",
+      "slug": "aec-nba-lal-phi-2025-12-07",
+      "teams": [
+        "lal",
+        "phi",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T01:00:00Z",
+      "league": "nba",
+      "marketType": "moneyline",
+      "question": "Thunder vs. Jazz",
+      "slug": "aec-nba-okc-uta-2025-12-07",
+      "teams": [
+        "okc",
+        "uta",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blues vs. Senators",
+      "slug": "aec-nhl-stl-ott-2025-12-07",
+      "teams": [
+        "stl",
+        "ott",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sharks vs. Stars",
+      "slug": "aec-nhl-sj-dal-2025-12-06",
+      "teams": [
+        "sj",
+        "dal",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T02:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Mammoth vs. Canucks",
+      "slug": "aec-nhl-utah-van-2025-12-06",
+      "teams": [
+        "utah",
+        "van",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Canadiens vs. Maple Leafs",
+      "slug": "aec-nhl-mon-tor-2025-12-07",
+      "teams": [
+        "mon",
+        "tor",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Predators vs. Hurricanes",
+      "slug": "aec-nhl-nsh-car-2025-12-07",
+      "teams": [
+        "nsh",
+        "car",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Avalanche vs. Rangers",
+      "slug": "aec-nhl-col-nyr-2025-12-06",
+      "teams": [
+        "col",
+        "nyr",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Devils vs. Bruins",
+      "slug": "aec-nhl-nj-bos-2025-12-07",
+      "teams": [
+        "nj",
+        "bos",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Mammoth vs. Flames",
+      "slug": "aec-nhl-utah-cal-2025-12-07",
+      "teams": [
+        "utah",
+        "cal",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sabres vs. Jets",
+      "slug": "aec-nhl-buf-wpg-2025-12-06",
+      "teams": [
+        "buf",
+        "wpg",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T02:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blackhawks vs. Kings",
+      "slug": "aec-nhl-chi-lak-2025-12-07",
+      "teams": [
+        "chi",
+        "lak",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Golden Knights vs. Devils",
+      "slug": "aec-nhl-las-nj-2025-12-06",
+      "teams": [
+        "las",
+        "nj",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Capitals vs. Ducks",
+      "slug": "aec-nhl-wsh-ana-2025-12-06",
+      "teams": [
+        "wsh",
+        "ana",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blue Jackets vs. Panthers",
+      "slug": "aec-nhl-cbj-fla-2025-12-06",
+      "teams": [
+        "cbj",
+        "fla",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T22:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Islanders vs. Panthers",
+      "slug": "aec-nhl-nyi-fla-2025-12-07",
+      "teams": [
+        "nyi",
+        "fla",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Islanders vs. Lightning",
+      "slug": "aec-nhl-nyi-tb-2025-12-07",
+      "teams": [
+        "nyi",
+        "tb",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T22:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sharks vs. Hurricanes",
+      "slug": "aec-nhl-sj-car-2025-12-07",
+      "teams": [
+        "sj",
+        "car",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Jets vs. Oilers",
+      "slug": "aec-nhl-wpg-edm-2025-12-07",
+      "teams": [
+        "wpg",
+        "edm",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-09T02:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Kings vs. Mammoth",
+      "slug": "aec-nhl-lak-utah-2025-12-09",
+      "teams": [
+        "lak",
+        "utah",
+        "2025",
+        "12",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blue Jackets vs. Capitals",
+      "slug": "aec-nhl-cbj-wsh-2025-12-08",
+      "teams": [
+        "cbj",
+        "wsh",
+        "2025",
+        "12",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-09T02:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sabres vs. Flames",
+      "slug": "aec-nhl-buf-cal-2025-12-09",
+      "teams": [
+        "buf",
+        "cal",
+        "2025",
+        "12",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-09T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Wild vs. Kraken",
+      "slug": "aec-nhl-min-sea-2025-12-09",
+      "teams": [
+        "min",
+        "sea",
+        "2025",
+        "12",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-09T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Red Wings vs. Canucks",
+      "slug": "aec-nhl-det-van-2025-12-09",
+      "teams": [
+        "det",
+        "van",
+        "2025",
+        "12",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sharks vs. Flyers",
+      "slug": "aec-nhl-sj-phi-2025-12-10",
+      "teams": [
+        "sj",
+        "phi",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blues vs. Canadiens",
+      "slug": "aec-nhl-stl-mon-2025-12-08",
+      "teams": [
+        "stl",
+        "mon",
+        "2025",
+        "12",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T23:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Penguins vs. Stars",
+      "slug": "aec-nhl-pit-dal-2025-12-07",
+      "teams": [
+        "pit",
+        "dal",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Bryant vs. Brown",
+      "slug": "aec-cbb-bryant-brown-2025-12-05",
+      "teams": [
+        "bryant",
+        "brown",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Red Wings vs. Kraken",
+      "slug": "aec-nhl-det-sea-2025-12-07",
+      "teams": [
+        "det",
+        "sea",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Samford vs. VCU",
+      "slug": "aec-cbb-samf-vcu-2025-12-05",
+      "teams": [
+        "samf",
+        "vcu",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Wild vs. Canucks",
+      "slug": "aec-nhl-min-van-2025-12-07",
+      "teams": [
+        "min",
+        "van",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Avalanche vs. Flyers",
+      "slug": "aec-nhl-col-phi-2025-12-07",
+      "teams": [
+        "col",
+        "phi",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T01:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blackhawks vs. Ducks",
+      "slug": "aec-nhl-chi-ana-2025-12-08",
+      "teams": [
+        "chi",
+        "ana",
+        "2025",
+        "12",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-09T00:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Lightning vs. Maple Leafs",
+      "slug": "aec-nhl-tb-tor-2025-12-09",
+      "teams": [
+        "tb",
+        "tor",
+        "2025",
+        "12",
+        "09"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-08T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Golden Knights vs. Rangers",
+      "slug": "aec-nhl-las-nyr-2025-12-08",
+      "teams": [
+        "las",
+        "nyr",
+        "2025",
+        "12",
+        "08"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Ducks vs. Penguins",
+      "slug": "aec-nhl-ana-pit-2025-12-10",
+      "teams": [
+        "ana",
+        "pit",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Golden Knights vs. Islanders",
+      "slug": "aec-nhl-las-nyi-2025-12-10",
+      "teams": [
+        "las",
+        "nyi",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T02:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sabres vs. Oilers",
+      "slug": "aec-nhl-buf-edm-2025-12-10",
+      "teams": [
+        "buf",
+        "edm",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-11T00:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Rangers vs. Blackhawks",
+      "slug": "aec-nhl-nyr-chi-2025-12-11",
+      "teams": [
+        "nyr",
+        "chi",
+        "2025",
+        "12",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T01:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Stars vs. Jets",
+      "slug": "aec-nhl-dal-wpg-2025-12-10",
+      "teams": [
+        "dal",
+        "wpg",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Kentucky vs. Gonzaga",
+      "slug": "aec-cbb-uk-gnzg-2025-12-05",
+      "teams": [
+        "uk",
+        "gnzg",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Niagara vs. Siena",
+      "slug": "aec-cbb-niagra-siena-2025-12-05",
+      "teams": [
+        "niagra",
+        "siena",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-11T02:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Panthers vs. Mammoth",
+      "slug": "aec-nhl-fla-utah-2025-12-11",
+      "teams": [
+        "fla",
+        "utah",
+        "2025",
+        "12",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Fairfield vs. Manhattan",
+      "slug": "aec-cbb-fair-manh-2025-12-05",
+      "teams": [
+        "fair",
+        "manh",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-11T03:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Kings vs. Kraken",
+      "slug": "aec-nhl-lak-sea-2025-12-11",
+      "teams": [
+        "lak",
+        "sea",
+        "2025",
+        "12",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Northwestern State vs. McNeese State",
+      "slug": "aec-cbb-nwst-mcnst-2025-12-05",
+      "teams": [
+        "nwst",
+        "mcnst",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Senators vs. Blue Jackets",
+      "slug": "aec-nhl-ott-cbj-2025-12-12",
+      "teams": [
+        "ott",
+        "cbj",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "UAB vs. Drake",
+      "slug": "aec-cbb-uab-drake-2025-12-05",
+      "teams": [
+        "uab",
+        "drake",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Canadiens vs. Penguins",
+      "slug": "aec-nhl-mon-pit-2025-12-12",
+      "teams": [
+        "mon",
+        "pit",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T03:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "San Diego vs. San Jose State",
+      "slug": "aec-cbb-sd-sjst-2025-12-05",
+      "teams": [
+        "sd",
+        "sjst",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Iowa State vs. Purdue",
+      "slug": "aec-cbb-iowast-pur-2025-12-06",
+      "teams": [
+        "iowast",
+        "pur",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Mercyhurst vs. Lafayette",
+      "slug": "aec-cbb-mrcy-lafay-2025-12-05",
+      "teams": [
+        "mrcy",
+        "lafay",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Devils vs. Senators",
+      "slug": "aec-nhl-nj-ott-2025-12-10",
+      "teams": [
+        "nj",
+        "ott",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Quinnipiac vs. Iona",
+      "slug": "aec-cbb-quin-iona-2025-12-05",
+      "teams": [
+        "quin",
+        "iona",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Canisius vs. Saint Peter's",
+      "slug": "aec-cbb-cans-stpete-2025-12-05",
+      "teams": [
+        "cans",
+        "stpete",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Lightning vs. Canadiens",
+      "slug": "aec-nhl-tb-mon-2025-12-10",
+      "teams": [
+        "tb",
+        "mon",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T01:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Bruins vs. Blues",
+      "slug": "aec-nhl-bos-stl-2025-12-10",
+      "teams": [
+        "bos",
+        "stl",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-11T01:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Red Wings vs. Flames",
+      "slug": "aec-nhl-det-cal-2025-12-11",
+      "teams": [
+        "det",
+        "cal",
+        "2025",
+        "12",
+        "11"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Hurricanes vs. Capitals",
+      "slug": "aec-nhl-car-wsh-2025-12-12",
+      "teams": [
+        "car",
+        "wsh",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "NJIT vs. High Point",
+      "slug": "aec-cbb-njit-hpnt-2025-12-05",
+      "teams": [
+        "njit",
+        "hpnt",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Cincinnati vs. Xavier",
+      "slug": "aec-cbb-cin-xav-2025-12-05",
+      "teams": [
+        "cin",
+        "xav",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "East Texas A&M vs. Connecticut",
+      "slug": "aec-cbb-txamc-uconn-2025-12-05",
+      "teams": [
+        "txamc",
+        "uconn",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Notre Dame vs. TCU",
+      "slug": "aec-cbb-nd-tcu-2025-12-05",
+      "teams": [
+        "nd",
+        "tcu",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Golden Knights vs. Flyers",
+      "slug": "aec-nhl-las-phi-2025-12-12",
+      "teams": [
+        "las",
+        "phi",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Monmouth vs. Georgia Tech",
+      "slug": "aec-cbb-monm-gtech-2025-12-06",
+      "teams": [
+        "monm",
+        "gtech",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Lightning vs. Devils",
+      "slug": "aec-nhl-tb-nj-2025-12-12",
+      "teams": [
+        "tb",
+        "nj",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T00:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Blue Jackets vs. Hurricanes",
+      "slug": "aec-nhl-cbj-car-2025-12-10",
+      "teams": [
+        "cbj",
+        "car",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Southern Miss vs. Miami",
+      "slug": "aec-cbb-soumis-mia-2025-12-06",
+      "teams": [
+        "soumis",
+        "mia",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "South Alabama vs. East Tennessee State",
+      "slug": "aec-cbb-sala-etnst-2025-12-05",
+      "teams": [
+        "sala",
+        "etnst",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Mount St. Mary's vs. Marist",
+      "slug": "aec-cbb-mstm-marist-2025-12-05",
+      "teams": [
+        "mstm",
+        "marist",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "South Carolina State vs. Bethune-Cookman",
+      "slug": "aec-cbb-scarst-bcook-2025-12-05",
+      "teams": [
+        "scarst",
+        "bcook",
+        "2025",
+        "12",
+        "05"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-10T02:30:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Avalanche vs. Predators",
+      "slug": "aec-nhl-col-nsh-2025-12-10",
+      "teams": [
+        "col",
+        "nsh",
+        "2025",
+        "12",
+        "10"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Sharks vs. Maple Leafs",
+      "slug": "aec-nhl-sj-tor-2025-12-12",
+      "teams": [
+        "sj",
+        "tor",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Dayton vs. Virginia",
+      "slug": "aec-cbb-day-vir-2025-12-06",
+      "teams": [
+        "day",
+        "vir",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "New Haven vs. Boston College",
+      "slug": "aec-cbb-nhvn-boscol-2025-12-06",
+      "teams": [
+        "nhvn",
+        "boscol",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Duke vs. Michigan State",
+      "slug": "aec-cbb-duke-mst-2025-12-06",
+      "teams": [
+        "duke",
+        "mst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-12T00:00:00Z",
+      "league": "nhl",
+      "marketType": "moneyline",
+      "question": "Ducks vs. Islanders",
+      "slug": "aec-nhl-ana-nyi-2025-12-12",
+      "teams": [
+        "ana",
+        "nyi",
+        "2025",
+        "12",
+        "12"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "UMBC vs. Bucknell",
+      "slug": "aec-cbb-umbc-buck-2025-12-06",
+      "teams": [
+        "umbc",
+        "buck",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Holy Cross vs. Fordham",
+      "slug": "aec-cbb-holy-fordm-2025-12-06",
+      "teams": [
+        "holy",
+        "fordm",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Rhode Island vs. Providence",
+      "slug": "aec-cbb-ri-prov-2025-12-06",
+      "teams": [
+        "ri",
+        "prov",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T17:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Old Dominion vs. Richmond",
+      "slug": "aec-cbb-old-rich-2025-12-06",
+      "teams": [
+        "old",
+        "rich",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Harvard vs. Furman",
+      "slug": "aec-cbb-harvrd-furman-2025-12-06",
+      "teams": [
+        "harvrd",
+        "furman",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Maryland Eastern Shore vs. American",
+      "slug": "aec-cbb-mdes-amercn-2025-12-06",
+      "teams": [
+        "mdes",
+        "amercn",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Coppin State vs. Liberty",
+      "slug": "aec-cbb-coppst-librty-2025-12-06",
+      "teams": [
+        "coppst",
+        "librty",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T18:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Weber State vs. St. Thomas (MN)",
+      "slug": "aec-cbb-webst-stmn-2025-12-06",
+      "teams": [
+        "webst",
+        "stmn",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Morehead State vs. Presbyterian",
+      "slug": "aec-cbb-mhst-presb-2025-12-06",
+      "teams": [
+        "mhst",
+        "presb",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Stony Brook vs. Duquesne",
+      "slug": "aec-cbb-stbr-duq-2025-12-06",
+      "teams": [
+        "stbr",
+        "duq",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Marquette vs. Wisconsin",
+      "slug": "aec-cbb-marq-wisc-2025-12-06",
+      "teams": [
+        "marq",
+        "wisc",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Boise State vs. Butler",
+      "slug": "aec-cbb-boise-butl-2025-12-06",
+      "teams": [
+        "boise",
+        "butl",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Northern Kentucky vs. Purdue Fort Wayne",
+      "slug": "aec-cbb-nkent-ipfw-2025-12-06",
+      "teams": [
+        "nkent",
+        "ipfw",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Ohio State vs. Northwestern",
+      "slug": "aec-cbb-ohiost-nw-2025-12-06",
+      "teams": [
+        "ohiost",
+        "nw",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Delaware vs. Delaware State",
+      "slug": "aec-cbb-del-delst-2025-12-06",
+      "teams": [
+        "del",
+        "delst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Detroit vs. Cleveland State",
+      "slug": "aec-cbb-det-clvst-2025-12-06",
+      "teams": [
+        "det",
+        "clvst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Tennessee Tech vs. West Georgia",
+      "slug": "aec-cbb-tentch-uwg-2025-12-06",
+      "teams": [
+        "tentch",
+        "uwg",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Stetson vs. South Carolina",
+      "slug": "aec-cbb-stetsn-sc-2025-12-06",
+      "teams": [
+        "stetsn",
+        "sc",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Western Carolina vs. USC Upstate",
+      "slug": "aec-cbb-wcar-scup-2025-12-06",
+      "teams": [
+        "wcar",
+        "scup",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T18:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Utah Valley vs. Bowling Green",
+      "slug": "aec-cbb-utahv-bowlgr-2025-12-06",
+      "teams": [
+        "utahv",
+        "bowlgr",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Coastal Carolina vs. Winthrop",
+      "slug": "aec-cbb-coast-winth-2025-12-06",
+      "teams": [
+        "coast",
+        "winth",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T18:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Maine vs. Miami (OH)",
+      "slug": "aec-cbb-maine-miaoh-2025-12-06",
+      "teams": [
+        "maine",
+        "miaoh",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T18:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "UNC Asheville vs. North Carolina State",
+      "slug": "aec-cbb-ncashe-ncst-2025-12-06",
+      "teams": [
+        "ncashe",
+        "ncst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "St. Bonaventure vs. Buffalo",
+      "slug": "aec-cbb-stbon-buf-2025-12-06",
+      "teams": [
+        "stbon",
+        "buf",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Drexel vs. La Salle",
+      "slug": "aec-cbb-drexel-lasal-2025-12-06",
+      "teams": [
+        "drexel",
+        "lasal",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Youngstown State vs. IU Indy",
+      "slug": "aec-cbb-yngst-iupui-2025-12-06",
+      "teams": [
+        "yngst",
+        "iupui",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Jacksonville vs. Florida International",
+      "slug": "aec-cbb-jax-flint-2025-12-06",
+      "teams": [
+        "jax",
+        "flint",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Georgia Southern vs. Gardner-Webb",
+      "slug": "aec-cbb-gas-gardwb-2025-12-06",
+      "teams": [
+        "gas",
+        "gardwb",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Toledo vs. Oakland",
+      "slug": "aec-cbb-toledo-oak-2025-12-06",
+      "teams": [
+        "toledo",
+        "oak",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "UNCG vs. East Carolina",
+      "slug": "aec-cbb-ncg-ecar-2025-12-06",
+      "teams": [
+        "ncg",
+        "ecar",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Princeton vs. Loyola Chicago",
+      "slug": "aec-cbb-prnce-loych-2025-12-06",
+      "teams": [
+        "prnce",
+        "loych",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Missouri State vs. Tulsa",
+      "slug": "aec-cbb-msrst-tulsa-2025-12-06",
+      "teams": [
+        "msrst",
+        "tulsa",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Western Michigan vs. SIUE",
+      "slug": "aec-cbb-wmich-siue-2025-12-06",
+      "teams": [
+        "wmich",
+        "siue",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Le Moyne vs. Binghamton",
+      "slug": "aec-cbb-lemyn-bing-2025-12-06",
+      "teams": [
+        "lemyn",
+        "bing",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Georgia State vs. Kennesaw State",
+      "slug": "aec-cbb-gast-kenest-2025-12-06",
+      "teams": [
+        "gast",
+        "kenest",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Marshall vs. Ohio",
+      "slug": "aec-cbb-marsh-ohio-2025-12-06",
+      "teams": [
+        "marsh",
+        "ohio",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Seton Hall vs. Kansas State",
+      "slug": "aec-cbb-seton-kanst-2025-12-06",
+      "teams": [
+        "seton",
+        "kanst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Evansville vs. Western Kentucky",
+      "slug": "aec-cbb-evans-wkent-2025-12-06",
+      "teams": [
+        "evans",
+        "wkent",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Massachusetts-Lowell vs. Massachusetts",
+      "slug": "aec-cbb-maslow-umass-2025-12-06",
+      "teams": [
+        "maslow",
+        "umass",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Elon vs. Wofford",
+      "slug": "aec-cbb-elon-woff-2025-12-06",
+      "teams": [
+        "elon",
+        "woff",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Norfolk State vs. James Madison",
+      "slug": "aec-cbb-norfst-jmad-2025-12-06",
+      "teams": [
+        "norfst",
+        "jmad",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "George Mason vs. Virginia Tech",
+      "slug": "aec-cbb-gmsn-vtech-2025-12-06",
+      "teams": [
+        "gmsn",
+        "vtech",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "New Mexico State vs. Abilene Christian",
+      "slug": "aec-cbb-nmxst-abchr-2025-12-06",
+      "teams": [
+        "nmxst",
+        "abchr",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Akron vs. Tulane",
+      "slug": "aec-cbb-akron-tulane-2025-12-06",
+      "teams": [
+        "akron",
+        "tulane",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Bellarmine vs. Murray State",
+      "slug": "aec-cbb-bella-murst-2025-12-06",
+      "teams": [
+        "bella",
+        "murst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T19:15:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Louisville vs. Indiana",
+      "slug": "aec-cbb-lou-ind-2025-12-06",
+      "teams": [
+        "lou",
+        "ind",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Idaho vs. South Dakota State",
+      "slug": "aec-cbb-idaho-sdkst-2025-12-06",
+      "teams": [
+        "idaho",
+        "sdkst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Maryland vs. Iowa",
+      "slug": "aec-cbb-mary-iowa-2025-12-06",
+      "teams": [
+        "mary",
+        "iowa",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Fresno State vs. Arkansas",
+      "slug": "aec-cbb-frest-ark-2025-12-06",
+      "teams": [
+        "frest",
+        "ark",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "North Carolina A&T vs. North Carolina Central",
+      "slug": "aec-cbb-ncat-ncc-2025-12-06",
+      "teams": [
+        "ncat",
+        "ncc",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Pacific vs. California",
+      "slug": "aec-cbb-pacfc-cah-2025-12-06",
+      "teams": [
+        "pacfc",
+        "cah",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Southern Utah vs. Oregon State",
+      "slug": "aec-cbb-sutah-oregst-2025-12-06",
+      "teams": [
+        "sutah",
+        "oregst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Omaha vs. Portland State",
+      "slug": "aec-cbb-neom-portst-2025-12-06",
+      "teams": [
+        "neom",
+        "portst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T23:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Houston Christian vs. New Orleans",
+      "slug": "aec-cbb-houbap-no-2025-12-06",
+      "teams": [
+        "houbap",
+        "no",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Saint Joseph's vs. Temple",
+      "slug": "aec-cbb-stjoe-templ-2025-12-06",
+      "teams": [
+        "stjoe",
+        "templ",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Albany vs. Columbia",
+      "slug": "aec-cbb-albny-colmb-2025-12-06",
+      "teams": [
+        "albny",
+        "colmb",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "UNCW vs. Louisiana-Lafayette",
+      "slug": "aec-cbb-ncw-loulaf-2025-12-06",
+      "teams": [
+        "ncw",
+        "loulaf",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Rutgers vs. Michigan",
+      "slug": "aec-cbb-rutger-mich-2025-12-06",
+      "teams": [
+        "rutger",
+        "mich",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Incarnate Word vs. Nicholls",
+      "slug": "aec-cbb-incar-nichls-2025-12-06",
+      "teams": [
+        "incar",
+        "nichls",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Sam Houston vs. Texas Southern",
+      "slug": "aec-cbb-smho-txs-2025-12-06",
+      "teams": [
+        "smho",
+        "txs",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T23:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Denver vs. Idaho State",
+      "slug": "aec-cbb-den-idhst-2025-12-06",
+      "teams": [
+        "den",
+        "idhst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Vermont vs. Pepperdine",
+      "slug": "aec-cbb-verm-pepp-2025-12-06",
+      "teams": [
+        "verm",
+        "pepp",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Southeast Missouri State vs. Chattanooga",
+      "slug": "aec-cbb-semst-chat-2025-12-06",
+      "teams": [
+        "semst",
+        "chat",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T23:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Washington vs. USC",
+      "slug": "aec-cbb-wash-usc-2025-12-06",
+      "teams": [
+        "wash",
+        "usc",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Dartmouth vs. Wyoming",
+      "slug": "aec-cbb-dart-wyom-2025-12-06",
+      "teams": [
+        "dart",
+        "wyom",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Longwood vs. Morgan State",
+      "slug": "aec-cbb-longwd-morgst-2025-12-06",
+      "teams": [
+        "longwd",
+        "morgst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T21:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Baylor vs. Memphis",
+      "slug": "aec-cbb-bayl-mphs-2025-12-06",
+      "teams": [
+        "bayl",
+        "mphs",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "LIU vs. Lehigh",
+      "slug": "aec-cbb-liub-lehi-2025-12-06",
+      "teams": [
+        "liub",
+        "lehi",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Kansas City vs. Eastern Washington",
+      "slug": "aec-cbb-umkc-ewash-2025-12-06",
+      "teams": [
+        "umkc",
+        "ewash",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T22:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Colorado vs. Colorado State",
+      "slug": "aec-cbb-col-colst-2025-12-06",
+      "teams": [
+        "col",
+        "colst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T23:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Oregon vs. UCLA",
+      "slug": "aec-cbb-ore-ucla-2025-12-06",
+      "teams": [
+        "ore",
+        "ucla",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T23:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "William & Mary vs. George Washington",
+      "slug": "aec-cbb-wm-geows-2025-12-06",
+      "teams": [
+        "wm",
+        "geows",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-06T23:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Wake Forest vs. West Virginia",
+      "slug": "aec-cbb-wake-wvir-2025-12-06",
+      "teams": [
+        "wake",
+        "wvir",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Chicago State vs. Illinois State",
+      "slug": "aec-cbb-chist-illst-2025-12-06",
+      "teams": [
+        "chist",
+        "illst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Boston vs. New Hampshire",
+      "slug": "aec-cbb-bostu-nhamp-2025-12-06",
+      "teams": [
+        "bostu",
+        "nhamp",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Northern Arizona vs. North Dakota State",
+      "slug": "aec-cbb-narz-ndkst-2025-12-06",
+      "teams": [
+        "narz",
+        "ndkst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T02:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Arkansas-Pine Bluff vs. DePaul",
+      "slug": "aec-cbb-arpb-depaul-2025-12-06",
+      "teams": [
+        "arpb",
+        "depaul",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Florida State vs. Houston",
+      "slug": "aec-cbb-flst-hou-2025-12-06",
+      "teams": [
+        "flst",
+        "hou",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "California Baptist vs. Utah",
+      "slug": "aec-cbb-cabap-utah-2025-12-06",
+      "teams": [
+        "cabap",
+        "utah",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "UC Riverside vs. Cal Poly",
+      "slug": "aec-cbb-ucrvs-calpol-2025-12-06",
+      "teams": [
+        "ucrvs",
+        "calpol",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Oklahoma State vs. Grand Canyon",
+      "slug": "aec-cbb-okst-gcan-2025-12-06",
+      "teams": [
+        "okst",
+        "gcan",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Ole Miss vs. St. John's",
+      "slug": "aec-cbb-miss-stjohn-2025-12-06",
+      "teams": [
+        "miss",
+        "stjohn",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Northern Illinois vs. Bradley",
+      "slug": "aec-cbb-nill-bradly-2025-12-06",
+      "teams": [
+        "nill",
+        "bradly",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Montana vs. North Dakota",
+      "slug": "aec-cbb-mont-ndak-2025-12-06",
+      "teams": [
+        "mont",
+        "ndak",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T02:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "California-San Diego vs. Long Beach State",
+      "slug": "aec-cbb-ucsd-lbst-2025-12-06",
+      "teams": [
+        "ucsd",
+        "lbst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Texas A&M-Corpus Christi vs. Lamar",
+      "slug": "aec-cbb-tamu-lamar-2025-12-06",
+      "teams": [
+        "tamu",
+        "lamar",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T00:30:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Penn vs. Villanova",
+      "slug": "aec-cbb-penn-vill-2025-12-06",
+      "teams": [
+        "penn",
+        "vill",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Montana State vs. Oral Roberts",
+      "slug": "aec-cbb-monst-oral-2025-12-06",
+      "teams": [
+        "monst",
+        "oral",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Lindenwood vs. Eastern Illinois",
+      "slug": "aec-cbb-jac-eill-2025-12-06",
+      "teams": [
+        "jac",
+        "eill",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Robert Morris vs. Milwaukee",
+      "slug": "aec-cbb-robms-wbd-2025-12-06",
+      "teams": [
+        "robms",
+        "wbd",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Wichita State vs. Northern Iowa",
+      "slug": "aec-cbb-wichst-niowa-2025-12-06",
+      "teams": [
+        "wichst",
+        "niowa",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "South Dakota vs. Northern Colorado",
+      "slug": "aec-cbb-sdak-ncol-2025-12-06",
+      "teams": [
+        "sdak",
+        "ncol",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T02:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Bakersfield vs. UC Santa Barbara",
+      "slug": "aec-cbb-csu-uscb-2025-12-06",
+      "teams": [
+        "csu",
+        "uscb",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T01:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Illinois vs. Tennessee",
+      "slug": "aec-cbb-ill-tenn-2025-12-06",
+      "teams": [
+        "ill",
+        "tenn",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T02:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Arkansas State vs. Little Rock",
+      "slug": "aec-cbb-arkst-arlr-2025-12-06",
+      "teams": [
+        "arkst",
+        "arlr",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T03:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Auburn vs. Arizona",
+      "slug": "aec-cbb-aubrn-arz-2025-12-06",
+      "teams": [
+        "aubrn",
+        "arz",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T04:59:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Cal State Fullerton vs. Hawaii",
+      "slug": "aec-cbb-csufl-hawaii-2025-12-06",
+      "teams": [
+        "csufl",
+        "hawaii",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Central Connecticut State vs. Northeastern",
+      "slug": "aec-cbb-cencon-neast-2025-12-07",
+      "teams": [
+        "cencon",
+        "neast",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Iona vs. Sacred Heart",
+      "slug": "aec-cbb-iona-sacred-2025-12-07",
+      "teams": [
+        "iona",
+        "sacred",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T20:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Louisiana-Monroe vs. Stephen F. Austin",
+      "slug": "aec-cbb-lamon-sfaus-2025-12-07",
+      "teams": [
+        "lamon",
+        "sfaus",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Florida Atlantic vs. Florida Gulf Coast",
+      "slug": "aec-cbb-flatl-flgc-2025-12-07",
+      "teams": [
+        "flatl",
+        "flgc",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T19:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Utah State vs. Charlotte",
+      "slug": "aec-cbb-utahst-charlt-2025-12-07",
+      "teams": [
+        "utahst",
+        "charlt",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T03:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "CSUN vs. UC Irvine",
+      "slug": "aec-cbb-csunr-ucirv-2025-12-06",
+      "teams": [
+        "csunr",
+        "ucirv",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T03:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Oklahoma vs. Arizona State",
+      "slug": "aec-cbb-okl-arzst-2025-12-06",
+      "teams": [
+        "okl",
+        "arzst",
+        "2025",
+        "12",
+        "06"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T17:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Air Force vs. Navy",
+      "slug": "aec-cbb-airf-navy-2025-12-07",
+      "teams": [
+        "airf",
+        "navy",
+        "2025",
+        "12",
+        "07"
+      ]
+    },
+    {
+      "gameStartTime": "2025-12-07T18:00:00Z",
+      "league": "cbb",
+      "marketType": "moneyline",
+      "question": "Fairfield vs. Merrimack College",
+      "slug": "aec-cbb-fair-merri-2025-12-07",
+      "teams": [
+        "fair",
+        "merri",
+        "2025",
+        "12",
+        "07"
+      ]
+    }
+  ],
+  "venue": "Polymarket US",
+  "version": "sports_us_mapping_v1"
+}
