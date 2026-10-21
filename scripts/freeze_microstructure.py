@@ -40,6 +40,7 @@ RUNTIME_FILES = (
     "docs/MICROSTRUCTURE_EVIDENCE_V1.md",
     "src/polyalpha/energy/book_reconstruction.py",
     "scripts/energy_book_extractor.py",
+    "scripts/microstructure_evaluate.py",
 )
 
 
