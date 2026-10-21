@@ -20,8 +20,15 @@ TICK_SIZE = Decimal("0.001")
 FORWARD_BOUNDARY = "2026-09-22T00:00:00+00:00"
 MARKOUT_HORIZONS = (0.1, 1.0, 5.0, 30.0, 300.0, 1800.0)
 MARKOUT_TOLERANCE = {0.1: 0.05, 1.0: 0.2, 5.0: 0.5, 30.0: 2.0, 300.0: 10.0, 1800.0: 30.0}
-# Taker fee is pinned from the venue fee schedule before net evaluation (NOT inferred).
-TAKER_FEE: Decimal | None = None
+# Frozen Polymarket US fee model (docs.polymarket.us/fees): taker coefficient
+# Θ = 0.0695, Tier-1 maker rebate = 0, Tier-1 taker rebate = 0. Fee is
+# price-symmetric: fee = Θ * C * p * (1 - p).
+TAKER_FEE_COEFFICIENT = Decimal("0.0695")
+
+
+def taker_fee(price: Decimal) -> Decimal:
+    """One-leg taker fee in USDC per contract at price p."""
+    return TAKER_FEE_COEFFICIENT * price * (Decimal(1) - price)
 
 BOUNDARY_MS = int(datetime.fromisoformat(FORWARD_BOUNDARY).timestamp() * 1000)
 
@@ -298,6 +305,6 @@ def features(b: PolymarketBookState) -> dict:
 __all__ = [
     "PolymarketBookState", "PolymarketTradeEvent", "parse_book", "parse_trade",
     "features", "yes_direction", "partition_of", "content_hash", "off_tick",
-    "K_LEVELS", "TICK_SIZE", "MARKOUT_HORIZONS", "MARKOUT_TOLERANCE",
-    "FORWARD_BOUNDARY", "BOUNDARY_MS", "TAKER_FEE",
+    "taker_fee", "K_LEVELS", "TICK_SIZE", "TAKER_FEE_COEFFICIENT",
+    "MARKOUT_HORIZONS", "MARKOUT_TOLERANCE", "FORWARD_BOUNDARY", "BOUNDARY_MS",
 ]

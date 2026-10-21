@@ -93,13 +93,24 @@ Signed mid markout, same structure as the Kalshi contract:
 
 ```
 markout_h(t) = s * (mid(t+h) - mid(t))
-net_h(t)     = markout_h(t) - 0.5*spread(t+h) - taker_fee * mid(t+h)
+net_h(t)     = markout_h(t) - 0.5*spread(t+h) - taker_fee(mid(t+h))
 ```
 
 Horizons: `100ms, 1s, 5s, 30s, 300s, 1800s` (primary); tolerances
 `{100ms±50ms, 1s±200ms, 5s±500ms, 30s±2s, 300s±10s, 1800s±30s}`.
-`taker_fee` is pinned from the venue fee schedule **before** evaluation (not
-inferred here).
+
+## Fee model (frozen)
+
+Polymarket US (docs.polymarket.us/fees), applicable to the `polymarket_us_retail`
+lineage: taker coefficient `Θ = 0.0695`, Tier-1 maker rebate `0`, Tier-1 taker
+rebate `0`. Fee is price-symmetric:
+
+```
+taker_fee(p) = 0.0695 * p * (1 - p)   (USDC per contract)
+```
+
+No maker rebate is credited at Tier 1, so the one-leg net cost is
+`0.5*spread + taker_fee(p)`.
 
 ## Independence (frozen)
 
