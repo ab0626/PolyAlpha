@@ -1,10 +1,11 @@
 {
   "version": "execution-calibration-v1",
-  "anchor_commit": "bee1c4e3140dac3802bc577a3b0e37f65e5b1d1a",
-  "contract_sha256": "095ae12053ad015cab16cf6aad19b14e0d72e3e55739a270ecd0112b71ce9349",
+  "anchor_commit": "df364c74f2faffe4d6dc0f93ffcd29004e449d6e",
+  "contract_sha256": "d56dff5c447fc1bfcbba1d56b941abad256cc60f167e8c5bced23c8e3f30178f",
   "research_spec": "docs/EXECUTION_CALIBRATION_V1.md",
   "contract_files": [
-    "docs/EXECUTION_CALIBRATION_V1.md"
+    "docs/EXECUTION_CALIBRATION_V1.md",
+    "scripts/execution_calibration_modeb.py"
   ],
-  "frozen_at": "2026-10-21T16:05:51.939206+00:00"
+  "frozen_at": "2026-10-21T16:07:47.662975+00:00"
 }
