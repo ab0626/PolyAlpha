@@ -201,9 +201,35 @@ A PROMOTE in this track is a **research claim**, not a capital allocation. Any
 capital deployment still requires the existing manual arm + kill-switch + frozen
 execution path, and (for terminal-outcome families) the terminal gate.
 
+## v1.1 amendment — sequence field + book semantics (appended, frozen with v1.1)
+
+The v1 text referred to the collector's `session_seq` for ordering/gap detection.
+During extractor implementation it was determined that `session_seq` is a
+**per-session counter over ALL message types** (orderbook, trade, ticker,
+lifecycle), so it is NOT the book sequence. The correction, now frozen:
+
+- Book ordering + gap detection use the **venue orderbook-channel sequence**
+  `message.seq` (channel `sid`), which Kalshi defines for snapshot/delta
+  consistency. The venue orderbook `seq` is **channel-global across tickers**.
+- A venue-`seq` discontinuity (or a `session_id` change) increments a global
+  **gap epoch**. A ticker's book is `gap_clean` only if its seed snapshot was at
+  the current epoch and no local corruption (negative depth) occurred.
+- Because a gap cannot be attributed to a specific ticker, a gap conservatively
+  invalidates **all** ticker books until each is re-seeded by its next snapshot.
+
+Additional book semantics pinned here (verified against docs.kalshi.com):
+
+- `orderbook_snapshot.msg.yes_dollars_fp` / `no_dollars_fp` are **BID arrays**
+  (`[price, count]`, ascending; best bid = last element). A missing key means
+  that side's bid book is empty at that snapshot.
+- Asks are derived by complement: `best_yes_ask = 1 - best_no_bid`;
+  `ask_depth_k` = top-k `no_dollars_fp` sizes. `mid = (best_yes_bid + best_yes_ask)/2`.
+- `orderbook_delta.msg` = `{side: yes|no, price_dollars, delta_fp}` where
+  `delta_fp` is a **signed** size change applied to that side's **bid** book.
+  `new_size < 0` is a hard reconstruction error (never clamped).
+
 ## Status
 
-- Frozen: `microstructure-evidence-v1`
+- Frozen: `microstructure-evidence-v1` (+ v1.1 amendment)
 - Spec sha256: pinned by `scripts/freeze_microstructure.py`
-- Runtime (book reconstruction / extractor / evaluator): **not yet frozen** —
-  to be added to `RUNTIME_FILES` and re-frozen under a new version once built.
+- Runtime (book reconstruction / extractor / evaluator): pinned as of v1.1.

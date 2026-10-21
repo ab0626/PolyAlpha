@@ -34,10 +34,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "frozen" / "microstructure-evidence-v1.json"
 DEFAULT_VERSION = "microstructure-evidence-v1"
 
-# The research contract. The runtime (book reconstruction / label extractor /
-# evaluator) is appended here and re-frozen once it exists.
+# The research contract + the deterministic extractor runtime. Any drift in
+# either fails verification and requires explicit review + re-freeze.
 RUNTIME_FILES = (
     "docs/MICROSTRUCTURE_EVIDENCE_V1.md",
+    "src/polyalpha/energy/book_reconstruction.py",
+    "scripts/energy_book_extractor.py",
 )
 
 
