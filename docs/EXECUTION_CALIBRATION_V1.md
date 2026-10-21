@@ -79,8 +79,53 @@ time-at-best, fill-probability modeling — these belong to a **separate**
 `MAKER_CALIBRATION_V1` successor, not this contract. The maker objective
 `E[realized spread − adverse selection − fees]` is frozen there, later.
 
+## v1.1 amendment — dual sampling modes (append-only, frozen)
+
+The v1 text conditioned execution calibration on a fresh alpha signal, which
+starves the program when the model signal is stale. Correction: execution
+calibration requires **fresh market data**, not necessarily a fresh alpha signal.
+
+**MODE A — signal-conditioned.** Fresh model signal available; direction = frozen
+model direction; record the displayed-edge stratum. (Same as v1.)
+
+**MODE B — execution-only.** No fresh signal required. Direction and ticker chosen
+by a **frozen deterministic sampler** (below); book/system health only; explicitly
+NOT an alpha trade.
+
+### Mode B deterministic sampler (frozen)
+
+```
+eligible ticker:
+  valid two-sided book
+  spread          <= 0.05
+  top-5 depth     >= 100 (dollars)
+  no stale market data
+  system healthy
+  not within frozen exclusion window near settlement
+
+selection:
+  h = sha256(timestamp_bucket, ticker, FIXED_SEED)
+  -> choose eligible ticker by h
+  -> choose YES/NO deterministically from h
+```
+
+The operator may **not** cherry-pick side or market. Notional = `$2`. Cadence =
+at most 1 fill attempt per frozen interval; hard daily gross-notional cap; hard
+daily loss cap.
+
+### Safety boundary (frozen)
+
+The system may: discover, sample, construct the `$2` intent, and log it.
+The system may NOT: transmit unless the operator arm is active, transmit while
+the kill switch is active, or exceed the frozen daily caps.
+
+### Isolation (frozen)
+
+Mode B samples answer execution questions only (fill probability, slippage,
+spread paid, ack/fill latency, partial fills, fees, 1s/5s/30s/5m markouts, reject
+behavior) and must **never enter any directional-alpha evaluation**.
+
 ## Status
 
-- Frozen: `execution-calibration-v1`
+- Frozen: `execution-calibration-v1` (+ v1.1 amendment)
 - Spec sha256: pinned by `scripts/freeze_execution_calibration.py`
-- Runtime (sampler/recorder): to be added to `RUNTIME_FILES` and re-frozen once built.
