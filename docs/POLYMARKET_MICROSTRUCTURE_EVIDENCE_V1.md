@@ -58,11 +58,25 @@ book is directly bid/ask, and best bid/ask are read straight from the arrays.
 
 ## Book semantics & sequence (frozen)
 
-- Books are **full snapshots** (bids + offers arrays), not deltas.
-- `gap_clean = true` iff the hash chain is unbroken (`sha256` of `canonical_json`
-  matches the previous record) and `message_sequence_local` is contiguous within
-  a `connection_id`. A hash-chain break or sequence discontinuity invalidates the
-  state until the next clean record.
+- Books are **full snapshots** (bids + offers arrays), not deltas. Each
+  `marketData` message is a complete, self-contained book for one `marketSlug`.
+- Min tick = `0.001` (audited: min positive price difference across 550 distinct
+  price levels).
+- `gap_clean = true` iff the per-record integrity hash verifies
+  (`sha256 == sha256(canonical_json)`; 0 mismatches audited). Books are snapshots,
+  so reconstruction does **not** depend on sequence continuity — a dropped record
+  means a missing snapshot, not a corrupted book. `message_sequence_local` is
+  present but NOT contiguous (per-connection discontinuities audited); it is
+  recorded for provenance only, not used as a gap gate.
+
+## Audit findings (2026-09-21 sample, 265,646 book records / 3,063 trades)
+
+- Snapshot semantics: full book per message; 98.7% two-sided (bids+offers both non-empty).
+- Hash integrity: `sha256 == sha256(canonical_json)` for 265,646/265,646 records.
+- Timestamps: venue `exchange_timestamp_ms` + local `received_at_ns` on every record.
+- Trades: `taker.intent` (BUY_LONG/SELL_SHORT) + `taker.outcomeSide` (YES/NO) present on 92% (2,824/3,063).
+- Outcome mapping: book = YES/long token; NO/short = complement (stats `longPx`/`shortPx`).
+- Cluster: `marketSlug` (114 unique in the day sample).
 
 ## Research universe (frozen)
 
