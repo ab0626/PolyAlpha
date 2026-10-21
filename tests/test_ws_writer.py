@@ -41,8 +41,9 @@ def test_writer_preserves_order_and_drains(tmp_path):
     w.start()
     s = WsSession()
     s.on_connect()
+    wall = _ns("2026-10-19T23:59:59.999000+00:00")  # frozen: deterministic day partition
     for i in range(5):
-        assert w.try_submit(capture_frame("src", s, f"m{i}"))
+        assert w.try_submit(capture_frame("src", s, f"m{i}", wall_ns=wall, mono_ns=0))
     assert w.close(drain=True) is True
     day = "2026-10-19"
     rows = [json.loads(line) for line in (tmp_path / f"{day}.jsonl").read_text().splitlines()]

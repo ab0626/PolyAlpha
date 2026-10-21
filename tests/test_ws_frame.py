@@ -68,7 +68,8 @@ def test_frame_store_cutover_and_append(tmp_path):
     store.mark_cutover(datetime(2026, 10, 19, tzinfo=UTC))
     s = WsSession()
     s.on_connect()
-    f = capture_frame("src", s, "hello")
+    wall = int(datetime(2026, 10, 19, 12, 0, 0, tzinfo=UTC).timestamp() * 1e9)  # frozen wall_ns
+    f = capture_frame("src", s, "hello", wall_ns=wall, mono_ns=0)
     store.append(f)
     assert (tmp_path / "CUTOVER.json").exists()
     rows = [json.loads(line) for line in (tmp_path / "2026-10-19.jsonl").read_text().splitlines()]
