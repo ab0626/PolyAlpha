@@ -65,7 +65,17 @@ works in liquid markets" escape hatch without post-hoc slicing.
 
 The archive is the **Polymarket US** venue (`gateway.polymarket.us` /
 `api.polymarket.us`), so the uniform Θ=0.0695 schedule applies — not the
-category-based Polymarket.com schedule. A per-market `feesEnabled` metadata
-manifest (to prove no fee-free markets are over-charged) remains an open
-follow-up requiring the live REST market-metadata query; it does not invalidate
-this result, which used the correct venue fee.
+category-based Polymarket.com schedule.
+
+**Fee-metadata manifest (built, `scripts/polymarket_fee_manifest.py`):**
+- Live `GET /v1/markets` returned 500 markets, **all** `feeCoefficient = 0.0695`
+  (no 0, no 0.10, no missing) — consistent with the frozen schedule, no contradiction.
+- 236 archived market slugs are **UNKNOWN** (not present in the current market
+  list; historical Sept–Oct markets no longer exposed by the endpoint).
+- `raw_metadata_sha256 = 8b6c735a…`, `manifest_sha256 = b59e39f6…`.
+
+Conclusion: no contradiction with the Θ=0.0695 coefficient used in P1–P5, so the
+net layer stands. The historical fee for the 236 unmatched slugs cannot be
+retrieved from the live endpoint (they predate the current market list), so their
+exact historical coefficient is UNKNOWN rather than proven — a provenance gap, not
+an error in the frozen schedule.
