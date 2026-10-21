@@ -1,11 +1,13 @@
 {
   "version": "microstructure-evidence-v1",
-  "anchor_commit": "765cb3cd53ef77005f6a3376afa56371916e8bd9",
-  "contract_sha256": "b76cd8f96b52cce56c084d51ee87dd1060ca8eb8e68b73219008a32d01e4ad77",
+  "anchor_commit": "51bdd17fec26eacd95ac4fcaaf8587b3b895d30b",
+  "contract_sha256": "2896837b58f4083b611de4d5c8d3f33fd21a64d6c2122c3ab2ee2aae9dc989a6",
   "research_spec": "docs/MICROSTRUCTURE_EVIDENCE_V1.md",
   "contract_files": [
-    "docs/MICROSTRUCTURE_EVIDENCE_V1.md"
+    "docs/MICROSTRUCTURE_EVIDENCE_V1.md",
+    "src/polyalpha/energy/book_reconstruction.py",
+    "scripts/energy_book_extractor.py"
   ],
   "terminal_gate_unchanged": true,
-  "frozen_at": "2026-10-21T04:43:42.068087+00:00"
+  "frozen_at": "2026-10-21T05:06:33.258174+00:00"
 }
