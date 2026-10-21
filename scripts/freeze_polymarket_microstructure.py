@@ -34,6 +34,7 @@ RUNTIME_FILES = (
     "src/polyalpha/polymarket/__init__.py",
     "src/polyalpha/polymarket/canonical.py",
     "scripts/polymarket_extractor.py",
+    "scripts/polymarket_evaluate.py",
 )
 
 
