@@ -1,10 +1,10 @@
 {
   "version": "execution-calibration-v1",
-  "anchor_commit": "14487cad8382585880839fa3009471761d403d95",
+  "anchor_commit": "bee1c4e3140dac3802bc577a3b0e37f65e5b1d1a",
   "contract_sha256": "095ae12053ad015cab16cf6aad19b14e0d72e3e55739a270ecd0112b71ce9349",
   "research_spec": "docs/EXECUTION_CALIBRATION_V1.md",
   "contract_files": [
     "docs/EXECUTION_CALIBRATION_V1.md"
   ],
-  "frozen_at": "2026-10-21T16:05:40.625287+00:00"
+  "frozen_at": "2026-10-21T16:05:51.939206+00:00"
 }
