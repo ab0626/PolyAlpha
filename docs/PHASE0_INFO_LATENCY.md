@@ -107,3 +107,31 @@ non-authoritative PolyBolt recorder, not a claim on the existing archive.
 - If median stale window is sub-minute with meaningful depth and net edge
   survives costs ⇒ feed placement / region / FIX-vs-WS become economically
   justified, not just technically impressive.
+
+## Result (2026-10-21 — interpretation clarification, not a contract change)
+
+Measured (ERCOT leg, 30s ladder resolution, live-only events):
+
+- source ingest latency (p50) ≈ **183s**
+- market reaction latency (p50, conditional on reacting) ≈ **582s**
+- response frequency: **40 / 200** revisions produced a ≥1¢ ATM response
+
+So ~183s of recoverable source-ingest latency exists inside a ~582s conditional
+median market-reaction window. However, infrastructure acceleration is **not
+currently justified** because:
+
+1. only 40/200 revisions generated a ≥1¢ response,
+2. reaction latency is highly variable / long-tailed (p95 ≈ 3.6h),
+3. the current fair-value model is too coarse to establish an executable
+   post-cost edge.
+
+Therefore:
+
+```
+observable latency opportunity      = YES
+economic value of recovering it     = NOT ESTABLISHED
+FIX / feed acceleration              = NOT JUSTIFIED YET
+```
+
+This is materially different from "feed latency doesn't matter": the recoverable
+minutes are real, but their economic value cannot yet be established.
