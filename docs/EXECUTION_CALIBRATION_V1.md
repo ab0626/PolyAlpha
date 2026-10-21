@@ -125,7 +125,26 @@ Mode B samples answer execution questions only (fill probability, slippage,
 spread paid, ack/fill latency, partial fills, fees, 1s/5s/30s/5m markouts, reject
 behavior) and must **never enter any directional-alpha evaluation**.
 
+## v1.2 amendment — Mode B boundary eligibility (append-only, frozen)
+
+Mode B must exclude payoff-boundary executions on the **selected executable
+side**, because they mechanically censor favorable markouts and can have zero
+gross payoff headroom — poor execution-calibration observations.
+
+```
+selected YES:  0.02 <= yes_ask <= 0.98
+selected NO :  0.02 <= no_ask  <= 0.98
+
+equivalently (YES book only):
+  YES selected -> yes_ask <= 0.98
+  NO  selected -> yes_bid >= 0.02
+```
+
+A deterministically-selected (ticker, side) that violates this is **ineligible →
+SKIP** (not re-selection, not fallback parameter relaxation). No Mode B real fill
+occurred under v1.1, so this is a clean pre-first-fill amendment.
+
 ## Status
 
-- Frozen: `execution-calibration-v1` (+ v1.1 amendment)
+- Frozen: `execution-calibration-v1` (+ v1.1 dual-mode, + v1.2 boundary guard)
 - Spec sha256: pinned by `scripts/freeze_execution_calibration.py`

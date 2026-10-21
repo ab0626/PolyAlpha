@@ -49,8 +49,16 @@ def contract_sha() -> str:
     return json.loads(CONFIG.read_text(encoding="utf-8")).get("contract_sha256", "")
 
 
+def boundary_eligible(side: str, yes_ask: Decimal, yes_bid: Decimal) -> bool:
+    """v1.2: exclude payoff-boundary executions on the selected side."""
+    if side == "YES":
+        return yes_ask <= Decimal("0.98")
+    return yes_bid >= Decimal("0.02")
+
+
 def main() -> int:
     sha = contract_sha()
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     bucket = int(time.time()) // BUCKET_SECONDS
     client = KalshiPublicClient()
 
@@ -106,6 +114,25 @@ def main() -> int:
 
     selected = min(eligible, key=lambda e: hsh(e["ticker"]))
     side = "YES" if int(hsh(selected["ticker"])[0], 16) % 2 == 0 else "NO"
+
+    # v1.2 boundary guard: exclude payoff-boundary executions on the selected side.
+    if not boundary_eligible(side, selected["yes_ask"], selected["yes_bid"]):
+        skip = {
+            "candidate_id": None, "mode": "EXECUTION_ONLY", "alpha_eligible": False,
+            "contract_sha256": sha, "timestamp_bucket": bucket, "seed": FIXED_SEED,
+            "selected_ticker": selected["ticker"], "selected_side": side,
+            "decision_quote": {
+                "yes_bid": str(selected["yes_bid"]), "yes_ask": str(selected["yes_ask"]),
+                "spread": str(selected["spread"]), "depth": str(selected["depth"]),
+            },
+            "status": "SKIP", "reason": "boundary_execution",
+            "generated_at": datetime.now(UTC).isoformat(),
+        }
+        with OUT.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(skip, sort_keys=True) + "\n")
+        print(f"SKIP: boundary execution ({selected['ticker']} {side} ask={selected['yes_ask']} bid={selected['yes_bid']})", file=sys.stderr)
+        return 0
+
     candidate_id = hashlib.sha256(
         f"{sha}|{bucket}|{selected['ticker']}|{side}|{FIXED_SEED}".encode()
     ).hexdigest()
