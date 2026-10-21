@@ -96,11 +96,11 @@ def main() -> int:
             stats["hash_clean"] += 1
         else:
             stats["hash_breaks"] += 1
-        book_markets.add(b.market_id)
+        book_markets.add(b.market_slug)
         spreads.append(float(b.spread))
-        depths.append(float(b.bid_depth_k + b.ask_depth_k))
+        depths.append(float(b.top5_bid_depth + b.top5_ask_depth))
         if b.gap_clean and b.mid is not None:
-            books_by_market[b.market_id].append((b.venue_ts_ms, b.mid, b.spread))
+            books_by_market[b.market_slug].append((b.exchange_timestamp_ms, b.mid, b.spread))
 
     for line in _iter(trade_files):
         if stats["trade_lines"] >= args.max_trades:
@@ -121,7 +121,7 @@ def main() -> int:
         stats["trade_records_seen"] += 1
         if t.yes_direction != 0:
             stats["classified_trades"] += 1
-        trade_markets.add(t.market_id)
+        trade_markets.add(t.market_slug)
 
     # label coverage by horizon (on gap-clean book states)
     for m, arr in books_by_market.items():
@@ -170,8 +170,8 @@ def main() -> int:
         if outer is None or inner is None:
             continue
         t = parse_trade(outer, inner, cj)
-        if t is not None and t.venue_ts_ms >= BOUNDARY_MS:
-            trade_clusters.add((t.market_id, datetime.fromtimestamp(t.venue_ts_ms / 1000, UTC).date().isoformat()))
+        if t is not None and t.trade_time_ms >= BOUNDARY_MS:
+            trade_clusters.add((t.market_slug, datetime.fromtimestamp(t.trade_time_ms / 1000, UTC).date().isoformat()))
 
     print("=== POLYMARKET CLOB EXTRACTION INTEGRITY REPORT ===")
     print(f"day: {args.day}   forward boundary: {BOUNDARY_MS}")
