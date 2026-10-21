@@ -20,6 +20,25 @@ evaluation. H1/H2/H5 are killed for futility; H3/H4 remain unresolved pending
 | cluster | `(ticker, operating_day)` — never tick count |
 | milestones | `N ∈ {40, 80, 160, 320}`; PROMOTE at ≥160, KILL at ≥40 with net CI upper < 0 |
 
+## Reproducibility manifest
+
+| Field | Value |
+|---|---|
+| evaluation_started_at | `2026-10-21T05:30:52.419191+00:00` |
+| evaluation_cutoff_at | `2026-10-21T05:30:52.419191+00:00` (single-shot run) |
+| evaluator commit | `b9f5d49` (`feat(microstructure): H1-H5 forward evaluator`) |
+| extractor commit | `51bdd17` (`feat(microstructure): deterministic BookState reconstruction + horizon labeler`) |
+| source file | `data/energy/kalshi/ws/2026-10-21.jsonl` |
+| source bytes (as-of-recording) | `289,452,859` |
+| source SHA-256 (as-of-recording) | `c5d34bf87aed663107c443b973c2c090376963432ddfe2a2c16bb2fbadb12ce4` |
+
+The source file is append-only and live-growing, so the byte count and SHA-256
+above are the manifest hash **as of recording**, a superset of the rows admitted
+at `evaluation_cutoff_at`. Earlier rows are never rewritten, so the evaluated
+rows are stable; future append-growth changes only the tail. A true byte-range
+snapshot at cutoff was not captured for this first run (known limitation; a
+snapshot-at-evaluation step is the fix for the next milestone).
+
 ## Results
 
 | H | Frozen hypothesis | Horizon | Raw obs | Labeled obs | Clusters | Gross | Net | 95% CI | raw p | Holm p | Milestone? | Decision |
