@@ -29,6 +29,7 @@ DEFAULT_VERSION = "execution-calibration-v1"
 RUNTIME_FILES = (
     "docs/EXECUTION_CALIBRATION_V1.md",
     "scripts/execution_calibration_modeb.py",
+    "scripts/execution_calibration_scheduler.py",
 )
 
 
