@@ -1,7 +1,7 @@
 {
   "version": "polymarket-microstructure-evidence-v1",
-  "anchor_commit": "1fc431493a861fe56f229060dd8b9bb046484ced",
-  "contract_sha256": "1d2a760861aad477e4a4796b10b4370c4fa376eecdf7713b2ca08cad818b33a3",
+  "anchor_commit": "b2ef6f44b7b97d2c120dde067512ffe60acfab08",
+  "contract_sha256": "2b860bc1d03b98638c945d23a761102d8c6efb48758181154ba88bf39f97726f",
   "research_spec": "docs/POLYMARKET_MICROSTRUCTURE_EVIDENCE_V1.md",
   "contract_files": [
     "docs/POLYMARKET_MICROSTRUCTURE_EVIDENCE_V1.md",
@@ -9,5 +9,5 @@
     "src/polyalpha/polymarket/canonical.py",
     "scripts/polymarket_extractor.py"
   ],
-  "frozen_at": "2026-10-21T05:41:43.214439+00:00"
+  "frozen_at": "2026-10-21T05:44:12.993378+00:00"
 }
