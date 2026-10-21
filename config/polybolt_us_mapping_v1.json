@@ -1,0 +1,19 @@
+{
+  "version": "polybolt_us_mapping_v1",
+  "venue": "Polymarket US (gateway.polymarket.us)",
+  "reference_channels": ["price.crypto", "price.equity", "price.crypto.twap"],
+  "mapping": {
+    "btcusd": [],
+    "ethusd": [],
+    "aapl": []
+  },
+  "provenance": {
+    "btcusd": "No BTC/Bitcoin-linked market in the Polymarket US universe.",
+    "ethusd": "No ETH/Ethereum-linked market in the Polymarket US universe.",
+    "aapl": "No AAPL/Apple-linked market in the Polymarket US universe."
+  },
+  "finding": "The live Polymarket US /v1/markets universe (500 markets) is entirely sports category (NFL/MLB/etc.), with zero crypto- or equity-linked markets. The archived lineage is US macro releases (CPI/PPI), sports, and music. Therefore the PolyBolt reference symbols (btcusd/ethusd/aapl) have zero deterministic Polymarket US execution-venue targets.",
+  "status": "ZERO_CAUSAL_TARGETS",
+  "collected_at": "2026-10-21T05:50:00+00:00",
+  "collection_universe_source": "collect_market_data.py -> collector_universe() = U_activity U U_release_required (US gov releases + activity-ranked sports/macro), no crypto/equity."
+}
