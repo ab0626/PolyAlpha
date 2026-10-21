@@ -27,10 +27,13 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "frozen" / "polymarket-microstructure-evidence-v1.json"
 DEFAULT_VERSION = "polymarket-microstructure-evidence-v1"
 
-# The research contract. Runtime (parser / evaluator) is appended and re-frozen
-# once it exists.
+# The research contract + the canonical parser/extractor runtime. Any drift fails
+# verification and requires explicit review + re-freeze.
 RUNTIME_FILES = (
     "docs/POLYMARKET_MICROSTRUCTURE_EVIDENCE_V1.md",
+    "src/polyalpha/polymarket/__init__.py",
+    "src/polyalpha/polymarket/canonical.py",
+    "scripts/polymarket_extractor.py",
 )
 
 
