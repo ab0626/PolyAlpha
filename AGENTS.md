@@ -57,6 +57,9 @@ folder (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`), which invok
 - `PolyAlphaEnergyForecastHealth.vbs` -> `polyalpha_energy_forecast_health.bat`
 - `PolyAlphaEnergyWs.vbs`       -> `polyalpha_energy_ws.bat` (crash-loop)
 - `PolyAlphaEnergyWsHealth.vbs` -> `polyalpha_energy_ws_health.bat`
+- `PolyAlphaEnergyIntraday.vbs` -> `polyalpha_energy_intraday.bat`
+- `PolyAlphaEnergyE4Spp.vbs`   -> `polyalpha_energy_e4_spp.bat`
+- `PolyAlphaKalshiCandidateWatch.vbs` -> `polyalpha_kalshi_candidate_watch.bat` (crash-loop; alert-only, never trades)
 
 The E3 evaluator is NOT a service: it is a deterministic batch job scheduled via
 Windows Task Scheduler (`PolyAlphaEnergyE3`, daily 01:30 local/Central Time,
@@ -154,9 +157,15 @@ of the elapsed window). Cluster count is honest AFTER macro-release clustering
   crash-loops while the host is up (dominated by `getaddrinfo failed` for
   `gateway.polymarket.us` — the pinned-IP fallback in `us/rest.py` covers DNS-down but
   not a fully offline host). Keep it plugged in: DC "never sleep" drains the battery to
-  a hard shutdown. A reboot needs a login to restart the launchers (no auto-login) — see
-  `scripts/enable_autologon.ps1` to make recovery automatic. Critical-battery action was
-  changed from Hibernate to Shut down (2026-10-13).
+  a hard shutdown. Auto-logon IS now enabled (`AutoAdminLogon=1`), so collectors restart
+  after a power-on without a manual login. Critical-battery action was
+  changed from Hibernate to Shut down (2026-10-13); those events appear as
+  `winlogon.exe` power-offs with reason code `0x500ff`, and they kill collectors with
+  exit code `1073807364` (`0x40010004` = `DBG_TERMINATE_PROCESS`, i.e. Windows
+  force-terminating the process — NOT a Python crash; `collector.err.log` stays empty).
+  The recurring `getaddrinfo failed` windows while on battery trace to the DC Wi-Fi
+  "Power Saving Mode = Medium" setting; run `scripts/harden_host_power.ps1` as admin to
+  set it to Maximum Performance (this is the fix for the ~75 min DNS-drop outages).
 - Forward-evidence observed coverage was overstated at ~68% by a stale manual ledger
   (`config/us_known_gaps.json` had 5 coarse entries and nothing after Oct 5). The ledger
   was corrected (2026-10-13) to ~20 entries from the health-check heartbeat + event log;
