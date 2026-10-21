@@ -1,0 +1,1 @@
+"""Polymarket CLOB canonical microstructure layer (frozen contract)."""
