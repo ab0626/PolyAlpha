@@ -28,7 +28,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from polyalpha.energy.kalshi import ENERGY_SERIES, KalshiPublicClient  # noqa: E402
 
 CONFIG = ROOT / "config" / "frozen" / "execution-calibration-v1.json"
-OUT = ROOT / "data" / "energy" / "kalshi" / "calibration_modeb_candidates.jsonl"
+OUT = ROOT / "data" / "execution_calibration" / "modeb_candidates.jsonl"
+LATEST = ROOT / "data" / "execution_calibration" / "latest_candidate.json"
 
 FIXED_SEED = "execution-calibration-v1.1-modeb"
 BUCKET_SECONDS = 900
